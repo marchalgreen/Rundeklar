@@ -114,33 +114,31 @@ const CheckInPage = () => {
 
   if (!session) {
     return (
-      <section className="mx-auto flex h-full max-w-4xl items-center justify-center">
-        <EmptyState
-          icon={<UsersRound />}
-          title="Ingen aktiv træning"
-          helper="Start en træning i Kampprogrammet for at tjekke spillere ind."
-          action={
-            <Button variant="primary" onClick={refreshSession}>
-              Opdater
-            </Button>
-          }
-        />
+      <section className="mx-auto flex h-full max-w-4xl items-center justify-center p-6">
+        <PageCard className="w-full max-w-xl text-center">
+          <EmptyState
+            icon={<UsersRound />}
+            title="Ingen aktiv træning"
+            helper="Start en træning i Kampprogrammet for at tjekke spillere ind."
+            action={
+              <Button variant="primary" onClick={refreshSession}>
+                Opdater
+              </Button>
+            }
+          />
+        </PageCard>
       </section>
     )
   }
 
   return (
     <section className="flex flex-col gap-6 pt-6">
-      <header className="flex items-center justify-between mb-4">
-        <div>
-          <h1 className="text-lg font-medium text-[hsl(var(--foreground))]">Check ind</h1>
-          <p className="text-sm text-[hsl(var(--muted))] mt-1">
-            Aktiv træning: {new Date(session.date).toLocaleDateString('da-DK')}
-          </p>
-          {error && (
-            <span className="mt-2 inline-block text-sm text-[hsl(var(--destructive))]">{error}</span>
-          )}
-        </div>
+      <header className="mb-2">
+        <h1 className="text-2xl font-semibold">Check ind</h1>
+        <p className="mt-1 text-[hsl(var(--muted))]">
+          Aktiv træning: {new Date(session.date).toLocaleDateString('da-DK')}
+        </p>
+        {error && <span className="mt-2 inline-block text-sm text-[hsl(var(--destructive))]">{error}</span>}
       </header>
 
       <PageCard className="space-y-6">
@@ -155,8 +153,8 @@ const CheckInPage = () => {
                 className={clsx(
                   'rounded-full px-3 py-1 text-sm transition-all duration-200 ease-[cubic-bezier(.2,.8,.2,1)] motion-reduce:transition-none',
                   filterLetter === letter
-                    ? 'bg-accent text-white shadow-[0_2px_8px_hsl(var(--line)/.12)] ring-1 ring-[hsl(var(--accent)/.2)]'
-                    : 'bg-[hsl(var(--surface-glass)/.85)] text-[hsl(var(--muted))] hover:text-[hsl(var(--foreground))] hover:ring-1 hover:ring-[hsl(var(--line)/.12)]'
+                    ? 'bg-accent text-white shadow-[0_2px_8px_hsl(var(--line)/.12)]'
+                    : 'bg-[hsl(var(--surface-2))] text-[hsl(var(--muted))] hover:text-foreground border-hair'
                 )}
               >
                 {letter}
@@ -180,11 +178,9 @@ const CheckInPage = () => {
                 <div
                   key={player.id}
                   className={clsx(
-                    'card-glass-active flex items-center justify-between gap-4 rounded-xl px-4 py-4 min-h-[72px]',
-                    'ring-1 ring-[hsl(var(--line)/.12)]',
-                    'transition-all duration-200 ease-[cubic-bezier(.2,.8,.2,1)] motion-reduce:transition-none',
-                    'hover:shadow-[0_2px_8px_hsl(var(--line)/.2)] hover:ring-[hsl(var(--accent)/.2)]',
-                    isChecked && 'bg-[hsl(var(--accent)/.1)]'
+                    'card-glass-active border-hair flex min-h-[72px] items-center justify-between gap-4 rounded-xl px-4 py-4',
+                    'transition-all duration-200 ease-[cubic-bezier(.2,.8,.2,1)] motion-reduce:transition-none hover:shadow-sm',
+                    isChecked && 'bg-[hsl(var(--success)/.06)]'
                   )}
                 >
                   <div className="flex items-center gap-4">
@@ -198,17 +194,18 @@ const CheckInPage = () => {
                       </p>
                     </div>
                   </div>
-                  <Button
-                    variant={isChecked ? 'ghost' : 'primary'}
-                    size="sm"
-                    disabled={isChecked}
-                    onClick={() => handleCheckIn(player)}
-                    className={clsx(
-                      !isChecked && 'ring-2 ring-[hsl(var(--accent)/.2)]'
-                    )}
-                  >
-                    {isChecked ? 'Tjekket ind' : 'Check ind'}
-                  </Button>
+                  <div className="flex items-center gap-3">
+                    <Badge variant={isChecked ? 'success' : 'muted'}>{isChecked ? 'Tjekket ind' : 'Klar'}</Badge>
+                    <Button
+                      variant={isChecked ? 'ghost' : 'primary'}
+                      size="sm"
+                      disabled={isChecked}
+                      onClick={() => handleCheckIn(player)}
+                      className={clsx(!isChecked && 'ring-2 ring-[hsl(var(--accent)/.2)]')}
+                    >
+                      {isChecked ? 'Tjekket ind' : 'Check ind'}
+                    </Button>
+                  </div>
                 </div>
               )
             })

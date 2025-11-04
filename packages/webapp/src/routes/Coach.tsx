@@ -7,6 +7,7 @@ import type {
   TrainingSession
 } from '@badminton/common'
 import api from '../api'
+import { PageCard } from '../components/ui'
 
 const EMPTY_SLOTS = 4
 
@@ -61,9 +62,7 @@ const CoachPage = () => {
     setLoading(false)
   }
 
-  useEffect(() => {
-    void hydrate()
-  }, [])
+  useEffect(() => { void hydrate() }, [])
 
   useEffect(() => {
     if (!session) {
@@ -94,7 +93,7 @@ const CoachPage = () => {
       const active = await api.session.startOrGetActive()
       setSession(active)
       setInfo('Træning startet')
-      setTimeout(() => setInfo(null), 2000)
+      setTimeout(() => setInfo(null), 1800)
     } catch (err: any) {
       setError(err.message ?? 'Kunne ikke starte træning')
     }
@@ -106,7 +105,7 @@ const CoachPage = () => {
       await api.session.endActive()
       setSession(null)
       setInfo('Træning afsluttet')
-      setTimeout(() => setInfo(null), 2000)
+      setTimeout(() => setInfo(null), 1800)
     } catch (err: any) {
       setError(err.message ?? 'Kunne ikke afslutte træning')
     }
@@ -119,7 +118,7 @@ const CoachPage = () => {
       await loadMatches()
       await loadCheckIns()
       setInfo(`Fordelte spillere på ${result.filledCourts} baner`)
-      setTimeout(() => setInfo(null), 2000)
+      setTimeout(() => setInfo(null), 1800)
     } catch (err: any) {
       setError(err.message ?? 'Kunne ikke matche spillere')
     }
@@ -175,16 +174,33 @@ const CoachPage = () => {
     await handleMove(playerId, courtIdx, slot)
   }
 
+  const getFirstFreeSlot = (court: CourtWithPlayers) => {
+    const occupied = new Set(court.slots.map((entry: { slot: number; player: Player }) => entry.slot))
+    return [0, 1, 2, 3].find((idx: number) => !occupied.has(idx))
+  }
+
+  const handleQuickAssign = async (playerId: string, courtIdx: number) => {
+    const court = matches.find((c) => c.courtIdx === courtIdx)
+    if (!court) return
+    const slot = getFirstFreeSlot(court)
+    if (slot === undefined) {
+      setError('Banen er fuld')
+      return
+    }
+    await handleMove(playerId, courtIdx, slot)
+    setMoveMenuPlayer(null)
+  }
+
   const renderSlot = (court: CourtWithPlayers, slotIndex: number) => {
     const entry = court.slots.find((slot: { slot: number; player: Player }) => slot.slot === slotIndex)
     const player = entry?.player
     return (
       <div
         key={slotIndex}
-        className={`flex min-h-[72px] items-center justify-between rounded-md px-3 py-3 text-sm transition-all duration-200 ease-[cubic-bezier(.2,.8,.2,1)] motion-reduce:transition-none ${
+        className={`flex min-h-[64px] items-center justify-between rounded-md px-3 py-2 text-sm transition-all duration-200 ease-[cubic-bezier(.2,.8,.2,1)] motion-reduce:transition-none ${
           player
-            ? 'bg-[hsl(var(--surface-2))] ring-1 ring-[hsl(var(--line)/.12)] hover:shadow-[0_2px_8px_hsl(var(--line)/.12)] hover:ring-[hsl(var(--accent)/.2)]'
-            : 'bg-[linear-gradient(135deg,hsl(var(--line)/.08)_25%,transparent_25%,transparent_50%,hsl(var(--line)/.08)_50%,hsl(var(--line)/.08)_75%,transparent_75%,transparent)] bg-[length:8px_8px] ring-1 ring-[hsl(var(--line)/.18)] hover:ring-[hsl(var(--accent)/.3)]'
+            ? 'bg-[hsl(var(--surface))] border-hair hover:shadow-sm'
+            : 'bg-[hsl(var(--surface-2))] border-hair text-[hsl(var(--muted))]'
         }`}
         onDragOver={(event: React.DragEvent<HTMLDivElement>) => {
           if (!player) event.preventDefault()
@@ -208,7 +224,7 @@ const CoachPage = () => {
             <button
               type="button"
               onClick={() => handleMove(player.id)}
-              className="rounded-md px-2 py-1 text-xs font-medium text-[hsl(var(--muted))] hover:text-[hsl(var(--foreground))] hover:bg-[hsl(var(--surface-glass)/.85)] ring-1 ring-[hsl(var(--line)/.12)] transition-all duration-200 ease-[cubic-bezier(.2,.8,.2,1)] motion-reduce:transition-none"
+              className="rounded-md px-2 py-1 text-xs font-medium text-[hsl(var(--muted))] hover:text-[hsl(var(--foreground))] hover:bg-[hsl(var(--surface-glass)/.85)] border-hair transition-all duration-200 ease-[cubic-bezier(.2,.8,.2,1)] motion-reduce:transition-none"
             >
               Bænk
             </button>
@@ -218,23 +234,6 @@ const CoachPage = () => {
         )}
       </div>
     )
-  }
-
-  const getFirstFreeSlot = (court: CourtWithPlayers) => {
-    const occupied = new Set(court.slots.map((entry: { slot: number; player: Player }) => entry.slot))
-    return [0, 1, 2, 3].find((idx: number) => !occupied.has(idx))
-  }
-
-  const handleQuickAssign = async (playerId: string, courtIdx: number) => {
-    const court = matches.find((c) => c.courtIdx === courtIdx)
-    if (!court) return
-    const slot = getFirstFreeSlot(court)
-    if (slot === undefined) {
-      setError('Banen er fuld')
-      return
-    }
-    await handleMove(playerId, courtIdx, slot)
-    setMoveMenuPlayer(null)
   }
 
   if (loading) {
@@ -247,10 +246,10 @@ const CoachPage = () => {
 
   return (
     <section className="mx-auto flex h-full max-w-6xl flex-col gap-6 pt-6">
-      <header className="flex items-center justify-between mb-4">
+      <header className="flex items-center justify-between mb-2">
         <div>
-          <h1 className="text-lg font-medium text-[hsl(var(--foreground))]">Kampprogram</h1>
-          <p className="text-sm text-[hsl(var(--muted))] mt-1">Tjekkede spillere: {checkedIn.length}</p>
+          <h1 className="text-2xl font-semibold">Kampprogram</h1>
+          <p className="mt-1 text-[hsl(var(--muted))]">Tjekkede spillere: {checkedIn.length}</p>
           {info && (
             <span
               className="mt-2 inline-block rounded-full bg-[hsl(var(--success)/.15)] px-3 py-1 text-sm text-[hsl(var(--success))] transition-all duration-200 ease-[cubic-bezier(.2,.8,.2,1)] motion-reduce:transition-none"
@@ -260,16 +259,14 @@ const CoachPage = () => {
               {info}
             </span>
           )}
-          {error && (
-            <span className="mt-2 block text-sm text-[hsl(var(--destructive))]">{error}</span>
-          )}
+          {error && <span className="mt-2 block text-sm text-[hsl(var(--destructive))]">{error}</span>}
         </div>
         <div className="flex gap-2">
           <button
             type="button"
             onClick={handleAutoMatch}
             disabled={!session || bench.length === 0}
-            className="rounded-md px-4 py-2 text-sm font-medium transition-all duration-200 ease-[cubic-bezier(.2,.8,.2,1)] motion-reduce:transition-none bg-[hsl(var(--surface-glass)/.85)] text-[hsl(var(--foreground))] hover:bg-[hsl(var(--surface-glass)/.95)] ring-1 ring-[hsl(var(--line)/.12)] disabled:opacity-40 disabled:cursor-not-allowed hover:shadow-[0_2px_8px_hsl(var(--line)/.12)]"
+            className="rounded-md px-4 py-2 text-sm font-medium transition-all duration-200 ease-[cubic-bezier(.2,.8,.2,1)] motion-reduce:transition-none bg-[hsl(var(--surface-glass)/.85)] text-[hsl(var(--foreground))] hover:bg-[hsl(var(--surface-glass)/.95)] border-hair disabled:opacity-40 disabled:cursor-not-allowed hover:shadow-sm"
           >
             Auto-match
           </button>
@@ -277,7 +274,7 @@ const CoachPage = () => {
             type="button"
             onClick={handleResetMatches}
             disabled={!session}
-            className="rounded-md px-4 py-2 text-sm font-medium transition-all duration-200 ease-[cubic-bezier(.2,.8,.2,1)] motion-reduce:transition-none bg-transparent text-[hsl(var(--destructive))] hover:bg-[hsl(var(--destructive)/.1)] ring-1 ring-[hsl(var(--destructive)/.3)] disabled:opacity-40 disabled:cursor-not-allowed hover:shadow-[0_2px_8px_hsl(var(--line)/.12)] ring-focus"
+            className="rounded-md px-4 py-2 text-sm font-medium transition-all duration-200 ease-[cubic-bezier(.2,.8,.2,1)] motion-reduce:transition-none bg-transparent text-[hsl(var(--destructive))] hover:bg-[hsl(var(--destructive)/.08)] border-hair disabled:opacity-40 disabled:cursor-not-allowed ring-focus"
           >
             Nulstil kampe
           </button>
@@ -285,7 +282,7 @@ const CoachPage = () => {
             <button
               type="button"
               onClick={handleEndTraining}
-              className="rounded-md bg-[hsl(var(--destructive))] px-4 py-2 text-sm font-semibold text-white hover:bg-[hsl(var(--destructive)/.9)] transition-all duration-200 ease-[cubic-bezier(.2,.8,.2,1)] motion-reduce:transition-none ring-focus hover:shadow-[0_2px_8px_hsl(var(--line)/.2)]"
+              className="rounded-md bg-[hsl(var(--destructive))] px-4 py-2 text-sm font-semibold text-white hover:bg-[hsl(var(--destructive)/.9)] transition-all duration-200 ease-[cubic-bezier(.2,.8,.2,1)] motion-reduce:transition-none ring-focus hover:shadow-sm"
             >
               Afslut træning
             </button>
@@ -293,7 +290,7 @@ const CoachPage = () => {
             <button
               type="button"
               onClick={handleStartTraining}
-              className="rounded-md bg-accent px-4 py-2 text-sm font-semibold text-white hover:opacity-90 transition-all duration-200 ease-[cubic-bezier(.2,.8,.2,1)] motion-reduce:transition-none ring-focus hover:shadow-[0_2px_8px_hsl(var(--line)/.2)] ring-2 ring-[hsl(var(--accent)/.2)]"
+              className="rounded-md bg-accent px-4 py-2 text-sm font-semibold text-white hover:opacity-90 transition-all duration-200 ease-[cubic-bezier(.2,.8,.2,1)] motion-reduce:transition-none ring-focus hover:shadow-sm"
             >
               Start træning
             </button>
@@ -302,33 +299,30 @@ const CoachPage = () => {
       </header>
 
       {!session && (
-        <p className="rounded-xl card-glass-inactive px-4 py-3 text-sm text-[hsl(var(--muted))] ring-1 ring-[hsl(var(--line)/.12)]">
+        <PageCard className="rounded-full px-6 py-3 text-center text-[hsl(var(--muted))]">
           Start træningen for at begynde at matche spillere på banerne.
-        </p>
+        </PageCard>
       )}
 
       <div className="grid flex-1 gap-6 lg:grid-cols-[minmax(280px,340px)_1fr]">
-        <section
-          className="flex flex-col gap-4 rounded-xl card-glass-active p-5 ring-1 ring-[hsl(var(--line)/.12)] space-y-3"
-          onDragOver={(event) => event.preventDefault()}
-          onDrop={onDropToBench}
-        >
+        {/* Bench */}
+        <PageCard className="space-y-3" onDragOver={(e) => e.preventDefault()} onDrop={onDropToBench}>
           <header className="flex items-center justify-between">
-            <h3 className="text-base font-medium text-[hsl(var(--foreground))]">Bænk</h3>
-            <span className="rounded-full bg-[hsl(var(--surface-2))] px-3 py-1 text-xs font-medium text-[hsl(var(--foreground))] ring-1 ring-[hsl(var(--line)/.12)]">
+            <h3 className="text-base font-medium">Bænk</h3>
+            <span className="rounded-full bg-[hsl(var(--surface-2))] px-3 py-1 text-xs font-medium">
               {bench.length}
             </span>
           </header>
           <div className="flex flex-col space-y-3 overflow-y-auto">
             {bench.length === 0 && (
-              <p className="rounded-md card-glass-inactive px-3 py-6 text-center text-sm text-[hsl(var(--muted))] ring-1 ring-[hsl(var(--line)/.12)]">
+              <p className="rounded-md bg-[hsl(var(--surface-2))] px-3 py-6 text-center text-sm text-[hsl(var(--muted))] border-hair">
                 Ingen spillere på bænken
               </p>
             )}
             {bench.map((player) => (
               <div
                 key={player.id}
-                className="flex items-center justify-between gap-3 rounded-md card-glass-active px-3 py-3 min-h-[56px] ring-1 ring-[hsl(var(--line)/.12)] transition-all duration-200 ease-[cubic-bezier(.2,.8,.2,1)] motion-reduce:transition-none hover:shadow-[0_2px_8px_hsl(var(--line)/.2)] hover:ring-[hsl(var(--accent)/.2)] cursor-grab active:cursor-grabbing"
+                className="flex items-center justify-between gap-3 rounded-md bg-[hsl(var(--surface))] border-hair px-3 py-3 min-h-[56px] hover:shadow-sm cursor-grab active:cursor-grabbing transition-all"
                 draggable
                 onDragStart={(event) => {
                   event.dataTransfer.setData('application/x-player-id', player.id)
@@ -345,7 +339,7 @@ const CoachPage = () => {
                   <button
                     type="button"
                     onClick={() => setMoveMenuPlayer(moveMenuPlayer === player.id ? null : player.id)}
-                    className="rounded-md px-3 py-1 text-xs font-medium text-[hsl(var(--foreground))] hover:bg-[hsl(var(--surface-2)/.7)] ring-1 ring-[hsl(var(--line)/.12)] transition-all duration-200 ease-[cubic-bezier(.2,.8,.2,1)] motion-reduce:transition-none hover:shadow-[0_2px_8px_hsl(var(--line)/.12)]"
+                    className="rounded-md px-3 py-1 text-xs font-medium text-[hsl(var(--foreground))] hover:bg-[hsl(var(--surface-2)/.7)] border-hair transition-all duration-200 ease-[cubic-bezier(.2,.8,.2,1)] motion-reduce:transition-none hover:shadow-sm"
                   >
                     Flyt
                   </button>
@@ -353,13 +347,11 @@ const CoachPage = () => {
                     <div className="flex items-center gap-2 text-xs">
                       <label className="text-[hsl(var(--muted))]">Bane</label>
                       <select
-                        className="rounded-md ring-1 ring-[hsl(var(--line)/.12)] bg-[hsl(var(--surface))] px-2 py-1 text-[hsl(var(--foreground))] focus:ring-2 focus:ring-[hsl(var(--ring))] outline-none transition-all duration-200 motion-reduce:transition-none"
+                        className="rounded-md border-hair bg-[hsl(var(--surface))] px-2 py-1 text-[hsl(var(--foreground))] focus:ring-2 focus:ring-[hsl(var(--ring))] outline-none transition-all duration-200 motion-reduce:transition-none"
                         defaultValue=""
                         onChange={(event) => {
                           const val = Number(event.target.value)
-                          if (!Number.isNaN(val)) {
-                            void handleQuickAssign(player.id, val)
-                          }
+                          if (!Number.isNaN(val)) void handleQuickAssign(player.id, val)
                         }}
                       >
                         <option value="">Vælg</option>
@@ -375,13 +367,14 @@ const CoachPage = () => {
               </div>
             ))}
           </div>
-        </section>
+        </PageCard>
 
-        <section className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3 space-y-0">
+        {/* Courts */}
+        <section className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3">
           {matches.map((court) => (
-            <div
+            <PageCard
               key={court.courtIdx}
-              className="flex flex-col gap-3 rounded-xl card-glass-active p-4 ring-1 ring-[hsl(var(--line)/.12)] shadow-[0_2px_8px_hsl(var(--line)/.12)] transition-all duration-200 ease-[cubic-bezier(.2,.8,.2,1)] motion-reduce:transition-none hover:shadow-[0_2px_8px_hsl(var(--line)/.2)] hover:ring-[hsl(var(--accent)/.2)]"
+              className="space-y-3 hover:shadow-md"
               onDragOver={(event) => event.preventDefault()}
               onDrop={(event) => void onDropToCourt(event, court.courtIdx)}
             >
@@ -392,7 +385,7 @@ const CoachPage = () => {
               <div className="flex flex-col space-y-2">
                 {Array.from({ length: EMPTY_SLOTS }).map((_, slotIndex) => renderSlot(court, slotIndex))}
               </div>
-            </div>
+            </PageCard>
           ))}
         </section>
       </div>

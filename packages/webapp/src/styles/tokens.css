@@ -26,26 +26,34 @@
   --shadow-md: 0 8px 20px rgb(15 23 42 / 0.12);
   --shadow-lg: 0 20px 50px rgb(15 23 42 / 0.18);
 
-  /* Light palette — Neutral + Teal System */
-  --bg-canvas: 0 0% 98%;
+  /* Light palette — Crisp neutral + teal */
+  --bg-canvas: 215 33% 98%;
+  --bg-gradient-1: 215 28% 96%;
+  --bg-gradient-2: 215 22% 94%;
+  --bg-gradient-3: 210 18% 97%;
 
+  /* Surfaces (card + glass) */
   --surface: 0 0% 100%;
-  --surface-2: 0 0% 99%;
-  --surface-glass: 0 0% 96%;
-  --foreground: 0 0% 15%;
-  --muted: 0 0% 45%;
-  --border: 0 0% 88%;
-  --line: 0 0% 88%;
+  --surface-2: 215 22% 96%;       /* subtle tint for raised panels */
+  --surface-glass: 215 20% 95%;
 
-  --primary: 205 75% 55%;           /* teal-blue accent */
+  /* Text & UI */
+  --foreground: 222 22% 14%;      /* crisper body text */
+  --muted: 222 10% 42%;           /* secondary text/icons */
+  --border: 220 16% 86%;          /* panel borders if needed */
+  --line: 220 16% 86%;            /* hairlines/rings */
+
+  /* Accent & system */
+  --primary: 206 88% 52%;         /* vivid teal-blue (buttons, highlights) */
   --primary-contrast: 0 0% 100%;
-  --neutral: 220 10% 50%;
-  --success: 160 65% 40%;           /* minty green */
-  --warning: 38 92% 52%;
-  --danger: 0 70% 50%;              /* clean red */
-  --destructive: 0 70% 50%;
+  --neutral: 220 10% 52%;
 
-  --ring: 205 80% 60%;              /* accent ring */
+  --success: 158 58% 42%;         /* modern mint */
+  --warning: 38 92% 52%;
+  --danger: 2 72% 52%;
+  --destructive: 2 72% 52%;
+
+  --ring: 206 82% 56%;            /* focus ring tone */
 }
 
 @media (prefers-reduced-motion: reduce) {
