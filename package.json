@@ -1,5 +1,5 @@
 {
-  "name": "clairity",
+  "name": "new-customer-app",
   "version": "0.1.0",
   "private": true,
   "scripts": {
@@ -15,7 +15,7 @@
     "typecheck": "pnpm --filter @clairity/web typecheck",
     "validate": "pnpm --filter @clairity/web validate",
     "test": "pnpm --filter @clairity/web test",
-    "playwright:install": "pnpm exec playwright install", 
+    "playwright:install": "pnpm exec playwright install",
     "test:e2e": "pnpm --filter @clairity/web test:e2e",
     "test:e2e:web": "pnpm exec playwright test --config=playwright.config.ts --project=web",
     "test:e2e:all": "pnpm exec playwright test",
