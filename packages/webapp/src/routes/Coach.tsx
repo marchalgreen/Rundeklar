@@ -317,7 +317,7 @@ const CoachPage = () => {
             <button
               type="button"
               onClick={handleEndTraining}
-              className="rounded-md bg-[hsl(var(--destructive))] px-4 py-2 text-sm font-semibold text-white hover:bg-[hsl(var(--destructive)/.9)] transition-all duration-200 ease-[cubic-bezier(.2,.8,.2,1)] motion-reduce:transition-none ring-focus hover:shadow-sm"
+              className="rounded-md px-4 py-2 text-sm font-medium text-[hsl(var(--foreground))] hover:bg-[hsl(var(--surface-2))] ring-1 ring-[hsl(var(--line)/.12)] transition-all duration-200 ease-[cubic-bezier(.2,.8,.2,1)] motion-reduce:transition-none hover:shadow-sm"
             >
               Afslut træning
             </button>
