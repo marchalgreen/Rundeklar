@@ -382,20 +382,22 @@ const autoArrangeMatches = async (round?: number): Promise<AutoArrangeResult> =>
   }
 }
 
-const movePlayer = async (payload: MatchMovePayload): Promise<void> => {
+const movePlayer = async (payload: MatchMovePayload, round?: number): Promise<void> => {
   const parsed = z
     .object({
       playerId: z.string().min(1),
       toCourtIdx: z.number().int().min(1).max(8).optional(),
-      toSlot: z.number().int().min(0).max(3).optional()
+      toSlot: z.number().int().min(0).max(3).optional(),
+      round: z.number().int().min(1).max(3).optional()
     })
     .superRefine((value, ctx) => {
       if (value.toCourtIdx !== undefined && value.toSlot === undefined) {
         ctx.addIssue({ code: z.ZodIssueCode.custom, message: 'toSlot kræves når toCourtIdx er sat' })
       }
     })
-    .parse(payload)
+    .parse({ ...payload, round: payload.round ?? round })
 
+  const effectiveRound = parsed.round ?? round ?? 1
   const session = await ensureActiveSession()
   updateState((state: DatabaseState) => {
     const checkedIn = state.checkIns.some(
@@ -405,9 +407,19 @@ const movePlayer = async (payload: MatchMovePayload): Promise<void> => {
       throw new Error('Spilleren er ikke tjekket ind')
     }
 
-    const currentMatchPlayer = state.matchPlayers.find((mp) => mp.playerId === parsed.playerId)
+    // Only check matches in the current round
+    const matchesInRound = state.matches.filter(
+      (match: Match) => match.sessionId === session.id && (match.round ?? 1) === effectiveRound
+    )
+
+    // Find current match player only in the current round
+    const currentMatchPlayer = state.matchPlayers.find((mp) => {
+      if (mp.playerId !== parsed.playerId) return false
+      const match = matchesInRound.find((m: Match) => m.id === mp.matchId)
+      return match !== undefined
+    })
     const currentMatch = currentMatchPlayer
-      ? state.matches.find((match) => match.id === currentMatchPlayer.matchId)
+      ? matchesInRound.find((match: Match) => match.id === currentMatchPlayer.matchId)
       : undefined
 
     if (parsed.toCourtIdx === undefined) {
@@ -426,16 +438,16 @@ const movePlayer = async (payload: MatchMovePayload): Promise<void> => {
       throw new Error('Banen findes ikke')
     }
 
-    let targetMatch = state.matches.find(
-      (match) => match.sessionId === session.id && match.courtId === court.id
-    )
+    // Only find matches in the current round for this court
+    let targetMatch = matchesInRound.find((match: Match) => match.courtId === court.id)
     if (!targetMatch) {
       targetMatch = {
         id: createId(),
         sessionId: session.id,
         courtId: court.id,
         startedAt: new Date().toISOString(),
-        endedAt: null
+        endedAt: null,
+        round: effectiveRound
       }
       state.matches.push(targetMatch)
     }

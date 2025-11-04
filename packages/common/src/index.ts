@@ -79,6 +79,7 @@ export type MatchMovePayload = {
   playerId: string
   toCourtIdx?: number
   toSlot?: number
+  round?: number
 }
 
 export type AutoArrangeResult = {
@@ -106,6 +107,6 @@ export type RendererApi = {
     autoArrange(round?: number): Promise<AutoArrangeResult>
     list(round?: number): Promise<CourtWithPlayers[]>
     reset(): Promise<void>
-    move(payload: MatchMovePayload): Promise<void>
+    move(payload: MatchMovePayload, round?: number): Promise<void>
   }
 }

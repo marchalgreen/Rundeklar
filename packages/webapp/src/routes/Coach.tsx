@@ -85,7 +85,15 @@ const CoachPage = () => {
   }, [matches])
 
   const bench = useMemo(
-    () => checkedIn.filter((player) => !assignedIds.has(player.id)),
+    () => checkedIn
+      .filter((player) => !assignedIds.has(player.id))
+      .sort((a, b) => {
+        // Sort by Niveau (level) ascending (lowest first)
+        // If level is null/undefined, treat as 0 and put at the end
+        const levelA = a.level ?? 0
+        const levelB = b.level ?? 0
+        return levelA - levelB
+      }),
     [checkedIn, assignedIds]
   )
 
@@ -138,7 +146,7 @@ const CoachPage = () => {
   const handleMove = async (playerId: string, courtIdx?: number, slot?: number) => {
     if (!session) return
     try {
-      await api.matches.move({ playerId, toCourtIdx: courtIdx, toSlot: slot })
+      await api.matches.move({ playerId, toCourtIdx: courtIdx, toSlot: slot }, selectedRound)
       await loadMatches()
       await loadCheckIns()
     } catch (err: any) {
@@ -282,23 +290,35 @@ const CoachPage = () => {
 
   return (
     <section className="flex h-full flex-col gap-6 pt-6">
-      <header className="flex items-center justify-between mb-2">
-        <div>
-          <h1 className="text-2xl font-semibold">Kampprogram</h1>
-          <p className="mt-1 text-[hsl(var(--muted))]">Tjekkede spillere: {checkedIn.length}</p>
+      <header className="flex items-start justify-between mb-2">
+        <div className="flex items-center gap-4">
+          <div>
+            <h1 className="text-2xl font-semibold">Kampprogram</h1>
+            <p className="mt-1 text-[hsl(var(--muted))]">Tjekkede spillere: {checkedIn.length}</p>
+          </div>
+          <select
+            value={selectedRound}
+            onChange={(e) => setSelectedRound(Number(e.target.value))}
+            className="rounded-md px-4 py-3 text-base font-medium bg-[hsl(var(--surface))] text-[hsl(var(--foreground))] ring-1 ring-[hsl(var(--line)/.12)] focus:ring-2 focus:ring-[hsl(var(--ring))] outline-none transition-all duration-200 motion-reduce:transition-none cursor-pointer"
+            disabled={!session}
+          >
+            <option value={1}>Runde 1</option>
+            <option value={2}>Runde 2</option>
+            <option value={3}>Runde 3</option>
+          </select>
+        </div>
+        <div className="flex flex-col gap-2">
           {info && (
             <span
-              className="mt-2 inline-block rounded-full bg-[hsl(var(--success)/.15)] px-3 py-1 text-sm text-[hsl(var(--success))] transition-all duration-200 ease-[cubic-bezier(.2,.8,.2,1)] motion-reduce:transition-none"
+              className="inline-block rounded-full bg-[hsl(var(--success)/.15)] px-3 py-1 text-sm text-[hsl(var(--success))] transition-all duration-200 ease-[cubic-bezier(.2,.8,.2,1)] motion-reduce:transition-none"
               role="status"
               aria-live="polite"
             >
               {info}
             </span>
           )}
-          {error && <span className="mt-2 block text-sm text-[hsl(var(--destructive))]">{error}</span>}
-        </div>
-        <div className="flex gap-2">
-          <div className="flex gap-2 items-center">
+          {error && <span className="block text-sm text-[hsl(var(--destructive))]">{error}</span>}
+          <div className="flex gap-2">
             <button
               type="button"
               onClick={handleAutoMatch}
@@ -307,42 +327,32 @@ const CoachPage = () => {
             >
               Auto-match
             </button>
-            <select
-              value={selectedRound}
-              onChange={(e) => setSelectedRound(Number(e.target.value))}
-              className="rounded-md px-3 py-2 text-sm bg-[hsl(var(--surface))] text-[hsl(var(--foreground))] ring-1 ring-[hsl(var(--line)/.12)] focus:ring-2 focus:ring-[hsl(var(--ring))] outline-none transition-all duration-200 motion-reduce:transition-none"
+            <button
+              type="button"
+              onClick={handleResetMatches}
               disabled={!session}
+              className="rounded-md px-4 py-2 text-sm font-medium transition-all duration-200 ease-[cubic-bezier(.2,.8,.2,1)] motion-reduce:transition-none bg-transparent text-[hsl(var(--destructive))] hover:bg-[hsl(var(--destructive)/.08)] border-hair disabled:opacity-40 disabled:cursor-not-allowed ring-focus"
             >
-              <option value={1}>Runde 1</option>
-              <option value={2}>Runde 2</option>
-              <option value={3}>Runde 3</option>
-            </select>
+              Nulstil kampe
+            </button>
+            {session ? (
+              <button
+                type="button"
+                onClick={handleEndTraining}
+                className="rounded-md px-4 py-2 text-sm font-medium text-[hsl(var(--foreground))] hover:bg-[hsl(var(--surface-2))] ring-1 ring-[hsl(var(--line)/.12)] transition-all duration-200 ease-[cubic-bezier(.2,.8,.2,1)] motion-reduce:transition-none hover:shadow-sm"
+              >
+                Afslut træning
+              </button>
+            ) : (
+              <button
+                type="button"
+                onClick={handleStartTraining}
+                className="rounded-md bg-accent px-4 py-2 text-sm font-semibold text-white hover:opacity-90 transition-all duration-200 ease-[cubic-bezier(.2,.8,.2,1)] motion-reduce:transition-none ring-focus hover:shadow-sm"
+              >
+                Start træning
+              </button>
+            )}
           </div>
-          <button
-            type="button"
-            onClick={handleResetMatches}
-            disabled={!session}
-            className="rounded-md px-4 py-2 text-sm font-medium transition-all duration-200 ease-[cubic-bezier(.2,.8,.2,1)] motion-reduce:transition-none bg-transparent text-[hsl(var(--destructive))] hover:bg-[hsl(var(--destructive)/.08)] border-hair disabled:opacity-40 disabled:cursor-not-allowed ring-focus"
-          >
-            Nulstil kampe
-          </button>
-          {session ? (
-            <button
-              type="button"
-              onClick={handleEndTraining}
-              className="rounded-md px-4 py-2 text-sm font-medium text-[hsl(var(--foreground))] hover:bg-[hsl(var(--surface-2))] ring-1 ring-[hsl(var(--line)/.12)] transition-all duration-200 ease-[cubic-bezier(.2,.8,.2,1)] motion-reduce:transition-none hover:shadow-sm"
-            >
-              Afslut træning
-            </button>
-          ) : (
-            <button
-              type="button"
-              onClick={handleStartTraining}
-              className="rounded-md bg-accent px-4 py-2 text-sm font-semibold text-white hover:opacity-90 transition-all duration-200 ease-[cubic-bezier(.2,.8,.2,1)] motion-reduce:transition-none ring-focus hover:shadow-sm"
-            >
-              Start træning
-            </button>
-          )}
         </div>
       </header>
 
