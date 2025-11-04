@@ -1,0 +1,44 @@
+@layer base {
+  :root { color-scheme: light; }
+
+  html, body, #root, #__next { height: 100%; }
+
+  body {
+    margin: 0;
+    font-family: var(--font-sans);
+    color: hsl(var(--foreground));
+    background: hsl(var(--bg-canvas)); /* flat */
+  }
+
+  ::selection {
+    background: hsl(var(--primary)/.22);
+    color: hsl(var(--foreground));
+  }
+}
+
+@layer utilities {
+  /* Focus ring utility (use with focus-visible:ring-focus) */
+  .ring-focus { box-shadow: 0 0 0 2px hsl(var(--ring)); }
+
+  /* 1px physical hairline (no borders) */
+  .border-hair { box-shadow: inset 0 0 0 1px hsl(var(--line)/.12); }
+
+  /* Glass primitives */
+  .u-glass {
+    background: hsl(var(--surface-glass)/.88);
+    backdrop-filter: blur(16px);
+    -webkit-backdrop-filter: blur(16px);
+  }
+
+  .card-glass-active {
+    background: hsl(var(--surface)/.92);
+    backdrop-filter: blur(8px);
+    -webkit-backdrop-filter: blur(8px);
+  }
+
+  .card-glass-inactive {
+    background: hsl(var(--surface)/.75);
+    backdrop-filter: blur(6px);
+    -webkit-backdrop-filter: blur(6px);
+  }
+}

@@ -1,7 +1,7 @@
 {
   "files": [],
   "references": [
-    { "path": "./packages/web" },
-    { "path": "./packages/device-agent" }
+    { "path": "./packages/common/tsconfig.json" },
+    { "path": "./packages/webapp/tsconfig.json" }
   ]
 }

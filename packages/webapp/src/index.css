@@ -1,0 +1,10 @@
+/* Tokens first so variables exist for all layers */
+@import './styles/tokens.css';
+
+/* Global base + utilities (glass, hairlines, focus ring) */
+@import './styles/globals.css';
+
+/* Tailwind layers */
+@tailwind base;
+@tailwind components;
+@tailwind utilities;

@@ -1,48 +1,63 @@
-# NewCustomerApp
+# Herlev/Hjorten – Webapp
 
-Stack: Next.js 15 (App Router), React 19, Tailwind v4, Prisma 6, pnpm monorepo, Playwright.
+En letvægts webapplikation til den lokale badmintonklub. Alt kører i browseren og gemmes lokalt i IndexedDB; ingen server eller desktop-wrapper er nødvendig.
 
-Quickstart:
+## Funktioner
+- **Spilleradministration** med søgning, CRUD og aktiv/inaktiv-toggle
+- **Check ind**-skærm i kiosk-stil med virtuel liste og hurtig feedback
+- **Kampprogram** med start/stop af træning, bænkliste, auto-match på 8 baner, drag & drop og manuelle flytninger
+- Auto-seed af 40 demo-spillere og 8 baner for hurtig demo
 
-Scope: all 3 workspace projects
-Lockfile is up to date, resolution step is skipped
-Progress: resolved 1, reused 0, downloaded 0, added 0
-Packages: +731
-++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+## Tech Stack
+– Vite + React 19 + TypeScript + Tailwind CSS
+- IndexedDB administreret via Dexie & dexie-react-hooks
+- Zod til inputvalidering
+- Delt typer i `packages/common`
 
-   ╭───────────────────────────────────────────────────────────────────╮
-   │                                                                   │
-   │                Update available! 9.11.0 → 10.20.0.                │
-   │   Changelog: https://github.com/pnpm/pnpm/releases/tag/v10.20.0   │
-   │                 Run "pnpm add -g pnpm" to update.                 │
-   │                                                                   │
-   │         Follow @pnpmjs for updates: https://x.com/pnpmjs          │
-   │                                                                   │
-   ╰───────────────────────────────────────────────────────────────────╯
+## Kom godt i gang
+### Krav
+- Node.js ≥ 20
+- pnpm ≥ 9
 
-Progress: resolved 731, reused 731, downloaded 0, added 280
-Progress: resolved 731, reused 731, downloaded 0, added 647
-Progress: resolved 731, reused 731, downloaded 0, added 728
-Progress: resolved 731, reused 731, downloaded 0, added 731, done
+### Installation
+```bash
+pnpm install
+```
 
-devDependencies:
-+ playwright 1.56.1
+### Udvikling
+```bash
+pnpm dev
+```
+Starter Vite-devserver på http://127.0.0.1:5173 med hot reloading.
 
-packages/web postinstall$ prisma generate || echo "(prisma generate skipped)"
-packages/web postinstall: Environment variables loaded from .env
-packages/web postinstall: Prisma schema loaded from prisma/schema.prisma
-packages/web postinstall: ✔ Generated Prisma Client (v6.17.1) to ./../../node_modules/.pnpm/@prisma+client@6.17.1_prisma@6.17.1_typescript@5.9.3__typescript@5.9.3/node_modules/@prisma/client in 61ms
-packages/web postinstall: Start by importing your Prisma Client (See: https://pris.ly/d/importing-client)
-packages/web postinstall: Tip: Want to turn off tips and other hints? https://pris.ly/tip-4-nohints
-packages/web postinstall: Done
-Done in 5.2s
+### Produktion
+```bash
+pnpm build
+```
+Bygger `packages/common` og webappen (output i `packages/webapp/dist`).
 
-> new-customer-app@0.1.0 prisma:migrate:dev /Users/mhalgreen/projects/NewCustomerApp
-> pnpm --filter @clairity/web exec prisma migrate dev
+### Test
+```bash
+pnpm test
+```
+Kører Vitest-tests for matchmaker-logikken.
 
-No projects matched the filters in "/Users/mhalgreen/projects/NewCustomerApp"
+## Manuel smoke-test
+1. `pnpm dev` og åbn http://127.0.0.1:5173.
+2. Gå til **Spillere**: opret/ret en spiller og toggl aktiv-status.
+3. Skift til **Kampprogram** og tryk “Start træning”.
+4. I **Check ind**: søg efter spillere og tryk “Check ind”.
+5. Tilbage i **Kampprogram**: brug “Auto-match”, træk spillere mellem bænken og banerne, og afprøv “Nulstil kampe”.
+6. Afslut træningen og bekræft at **Check ind**-skærmen viser “Ingen aktiv træning”.
 
-> new-customer-app@0.1.0 dev /Users/mhalgreen/projects/NewCustomerApp
-> pnpm --filter @clairity/web dev
+## Projektstruktur
+```
+packages/
+  common/   → delte TypeScript-typer
+  webapp/   → Vite + React-klient, Dexie API, matcher mv.
+```
 
-No projects matched the filters in "/Users/mhalgreen/projects/NewCustomerApp"
+## Noter
+- Appen seedes automatisk første gang IndexedDB initialiseres.
+- Alle operationer kører lokalt i browseren; rydning af site-data nulstiller databasen.
+- Matchmaker-logikken er isoleret i `packages/webapp/src/lib/matchmaker.ts` og dækket af Vitest.

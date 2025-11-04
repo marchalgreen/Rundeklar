@@ -1,45 +1,16 @@
 {
-  "name": "HerlevHjortenBadminton",
-  "version": "0.1.0",
+  "name": "badminton-klub",
   "private": true,
+  "version": "0.1.0",
+  "type": "module",
   "scripts": {
-    "dev": "pnpm --filter @herlevhjorten/web dev",
-    "dev:web": "pnpm --filter @herlevhjorten/web dev",
-    "dev:agent": "pnpm --filter @herlevhjorten/device-agent dev",
-    "build": "pnpm --filter @herlevhjorten/web build",
-    "start": "pnpm --filter @herlevhjorten/web start",
-    "lint": "pnpm --filter @herlevhjorten/web lint",
-    "lint:fix": "pnpm --filter @herlevhjorten/web lint:fix",
-    "format": "pnpm --filter @herlevhjorten/web format",
-    "format:check": "pnpm --filter @herlevhjorten/web format:check",
-    "typecheck": "pnpm --filter @herlevhjorten/web typecheck",
-    "validate": "pnpm --filter @herlevhjorten/web validate",
-    "test": "pnpm --filter @herlevhjorten/web test",
-    "playwright:install": "pnpm exec playwright install",
-    "test:e2e": "pnpm --filter @herlevhjorten/web test:e2e",
-    "test:e2e:web": "pnpm exec playwright test --config=playwright.config.ts --project=web",
-    "test:e2e:all": "pnpm exec playwright test",
-    "seed": "pnpm --filter @herlevhjorten/web seed",
-    "sync-env": "pnpm --filter @herlevhjorten/web sync-env",
-    "scrape:moscot": "pnpm --filter @herlevhjorten/web scrape:moscot",
-    "scrape:moscot:quick": "pnpm --filter @herlevhjorten/web scrape:moscot:quick",
-    "sync:moscot": "pnpm --filter @herlevhjorten/web sync:moscot",
-    "import:demo": "pnpm --filter @herlevhjorten/web import:demo",
-    "prisma:generate": "pnpm --filter @herlevhjorten/web exec prisma generate",
-    "prisma:migrate:dev": "pnpm --filter @herlevhjorten/web exec prisma migrate dev",
-    "prisma:migrate:deploy": "pnpm --filter @herlevhjorten/web exec prisma migrate deploy"
+    "dev": "pnpm --filter webapp dev",
+    "build": "pnpm --filter common build && pnpm --filter webapp build",
+    "lint": "pnpm --filter webapp lint",
+    "test": "pnpm --filter webapp test"
   },
+  "devDependencies": {},
   "pnpm": {
-    "allowedBuiltDependencies": [
-      "@tailwindcss/oxide",
-      "bcrypt",
-      "esbuild",
-      "sharp",
-      "unrs-resolver"
-    ]
-  },
-  "devDependencies": {
-    "playwright": "^1.56.1"
-  },
-  "packageManager": "pnpm@9.11.0"
+    "packageManager": "pnpm@9.6.0"
+  }
 }

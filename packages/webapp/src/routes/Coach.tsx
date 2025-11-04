@@ -1,0 +1,403 @@
+import React, { useEffect, useMemo, useState } from 'react'
+import type {
+  AutoArrangeResult,
+  CheckedInPlayer,
+  CourtWithPlayers,
+  Player,
+  TrainingSession
+} from '@badminton/common'
+import api from '../api'
+
+const EMPTY_SLOTS = 4
+
+const CoachPage = () => {
+  const [session, setSession] = useState<TrainingSession | null>(null)
+  const [checkedIn, setCheckedIn] = useState<CheckedInPlayer[]>([])
+  const [matches, setMatches] = useState<CourtWithPlayers[]>([])
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
+  const [info, setInfo] = useState<string | null>(null)
+  const [moveMenuPlayer, setMoveMenuPlayer] = useState<string | null>(null)
+
+  const loadSession = async () => {
+    try {
+      const active = await api.session.getActive()
+      setSession(active)
+    } catch (err: any) {
+      setError(err.message ?? 'Kunne ikke hente træning')
+    }
+  }
+
+  const loadCheckIns = async () => {
+    if (!session) {
+      setCheckedIn([])
+      return
+    }
+    try {
+      const data = await api.checkIns.listActive()
+      setCheckedIn(data)
+    } catch (err: any) {
+      setError(err.message ?? 'Kunne ikke hente fremmøde')
+    }
+  }
+
+  const loadMatches = async () => {
+    if (!session) {
+      setMatches([])
+      return
+    }
+    try {
+      const data = await api.matches.list()
+      setMatches(data)
+    } catch (err: any) {
+      setError(err.message ?? 'Kunne ikke hente baner')
+    }
+  }
+
+  const hydrate = async () => {
+    setLoading(true)
+    setError(null)
+    await loadSession()
+    setLoading(false)
+  }
+
+  useEffect(() => {
+    void hydrate()
+  }, [])
+
+  useEffect(() => {
+    if (!session) {
+      setMatches([])
+      setCheckedIn([])
+      return
+    }
+    void loadCheckIns()
+    void loadMatches()
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [session?.id])
+
+  const assignedIds = useMemo(() => {
+    const ids = new Set<string>()
+    matches.forEach((court: CourtWithPlayers) => {
+      court.slots.forEach(({ player }: { player: Player }) => ids.add(player.id))
+    })
+    return ids
+  }, [matches])
+
+  const bench = useMemo(
+    () => checkedIn.filter((player) => !assignedIds.has(player.id)),
+    [checkedIn, assignedIds]
+  )
+
+  const handleStartTraining = async () => {
+    try {
+      const active = await api.session.startOrGetActive()
+      setSession(active)
+      setInfo('Træning startet')
+      setTimeout(() => setInfo(null), 2000)
+    } catch (err: any) {
+      setError(err.message ?? 'Kunne ikke starte træning')
+    }
+  }
+
+  const handleEndTraining = async () => {
+    if (!session) return
+    try {
+      await api.session.endActive()
+      setSession(null)
+      setInfo('Træning afsluttet')
+      setTimeout(() => setInfo(null), 2000)
+    } catch (err: any) {
+      setError(err.message ?? 'Kunne ikke afslutte træning')
+    }
+  }
+
+  const handleAutoMatch = async () => {
+    if (!session) return
+    try {
+      const result: AutoArrangeResult = await api.matches.autoArrange()
+      await loadMatches()
+      await loadCheckIns()
+      setInfo(`Fordelte spillere på ${result.filledCourts} baner`)
+      setTimeout(() => setInfo(null), 2000)
+    } catch (err: any) {
+      setError(err.message ?? 'Kunne ikke matche spillere')
+    }
+  }
+
+  const handleResetMatches = async () => {
+    if (!session) return
+    try {
+      await api.matches.reset()
+      await loadMatches()
+    } catch (err: any) {
+      setError(err.message ?? 'Kunne ikke nulstille kampe')
+    }
+  }
+
+  const handleMove = async (playerId: string, courtIdx?: number, slot?: number) => {
+    if (!session) return
+    try {
+      await api.matches.move({ playerId, toCourtIdx: courtIdx, toSlot: slot })
+      await loadMatches()
+      await loadCheckIns()
+    } catch (err: any) {
+      setError(err.message ?? 'Kunne ikke flytte spiller')
+    }
+  }
+
+  const onDropToBench = async (event: React.DragEvent<HTMLDivElement>) => {
+    const playerId = event.dataTransfer.getData('application/x-player-id')
+    if (!playerId) return
+    event.preventDefault()
+    await handleMove(playerId)
+  }
+
+  const onDropToSlot = async (
+    event: React.DragEvent<HTMLElement>,
+    courtIdx: number,
+    slot: number
+  ) => {
+    const playerId = event.dataTransfer.getData('application/x-player-id')
+    if (!playerId) return
+    event.preventDefault()
+    await handleMove(playerId, courtIdx, slot)
+  }
+
+  const onDropToCourt = async (event: React.DragEvent<HTMLDivElement>, courtIdx: number) => {
+    const playerId = event.dataTransfer.getData('application/x-player-id')
+    if (!playerId) return
+    event.preventDefault()
+    const court = matches.find((c) => c.courtIdx === courtIdx)
+    if (!court) return
+    const slot = getFirstFreeSlot(court)
+    if (slot === undefined) return
+    await handleMove(playerId, courtIdx, slot)
+  }
+
+  const renderSlot = (court: CourtWithPlayers, slotIndex: number) => {
+    const entry = court.slots.find((slot: { slot: number; player: Player }) => slot.slot === slotIndex)
+    const player = entry?.player
+    return (
+      <div
+        key={slotIndex}
+        className={`flex min-h-[72px] items-center justify-between rounded-md px-3 py-3 text-sm transition-all duration-200 ease-[cubic-bezier(.2,.8,.2,1)] motion-reduce:transition-none ${
+          player
+            ? 'bg-[hsl(var(--surface-2))] ring-1 ring-[hsl(var(--line)/.12)] hover:shadow-[0_2px_8px_hsl(var(--line)/.12)] hover:ring-[hsl(var(--accent)/.2)]'
+            : 'bg-[linear-gradient(135deg,hsl(var(--line)/.08)_25%,transparent_25%,transparent_50%,hsl(var(--line)/.08)_50%,hsl(var(--line)/.08)_75%,transparent_75%,transparent)] bg-[length:8px_8px] ring-1 ring-[hsl(var(--line)/.18)] hover:ring-[hsl(var(--accent)/.3)]'
+        }`}
+        onDragOver={(event: React.DragEvent<HTMLDivElement>) => {
+          if (!player) event.preventDefault()
+        }}
+        onDrop={(event: React.DragEvent<HTMLDivElement>) => {
+          if (!player) void onDropToSlot(event, court.courtIdx, slotIndex)
+        }}
+      >
+        {player ? (
+          <>
+            <span
+              draggable
+              onDragStart={(event: React.DragEvent) => {
+                event.dataTransfer.setData('application/x-player-id', player.id)
+                event.dataTransfer.effectAllowed = 'move'
+              }}
+              className="cursor-grab active:cursor-grabbing text-base font-semibold text-[hsl(var(--foreground))]"
+            >
+              {player.alias ?? player.name}
+            </span>
+            <button
+              type="button"
+              onClick={() => handleMove(player.id)}
+              className="rounded-md px-2 py-1 text-xs font-medium text-[hsl(var(--muted))] hover:text-[hsl(var(--foreground))] hover:bg-[hsl(var(--surface-glass)/.85)] ring-1 ring-[hsl(var(--line)/.12)] transition-all duration-200 ease-[cubic-bezier(.2,.8,.2,1)] motion-reduce:transition-none"
+            >
+              Bænk
+            </button>
+          </>
+        ) : (
+          <span className="text-[hsl(var(--muted))]">Tom plads</span>
+        )}
+      </div>
+    )
+  }
+
+  const getFirstFreeSlot = (court: CourtWithPlayers) => {
+    const occupied = new Set(court.slots.map((entry: { slot: number; player: Player }) => entry.slot))
+    return [0, 1, 2, 3].find((idx: number) => !occupied.has(idx))
+  }
+
+  const handleQuickAssign = async (playerId: string, courtIdx: number) => {
+    const court = matches.find((c) => c.courtIdx === courtIdx)
+    if (!court) return
+    const slot = getFirstFreeSlot(court)
+    if (slot === undefined) {
+      setError('Banen er fuld')
+      return
+    }
+    await handleMove(playerId, courtIdx, slot)
+    setMoveMenuPlayer(null)
+  }
+
+  if (loading) {
+    return (
+      <section className="mx-auto flex h-full max-w-5xl items-center justify-center pt-6">
+        <p className="text-lg text-[hsl(var(--muted))]">Loader...</p>
+      </section>
+    )
+  }
+
+  return (
+    <section className="mx-auto flex h-full max-w-6xl flex-col gap-6 pt-6">
+      <header className="flex items-center justify-between mb-4">
+        <div>
+          <h1 className="text-lg font-medium text-[hsl(var(--foreground))]">Kampprogram</h1>
+          <p className="text-sm text-[hsl(var(--muted))] mt-1">Tjekkede spillere: {checkedIn.length}</p>
+          {info && (
+            <span
+              className="mt-2 inline-block rounded-full bg-[hsl(var(--success)/.15)] px-3 py-1 text-sm text-[hsl(var(--success))] transition-all duration-200 ease-[cubic-bezier(.2,.8,.2,1)] motion-reduce:transition-none"
+              role="status"
+              aria-live="polite"
+            >
+              {info}
+            </span>
+          )}
+          {error && (
+            <span className="mt-2 block text-sm text-[hsl(var(--destructive))]">{error}</span>
+          )}
+        </div>
+        <div className="flex gap-2">
+          <button
+            type="button"
+            onClick={handleAutoMatch}
+            disabled={!session || bench.length === 0}
+            className="rounded-md px-4 py-2 text-sm font-medium transition-all duration-200 ease-[cubic-bezier(.2,.8,.2,1)] motion-reduce:transition-none bg-[hsl(var(--surface-glass)/.85)] text-[hsl(var(--foreground))] hover:bg-[hsl(var(--surface-glass)/.95)] ring-1 ring-[hsl(var(--line)/.12)] disabled:opacity-40 disabled:cursor-not-allowed hover:shadow-[0_2px_8px_hsl(var(--line)/.12)]"
+          >
+            Auto-match
+          </button>
+          <button
+            type="button"
+            onClick={handleResetMatches}
+            disabled={!session}
+            className="rounded-md px-4 py-2 text-sm font-medium transition-all duration-200 ease-[cubic-bezier(.2,.8,.2,1)] motion-reduce:transition-none bg-transparent text-[hsl(var(--destructive))] hover:bg-[hsl(var(--destructive)/.1)] ring-1 ring-[hsl(var(--destructive)/.3)] disabled:opacity-40 disabled:cursor-not-allowed hover:shadow-[0_2px_8px_hsl(var(--line)/.12)] ring-focus"
+          >
+            Nulstil kampe
+          </button>
+          {session ? (
+            <button
+              type="button"
+              onClick={handleEndTraining}
+              className="rounded-md bg-[hsl(var(--destructive))] px-4 py-2 text-sm font-semibold text-white hover:bg-[hsl(var(--destructive)/.9)] transition-all duration-200 ease-[cubic-bezier(.2,.8,.2,1)] motion-reduce:transition-none ring-focus hover:shadow-[0_2px_8px_hsl(var(--line)/.2)]"
+            >
+              Afslut træning
+            </button>
+          ) : (
+            <button
+              type="button"
+              onClick={handleStartTraining}
+              className="rounded-md bg-accent px-4 py-2 text-sm font-semibold text-white hover:opacity-90 transition-all duration-200 ease-[cubic-bezier(.2,.8,.2,1)] motion-reduce:transition-none ring-focus hover:shadow-[0_2px_8px_hsl(var(--line)/.2)] ring-2 ring-[hsl(var(--accent)/.2)]"
+            >
+              Start træning
+            </button>
+          )}
+        </div>
+      </header>
+
+      {!session && (
+        <p className="rounded-xl card-glass-inactive px-4 py-3 text-sm text-[hsl(var(--muted))] ring-1 ring-[hsl(var(--line)/.12)]">
+          Start træningen for at begynde at matche spillere på banerne.
+        </p>
+      )}
+
+      <div className="grid flex-1 gap-6 lg:grid-cols-[minmax(280px,340px)_1fr]">
+        <section
+          className="flex flex-col gap-4 rounded-xl card-glass-active p-5 ring-1 ring-[hsl(var(--line)/.12)] space-y-3"
+          onDragOver={(event) => event.preventDefault()}
+          onDrop={onDropToBench}
+        >
+          <header className="flex items-center justify-between">
+            <h3 className="text-base font-medium text-[hsl(var(--foreground))]">Bænk</h3>
+            <span className="rounded-full bg-[hsl(var(--surface-2))] px-3 py-1 text-xs font-medium text-[hsl(var(--foreground))] ring-1 ring-[hsl(var(--line)/.12)]">
+              {bench.length}
+            </span>
+          </header>
+          <div className="flex flex-col space-y-3 overflow-y-auto">
+            {bench.length === 0 && (
+              <p className="rounded-md card-glass-inactive px-3 py-6 text-center text-sm text-[hsl(var(--muted))] ring-1 ring-[hsl(var(--line)/.12)]">
+                Ingen spillere på bænken
+              </p>
+            )}
+            {bench.map((player) => (
+              <div
+                key={player.id}
+                className="flex items-center justify-between gap-3 rounded-md card-glass-active px-3 py-3 min-h-[56px] ring-1 ring-[hsl(var(--line)/.12)] transition-all duration-200 ease-[cubic-bezier(.2,.8,.2,1)] motion-reduce:transition-none hover:shadow-[0_2px_8px_hsl(var(--line)/.2)] hover:ring-[hsl(var(--accent)/.2)] cursor-grab active:cursor-grabbing"
+                draggable
+                onDragStart={(event) => {
+                  event.dataTransfer.setData('application/x-player-id', player.id)
+                  event.dataTransfer.effectAllowed = 'move'
+                }}
+              >
+                <div>
+                  <p className="text-sm font-semibold text-[hsl(var(--foreground))]">{player.alias ?? player.name}</p>
+                  <p className="text-xs text-[hsl(var(--muted))]">
+                    Tjekket ind {new Date(player.checkInAt).toLocaleTimeString('da-DK')}
+                  </p>
+                </div>
+                <div className="flex items-center gap-2">
+                  <button
+                    type="button"
+                    onClick={() => setMoveMenuPlayer(moveMenuPlayer === player.id ? null : player.id)}
+                    className="rounded-md px-3 py-1 text-xs font-medium text-[hsl(var(--foreground))] hover:bg-[hsl(var(--surface-2)/.7)] ring-1 ring-[hsl(var(--line)/.12)] transition-all duration-200 ease-[cubic-bezier(.2,.8,.2,1)] motion-reduce:transition-none hover:shadow-[0_2px_8px_hsl(var(--line)/.12)]"
+                  >
+                    Flyt
+                  </button>
+                  {moveMenuPlayer === player.id && (
+                    <div className="flex items-center gap-2 text-xs">
+                      <label className="text-[hsl(var(--muted))]">Bane</label>
+                      <select
+                        className="rounded-md ring-1 ring-[hsl(var(--line)/.12)] bg-[hsl(var(--surface))] px-2 py-1 text-[hsl(var(--foreground))] focus:ring-2 focus:ring-[hsl(var(--ring))] outline-none transition-all duration-200 motion-reduce:transition-none"
+                        defaultValue=""
+                        onChange={(event) => {
+                          const val = Number(event.target.value)
+                          if (!Number.isNaN(val)) {
+                            void handleQuickAssign(player.id, val)
+                          }
+                        }}
+                      >
+                        <option value="">Vælg</option>
+                        {matches.map((court) => (
+                          <option key={court.courtIdx} value={court.courtIdx} disabled={getFirstFreeSlot(court) === undefined}>
+                            Bane {court.courtIdx}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+                  )}
+                </div>
+              </div>
+            ))}
+          </div>
+        </section>
+
+        <section className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3 space-y-0">
+          {matches.map((court) => (
+            <div
+              key={court.courtIdx}
+              className="flex flex-col gap-3 rounded-xl card-glass-active p-4 ring-1 ring-[hsl(var(--line)/.12)] shadow-[0_2px_8px_hsl(var(--line)/.12)] transition-all duration-200 ease-[cubic-bezier(.2,.8,.2,1)] motion-reduce:transition-none hover:shadow-[0_2px_8px_hsl(var(--line)/.2)] hover:ring-[hsl(var(--accent)/.2)]"
+              onDragOver={(event) => event.preventDefault()}
+              onDrop={(event) => void onDropToCourt(event, court.courtIdx)}
+            >
+              <header className="flex items-center justify-between">
+                <h3 className="text-base font-medium text-[hsl(var(--foreground))]">Bane {court.courtIdx}</h3>
+                <span className="text-xs text-[hsl(var(--muted))]">{court.slots.length} / {EMPTY_SLOTS}</span>
+              </header>
+              <div className="flex flex-col space-y-2">
+                {Array.from({ length: EMPTY_SLOTS }).map((_, slotIndex) => renderSlot(court, slotIndex))}
+              </div>
+            </div>
+          ))}
+        </section>
+      </div>
+    </section>
+  )
+}
+
+export default CoachPage

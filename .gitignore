@@ -20,6 +20,9 @@
 
 # production
 **/build
+release/
+packages/common/dist/
+packages/webapp/dist/
 
 # misc
 .DS_Store

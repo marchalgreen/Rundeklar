@@ -1,0 +1,102 @@
+export type Player = {
+  id: string
+  name: string
+  alias?: string | null
+  level?: number | null
+  active: boolean
+  createdAt: string
+}
+
+export type TrainingSessionStatus = 'scheduled' | 'active' | 'ended'
+
+export type TrainingSession = {
+  id: string
+  date: string
+  status: TrainingSessionStatus
+  createdAt: string
+}
+
+export type CheckIn = {
+  id: string
+  sessionId: string
+  playerId: string
+  createdAt: string
+}
+
+export type Court = {
+  id: string
+  idx: number
+}
+
+export type Match = {
+  id: string
+  sessionId: string
+  courtId: string
+  startedAt: string
+  endedAt?: string | null
+}
+
+export type MatchPlayer = {
+  id: string
+  matchId: string
+  playerId: string
+  slot: number
+}
+
+export type CourtWithPlayers = {
+  courtIdx: number
+  slots: Array<{ slot: number; player: Player }>
+}
+
+export type CheckedInPlayer = Player & { checkInAt: string }
+
+export type PlayerListFilters = {
+  q?: string
+  active?: boolean
+}
+
+export type PlayerCreateInput = {
+  name: string
+  alias?: string
+  level?: number
+  active?: boolean
+}
+
+export type PlayerUpdateInput = {
+  id: string
+  patch: Partial<Pick<Player, 'name' | 'alias' | 'level' | 'active'>>
+}
+
+export type MatchMovePayload = {
+  playerId: string
+  toCourtIdx?: number
+  toSlot?: number
+}
+
+export type AutoArrangeResult = {
+  filledCourts: number
+  benched: number
+}
+
+export type RendererApi = {
+  players: {
+    list(filters?: PlayerListFilters): Promise<Player[]>
+    create(input: PlayerCreateInput): Promise<Player>
+    update(input: PlayerUpdateInput): Promise<Player>
+  }
+  session: {
+    startOrGetActive(): Promise<TrainingSession>
+    endActive(): Promise<void>
+    getActive(): Promise<TrainingSession | null>
+  }
+  checkIns: {
+    add(input: { playerId: string }): Promise<CheckIn>
+    listActive(): Promise<CheckedInPlayer[]>
+  }
+  matches: {
+    autoArrange(): Promise<AutoArrangeResult>
+    list(): Promise<CourtWithPlayers[]>
+    reset(): Promise<void>
+    move(payload: MatchMovePayload): Promise<void>
+  }
+}
