@@ -201,6 +201,25 @@ const CoachPage = () => {
     return 'bg-[hsl(var(--surface))]' // neutral for no gender
   }
 
+  const getCategoryBadge = (category: 'Single' | 'Double' | 'Begge' | null | undefined) => {
+    if (!category) return null
+    const labels: Record<'Single' | 'Double' | 'Begge', string> = {
+      Single: 'S',
+      Double: 'D',
+      Begge: 'B'
+    }
+    const colors: Record<'Single' | 'Double' | 'Begge', string> = {
+      Single: 'bg-[hsl(205_70%_85%)] text-[hsl(205_70%_25%)]',
+      Double: 'bg-[hsl(280_60%_85%)] text-[hsl(280_60%_25%)]',
+      Begge: 'bg-[hsl(160_50%_85%)] text-[hsl(160_50%_25%)]'
+    }
+    return (
+      <span className={`inline-flex items-center justify-center rounded-full text-[10px] font-bold w-5 h-5 ${colors[category]}`} title={category}>
+        {labels[category]}
+      </span>
+    )
+  }
+
   const renderPlayerSlot = (court: CourtWithPlayers, slotIndex: number) => {
     const entry = court.slots.find((slot: { slot: number; player: Player }) => slot.slot === slotIndex)
     const player = entry?.player
@@ -221,16 +240,22 @@ const CoachPage = () => {
       >
         {player ? (
           <>
-            <span
-              draggable
-              onDragStart={(event: React.DragEvent) => {
-                event.dataTransfer.setData('application/x-player-id', player.id)
-                event.dataTransfer.effectAllowed = 'move'
-              }}
-              className="cursor-grab active:cursor-grabbing text-sm font-semibold text-[hsl(var(--foreground))] truncate"
-            >
-              {player.alias ?? player.name}
-            </span>
+            <div className="flex flex-col gap-1 min-w-0 flex-1">
+              <span
+                draggable
+                onDragStart={(event: React.DragEvent) => {
+                  event.dataTransfer.setData('application/x-player-id', player.id)
+                  event.dataTransfer.effectAllowed = 'move'
+                }}
+                className="cursor-grab active:cursor-grabbing text-sm font-semibold text-[hsl(var(--foreground))] truncate"
+              >
+                {player.alias ?? player.name}
+              </span>
+              <div className="flex items-center gap-1.5">
+                {getCategoryBadge(player.primaryCategory)}
+                <span className="text-xs text-[hsl(var(--muted))]">Niveau {player.level ?? '–'}</span>
+              </div>
+            </div>
             <button
               type="button"
               onClick={() => handleMove(player.id)}
@@ -341,9 +366,12 @@ const CoachPage = () => {
               >
                 <div className="min-w-0 flex-1">
                   <p className="text-xs font-semibold text-[hsl(var(--foreground))] truncate">{player.alias ?? player.name}</p>
-                  <p className="text-[10px] text-[hsl(var(--muted))] truncate">
-                    Niveau {player.level ?? '–'}
-                  </p>
+                  <div className="flex items-center gap-1.5">
+                    {getCategoryBadge(player.primaryCategory)}
+                    <p className="text-[10px] text-[hsl(var(--muted))] truncate">
+                      Niveau {player.level ?? '–'}
+                    </p>
+                  </div>
                 </div>
                 <div className="flex items-center gap-1 flex-shrink-0">
                   <button
