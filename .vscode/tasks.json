@@ -1,0 +1,14 @@
+{
+  "version": "2.0.0",
+  "tasks": [
+    {
+      "label": "Apply GPT Patch",
+      "type": "shell",
+      // macOS: pbpaste | git apply -
+      // Windows: powershell -command "Get-Clipboard | git apply -"
+      // Linux: xclip -selection clipboard -o | git apply -
+      "command": "pbpaste | git apply -",
+      "problemMatcher": []
+    }
+  ]
+}

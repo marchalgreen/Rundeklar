@@ -1,0 +1,28 @@
+{
+  "BTTPresetName": "ChatGPT ↔ VS Code QuickCopy",
+  "BTTPresetUUID": "C9E9E8A1-9F9D-4E4D-89C7-CHATGPTVSCODE",
+  "BTTPresetContent": [
+    {
+      "BTTTriggerType": 0,
+      "BTTTriggerClass": "BTTTriggerTypeKeyboardShortcut",
+      "BTTPredefinedActionType": 156,
+      "BTTPredefinedActionName": "Run Apple Script (enter directly as text)",
+      "BTTTriggerOnDown": 1,
+      "BTTEnabled": 1,
+      "BTTShortcutToSend": "CMD+SHIFT+RETURN",
+      "BTTNotes": "Send selection → ChatGPT",
+      "BTTInlineAppleScript": "tell application \"System Events\"\n\tset frontApp to name of first application process whose frontmost is true\n\tif frontApp is not \"ChatGPT\" then\n\t\tkeystroke \"c\" using command down\n\t\tdelay 0.15\n\t\ttell application \"ChatGPT\" to activate\n\t\tdelay 0.3\n\t\tkeystroke \"v\" using command down\n\tend if\nend tell"
+    },
+    {
+      "BTTTriggerType": 0,
+      "BTTTriggerClass": "BTTTriggerTypeKeyboardShortcut",
+      "BTTPredefinedActionType": 156,
+      "BTTPredefinedActionName": "Run Apple Script (enter directly as text)",
+      "BTTTriggerOnDown": 1,
+      "BTTEnabled": 1,
+      "BTTShortcutToSend": "OPTION+COMMAND+RETURN",
+      "BTTNotes": "Bring reply → VS Code",
+      "BTTInlineAppleScript": "tell application \"System Events\"\n\tset frontApp to name of first application process whose frontmost is true\n\tif frontApp is not \"Visual Studio Code\" then\n\t\tkeystroke \"c\" using command down\n\t\tdelay 0.15\n\t\ttell application \"Visual Studio Code\" to activate\n\t\tdelay 0.3\n\t\tkeystroke \"v\" using command down\n\tend if\nend tell"
+    }
+  ]
+}

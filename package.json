@@ -1,0 +1,45 @@
+{
+  "name": "clairity",
+  "version": "0.1.0",
+  "private": true,
+  "scripts": {
+    "dev": "pnpm --filter @clairity/web dev",
+    "dev:web": "pnpm --filter @clairity/web dev",
+    "dev:agent": "pnpm --filter @clairity/device-agent dev",
+    "build": "pnpm --filter @clairity/web build",
+    "start": "pnpm --filter @clairity/web start",
+    "lint": "pnpm --filter @clairity/web lint",
+    "lint:fix": "pnpm --filter @clairity/web lint:fix",
+    "format": "pnpm --filter @clairity/web format",
+    "format:check": "pnpm --filter @clairity/web format:check",
+    "typecheck": "pnpm --filter @clairity/web typecheck",
+    "validate": "pnpm --filter @clairity/web validate",
+    "test": "pnpm --filter @clairity/web test",
+    "playwright:install": "pnpm exec playwright install", 
+    "test:e2e": "pnpm --filter @clairity/web test:e2e",
+    "test:e2e:web": "pnpm exec playwright test --config=playwright.config.ts --project=web",
+    "test:e2e:all": "pnpm exec playwright test",
+    "seed": "pnpm --filter @clairity/web seed",
+    "sync-env": "pnpm --filter @clairity/web sync-env",
+    "scrape:moscot": "pnpm --filter @clairity/web scrape:moscot",
+    "scrape:moscot:quick": "pnpm --filter @clairity/web scrape:moscot:quick",
+    "sync:moscot": "pnpm --filter @clairity/web sync:moscot",
+    "import:demo": "pnpm --filter @clairity/web import:demo",
+    "prisma:generate": "pnpm --filter @clairity/web exec prisma generate",
+    "prisma:migrate:dev": "pnpm --filter @clairity/web exec prisma migrate dev",
+    "prisma:migrate:deploy": "pnpm --filter @clairity/web exec prisma migrate deploy"
+  },
+  "pnpm": {
+    "allowedBuiltDependencies": [
+      "@tailwindcss/oxide",
+      "bcrypt",
+      "esbuild",
+      "sharp",
+      "unrs-resolver"
+    ]
+  },
+  "devDependencies": {
+    "playwright": "^1.56.1"
+  },
+  "packageManager": "pnpm@9.11.0"
+}

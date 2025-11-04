@@ -1,0 +1,6 @@
+
+# TEMP: ignore Prisma/seed/test during docs merge
+scripts/seed-demo-movements.ts
+scripts/seed-demo-stock.ts
+src/lib/catalog/moscotSync.test.ts
+src/app/api/inventory/movements/route.ts

@@ -1,0 +1,197 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  directUrl = env("DATABASE_DIRECT_URL")
+}
+
+model Vendor {
+  id          String             @id @default(cuid())
+  slug        String             @unique
+  name        String
+  createdAt   DateTime           @default(now())
+  updatedAt   DateTime           @updatedAt
+  integration VendorIntegration?
+}
+
+model VendorIntegration {
+  id          String          @id @default(cuid())
+  vendorId    String          @unique
+  type        IntegrationType
+  scraperPath String?
+  apiBaseUrl  String?
+  apiAuthType String?
+  apiKey      String?
+  lastTestAt  DateTime?
+  lastTestOk  Boolean?
+  meta        Json?
+  createdAt   DateTime        @default(now())
+  updatedAt   DateTime        @updatedAt
+  vendor      Vendor          @relation(fields: [vendorId], references: [id], onDelete: Cascade)
+}
+
+model Product {
+  id         String          @id @default(cuid())
+  sku        String          @unique
+  name       String
+  category   ProductCategory
+  brand      String?
+  model      String?
+  color      String?
+  sizeLabel  String?
+  usage      String?
+  catalogUrl String?
+  supplier   String?
+  createdAt  DateTime        @default(now())
+  movements  StockMovement[]
+  stocks     StoreStock[]
+}
+
+model StoreStock {
+  id        String   @id @default(cuid())
+  storeId   String
+  productId String
+  qty       Int      @default(0)
+  barcode   String?
+  updatedAt DateTime @default(now())
+  product   Product  @relation(fields: [productId], references: [id], onDelete: Cascade)
+  store     Store    @relation(fields: [storeId], references: [id], onDelete: Cascade)
+
+  @@unique([storeId, productId], name: "store_product_unique")
+}
+
+/// Per-event movement log used for "Bevægelser" and dashboards
+model StockMovement {
+  id        String   @id @default(cuid())
+  storeId   String
+  productId String
+  /// snapshot around the change (optional but useful)
+  qtyBefore Int
+  qtyAfter  Int
+  delta     Int
+  reason    String?
+  note      String?
+  at        DateTime @default(now())
+  product   Product  @relation(fields: [productId], references: [id], onDelete: Cascade)
+  store     Store    @relation(fields: [storeId], references: [id], onDelete: Cascade)
+
+  @@index([storeId, productId, at], map: "movement_store_product_at_idx")
+}
+
+model VendorCatalogItem {
+  id        String   @id @default(cuid())
+  vendor    String
+  catalogId String
+  payload   Json
+  hash      String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([vendor, catalogId], name: "vendor_catalog_vendor_catalogId_unique")
+  @@index([vendor])
+}
+
+model VendorSyncState {
+  vendor         String          @id
+  lastHash       String?
+  lastSource     String?
+  lastRunAt      DateTime?
+  lastRunBy      String?
+  totalItems     Int             @default(0)
+  lastDurationMs Int?
+  lastError      String?
+  createdAt      DateTime        @default(now())
+  updatedAt      DateTime        @updatedAt
+  runs           VendorSyncRun[]
+}
+
+model VendorSyncRun {
+  id             String              @id @default(cuid())
+  vendor         String
+  actor          String
+  status         VendorSyncRunStatus @default(Pending)
+  dryRun         Boolean             @default(false)
+  sourcePath     String?
+  hash           String?
+  error          String?
+  durationMs     Int?
+  totalItems     Int?
+  createdCount   Int?
+  updatedCount   Int?
+  unchangedCount Int?
+  removedCount   Int?
+  startedAt      DateTime            @default(now())
+  finishedAt     DateTime?
+  updatedAt      DateTime            @default(now()) @updatedAt
+  state          VendorSyncState     @relation(fields: [vendor], references: [vendor], onDelete: Cascade)
+  diff           VendorSyncRunDiff?
+
+  @@index([vendor, startedAt])
+}
+
+model VendorSyncRunDiff {
+  id         String        @id @default(cuid())
+  runId      String        @unique
+  aggregates Json?
+  createdAt  DateTime      @default(now())
+  updatedAt  DateTime      @default(now()) @updatedAt
+  run        VendorSyncRun @relation(fields: [runId], references: [id], onDelete: Cascade)
+}
+
+model Store {
+  id         String          @id @default(cuid())
+  email      String          @unique
+  password   String
+  totpSecret String?
+  createdAt  DateTime        @default(now())
+  employees  Employee[]
+  sessions   Session[]
+  movements  StockMovement[]
+  stocks     StoreStock[]
+}
+
+model Employee {
+  id        String    @id @default(cuid())
+  storeId   String
+  name      String
+  slug      String
+  pinHash   String
+  createdAt DateTime  @default(now())
+  store     Store     @relation(fields: [storeId], references: [id])
+  sessions  Session[] @relation("EmployeeSessions")
+
+  @@unique([slug, storeId], name: "slug_storeId")
+}
+
+model Session {
+  id         String    @id @default(cuid())
+  storeId    String
+  employeeId String?
+  expiresAt  DateTime
+  createdAt  DateTime  @default(now())
+  employee   Employee? @relation("EmployeeSessions", fields: [employeeId], references: [id])
+  store      Store     @relation(fields: [storeId], references: [id])
+}
+
+/// --- StoreStock v1 additions ---
+enum ProductCategory {
+  Frames
+  Sunglasses
+  Lenses
+  Accessories
+  Contacts
+}
+
+enum VendorSyncRunStatus {
+  Pending
+  Success
+  Failed
+}
+
+enum IntegrationType {
+  SCRAPER
+  API
+}

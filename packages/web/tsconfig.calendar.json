@@ -1,0 +1,10 @@
+{
+  "extends": "./tsconfig.json",
+  "include": [
+    "src/components/calendar/**/*",
+    "src/store/calendar.ts",
+    "src/components/ui/**/*",
+    "src/lib/**/*"
+  ],
+  "exclude": ["**/*.test.*", "**/__tests__/**", "node_modules", ".next"]
+}
