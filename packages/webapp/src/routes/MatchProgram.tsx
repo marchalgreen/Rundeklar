@@ -274,7 +274,39 @@ const MatchProgramPage = () => {
     const playerId = event.dataTransfer.getData('application/x-player-id')
     if (!playerId) return
     event.preventDefault()
-    await handleMove(playerId, courtIdx, slot)
+    
+    // Check if the target slot is occupied
+    const targetCourt = matches.find((c) => c.courtIdx === courtIdx)
+    const targetSlotEntry = targetCourt?.slots.find((s) => s.slot === slot)
+    const occupyingPlayer = targetSlotEntry?.player
+    
+    // Get source location from drag data
+    const sourceCourtIdxStr = event.dataTransfer.getData('application/x-source-court-idx')
+    const sourceSlotStr = event.dataTransfer.getData('application/x-source-slot')
+    const sourceCourtIdx = sourceCourtIdxStr ? Number(sourceCourtIdxStr) : undefined
+    const sourceSlot = sourceSlotStr ? Number(sourceSlotStr) : undefined
+    
+    if (occupyingPlayer && occupyingPlayer.id !== playerId) {
+      // Slot is occupied by a different player - swap them using the swap parameter
+      try {
+        await api.matches.move(
+          { 
+            playerId, 
+            toCourtIdx: courtIdx, 
+            toSlot: slot, 
+            swapWithPlayerId: occupyingPlayer.id 
+          } as any, 
+          selectedRound
+        )
+        await loadMatches()
+        await loadCheckIns()
+      } catch (err: any) {
+        setError(err.message ?? 'Kunne ikke bytte spillere')
+      }
+    } else {
+      // Slot is empty or same player - normal move
+      await handleMove(playerId, courtIdx, slot)
+    }
   }
 
   const onDropToCourt = async (event: React.DragEvent<HTMLDivElement>, _courtIdx: number) => {
@@ -335,6 +367,7 @@ const MatchProgramPage = () => {
     const player = entry?.player
     const isDragOver = dragOverSlot?.courtIdx === court.courtIdx && dragOverSlot?.slot === slotIndex
     const isCourtHovered = dragOverCourt === court.courtIdx && !player
+    const isDragOverOccupied = isDragOver && !!player
     
     return (
       <div
@@ -343,11 +376,16 @@ const MatchProgramPage = () => {
         onDragStart={(event: React.DragEvent<HTMLDivElement>) => {
           if (player) {
             event.dataTransfer.setData('application/x-player-id', player.id)
+            // Store source location for swapping
+            event.dataTransfer.setData('application/x-source-court-idx', String(court.courtIdx))
+            event.dataTransfer.setData('application/x-source-slot', String(slotIndex))
             event.dataTransfer.effectAllowed = 'move'
           }
         }}
         className={`flex min-h-[52px] items-center justify-between rounded-md px-3 py-2 text-sm transition-all duration-200 ease-[cubic-bezier(.2,.8,.2,1)] motion-reduce:transition-none ring-1 ${
-          player
+          isDragOverOccupied && player
+            ? `${getPlayerSlotBgColor(player.gender)} ring-2 ring-[hsl(var(--primary)/.6)] shadow-lg border-2 border-[hsl(var(--primary)/.4)]`
+            : player
             ? `${getPlayerSlotBgColor(player.gender)} hover:shadow-sm ring-[hsl(var(--line)/.12)] cursor-grab active:cursor-grabbing`
             : isDragOver
             ? 'bg-[hsl(var(--primary)/.15)] ring-2 ring-[hsl(var(--primary)/.5)] shadow-md'
@@ -356,20 +394,18 @@ const MatchProgramPage = () => {
             : 'bg-[hsl(var(--surface-2))] text-[hsl(var(--muted))] ring-[hsl(var(--line)/.12)]'
         }`}
         onDragOver={(event: React.DragEvent<HTMLDivElement>) => {
-          if (!player) {
-            event.preventDefault()
-            setDragOverSlot({ courtIdx: court.courtIdx, slot: slotIndex })
-          }
+          // Allow drag over even if slot is occupied (for swapping)
+          event.preventDefault()
+          setDragOverSlot({ courtIdx: court.courtIdx, slot: slotIndex })
         }}
         onDragLeave={() => {
           setDragOverSlot(null)
         }}
         onDrop={(event: React.DragEvent<HTMLDivElement>) => {
-          if (!player) {
-            setDragOverSlot(null)
-            setDragOverCourt(null)
-            void onDropToSlot(event, court.courtIdx, slotIndex)
-          }
+          setDragOverSlot(null)
+          setDragOverCourt(null)
+          // Allow dropping even if slot is occupied (for swapping)
+          void onDropToSlot(event, court.courtIdx, slotIndex)
         }}
       >
         {player ? (

@@ -81,6 +81,7 @@ export type MatchMovePayload = {
   toCourtIdx?: number
   toSlot?: number
   round?: number
+  swapWithPlayerId?: string
 }
 
 export type AutoArrangeResult = {

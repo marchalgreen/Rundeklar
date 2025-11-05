@@ -694,7 +694,8 @@ const movePlayer = async (payload: MatchMovePayload, round?: number): Promise<vo
       playerId: z.string().min(1),
       toCourtIdx: z.number().int().min(1).max(8).optional(),
       toSlot: z.number().int().min(0).max(3).optional(),
-      round: z.number().int().min(1).max(3).optional()
+      round: z.number().int().min(1).max(3).optional(),
+      swapWithPlayerId: z.string().optional()
     })
     .superRefine((value, ctx) => {
       if (value.toCourtIdx !== undefined && value.toSlot === undefined) {
@@ -772,9 +773,106 @@ const movePlayer = async (payload: MatchMovePayload, round?: number): Promise<vo
       return mp.slot === parsed.toSlot
     })
     
-    // Only throw error if slot is taken by a different player
-    if (slotTaken && slotTaken.playerId !== parsed.playerId) {
+    // Check if we're swapping - find the occupying player separately
+    const occupyingPlayerForSwap = parsed.swapWithPlayerId 
+      ? existingSlots.find((mp) => mp.slot === parsed.toSlot && mp.playerId === parsed.swapWithPlayerId)
+      : null
+    
+    // Only throw error if slot is taken by a different player (and we're not swapping)
+    if (slotTaken && slotTaken.playerId !== parsed.playerId && !occupyingPlayerForSwap) {
       throw new Error('Pladsen er optaget')
+    }
+    
+    // Handle swapping: move the occupying player to the source location
+    if (parsed.swapWithPlayerId && occupyingPlayerForSwap) {
+      // Find where the current player is coming from (source location)
+      const sourceMatchPlayer = currentMatchPlayer
+      const sourceMatch = sourceMatchPlayer
+        ? matchesInRound.find((match: Match) => match.id === sourceMatchPlayer.matchId)
+        : undefined
+      
+      // Find the actual occupying player entry in state.matchPlayers array
+      const occupyingPlayerEntry = state.matchPlayers.find((mp) => 
+        mp.matchId === targetMatch!.id && mp.slot === parsed.toSlot && mp.playerId === parsed.swapWithPlayerId
+      )
+      
+      if (!occupyingPlayerEntry) {
+        throw new Error('Kunne ikke finde spiller at bytte med')
+      }
+      
+      if (sourceMatch && sourceMatchPlayer) {
+        // If source match is the same as target match, just swap slots
+        if (sourceMatch.id === targetMatch!.id) {
+          // Find the actual objects in state.matchPlayers array
+          const sourcePlayerIndex = state.matchPlayers.findIndex((mp) => mp.id === sourceMatchPlayer.id)
+          const occupyingPlayerIndex = state.matchPlayers.findIndex((mp) => mp.id === occupyingPlayerEntry.id)
+          
+          if (sourcePlayerIndex === -1 || occupyingPlayerIndex === -1) {
+            throw new Error('Kunne ikke finde spillerindgange til at bytte')
+          }
+          
+          // Swap the slots
+          const tempSlot = state.matchPlayers[sourcePlayerIndex].slot
+          state.matchPlayers[sourcePlayerIndex].slot = state.matchPlayers[occupyingPlayerIndex].slot
+          state.matchPlayers[occupyingPlayerIndex].slot = tempSlot
+          // Both players are now in the correct slots - done!
+          return
+        } else {
+          // Move occupying player to source match and slot
+          // Find the actual object in state.matchPlayers array
+          const occupyingPlayerIndex = state.matchPlayers.findIndex((mp) => mp.id === occupyingPlayerEntry.id)
+          if (occupyingPlayerIndex === -1) {
+            throw new Error('Kunne ikke finde spillerindgang til at flytte')
+          }
+          
+          // Update occupying player to move to source location
+          state.matchPlayers[occupyingPlayerIndex].matchId = sourceMatch.id
+          state.matchPlayers[occupyingPlayerIndex].slot = sourceMatchPlayer.slot
+          
+          // Remove current player from source match
+          const sourcePlayerIndex = state.matchPlayers.findIndex((mp) => mp.id === sourceMatchPlayer.id)
+          if (sourcePlayerIndex !== -1) {
+            state.matchPlayers.splice(sourcePlayerIndex, 1)
+          }
+          const remaining = state.matchPlayers.filter((mp) => mp.matchId === sourceMatch.id)
+          if (remaining.length === 0) {
+            state.matches = state.matches.filter((match) => match.id !== sourceMatch.id)
+          }
+          // After swap, slot is now free - place dragged player in target slot
+          state.matchPlayers.push({
+            id: createId(),
+            matchId: targetMatch!.id,
+            playerId: parsed.playerId,
+            slot: parsed.toSlot!
+          })
+          return
+        }
+      } else {
+        // Source is bench/inactive - move occupying player to bench
+        state.matchPlayers = state.matchPlayers.filter((mp) => mp.id !== occupyingPlayerEntry.id)
+        const remaining = state.matchPlayers.filter((mp) => mp.matchId === targetMatch!.id)
+        if (remaining.length === 0) {
+          state.matches = state.matches.filter((match) => match.id !== targetMatch!.id)
+        }
+        // Remove current player from their match if they're in one
+        if (currentMatch && currentMatchPlayer) {
+          state.matchPlayers = state.matchPlayers.filter((mp) => mp.id !== currentMatchPlayer.id)
+          const remainingInSource = state.matchPlayers.filter((mp) => mp.matchId === currentMatch.id)
+          if (remainingInSource.length === 0) {
+            state.matches = state.matches.filter((match) => match.id !== currentMatch.id)
+          }
+        }
+        // Now place dragged player in the now-free slot
+        state.matchPlayers.push({
+          id: createId(),
+          matchId: targetMatch!.id,
+          playerId: parsed.playerId,
+          slot: parsed.toSlot!
+        })
+        return
+      }
+      // Swap complete - all cases handled above, should not reach here
+      return
     }
 
     const effectiveCount = existingSlots.length - (currentMatch?.id === targetMatch.id ? 1 : 0)
