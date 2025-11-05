@@ -190,9 +190,12 @@ const StatisticsPage = () => {
   }
 
   return (
-    <div className="flex flex-col gap-6">
-      <div className="flex items-center justify-between">
-        <h1 className="text-2xl font-semibold text-[hsl(var(--foreground))]">Statistik</h1>
+    <section className="flex flex-col gap-6 pt-6">
+      <header className="flex items-center justify-between mb-4">
+        <div className="flex-1">
+          <h1 className="text-2xl font-semibold text-[hsl(var(--foreground))]">Statistik</h1>
+          <p className="text-base text-[hsl(var(--muted))] mt-1">Se spillernes statistik og sammenlign data.</p>
+        </div>
         <button
           type="button"
           onClick={handleGenerateDummyData}
@@ -202,7 +205,7 @@ const StatisticsPage = () => {
           <BarChart3 className="w-4 h-4" />
           {isGeneratingDummyData ? 'Genererer...' : 'Demo: Input historiske dummy data'}
         </button>
-      </div>
+      </header>
 
       {/* Player Selector */}
       {selectedPlayer ? (
@@ -606,7 +609,7 @@ const StatisticsPage = () => {
           </div>
         </PageCard>
       )}
-    </div>
+    </section>
   )
 }
 
