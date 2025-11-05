@@ -29,6 +29,9 @@ const MatchProgramPage = () => {
   const [recentlySwappedPlayers, setRecentlySwappedPlayers] = useState<Set<string>>(new Set())
   const [previousRoundsVisible, setPreviousRoundsVisible] = useState<Set<number>>(new Set())
   const [previousRoundsMatches, setPreviousRoundsMatches] = useState<Record<number, CourtWithPlayers[]>>({})
+  const [popupPosition, setPopupPosition] = useState({ x: 16, y: 16 })
+  const [isDragging, setIsDragging] = useState(false)
+  const [dragOffset, setDragOffset] = useState({ x: 0, y: 0 })
 
   const loadSession = useCallback(async () => {
     try {
@@ -368,6 +371,48 @@ const MatchProgramPage = () => {
     }
   }
 
+  // Popup drag handlers
+  const handleMouseDown = (e: React.MouseEvent<HTMLDivElement>) => {
+    if ((e.target as HTMLElement).closest('button')) return // Don't drag if clicking buttons
+    setIsDragging(true)
+    const rect = (e.currentTarget.parentElement as HTMLElement).getBoundingClientRect()
+    setDragOffset({
+      x: e.clientX - rect.left,
+      y: e.clientY - rect.top
+    })
+  }
+
+  useEffect(() => {
+    const handleMouseMove = (e: MouseEvent) => {
+      if (!isDragging) return
+      
+      const newX = e.clientX - dragOffset.x
+      const newY = e.clientY - dragOffset.y
+      
+      // Constrain to viewport
+      const maxX = window.innerWidth - 400 // popup width
+      const maxY = window.innerHeight - 100 // minimum popup height
+      
+      setPopupPosition({
+        x: Math.max(0, Math.min(newX, maxX)),
+        y: Math.max(0, Math.min(newY, maxY))
+      })
+    }
+
+    const handleMouseUp = () => {
+      setIsDragging(false)
+    }
+
+    if (isDragging) {
+      document.addEventListener('mousemove', handleMouseMove)
+      document.addEventListener('mouseup', handleMouseUp)
+      return () => {
+        document.removeEventListener('mousemove', handleMouseMove)
+        document.removeEventListener('mouseup', handleMouseUp)
+      }
+    }
+  }, [isDragging, dragOffset])
+
   const handleAutoMatch = async () => {
     if (!session) return
     try {
@@ -691,7 +736,7 @@ const MatchProgramPage = () => {
                 }}
                 className="rounded-md px-4 py-2 text-sm font-medium transition-all duration-200 ease-[cubic-bezier(.2,.8,.2,1)] motion-reduce:transition-none bg-[hsl(var(--surface-glass)/.85)] text-[hsl(var(--foreground))] hover:bg-[hsl(var(--surface-glass)/.95)] ring-1 ring-[hsl(var(--line)/.12)] hover:shadow-sm"
               >
-                {previousRoundsVisible.size > 0 ? 'Skjul' : 'Se'} Tidligere Runder
+                {previousRoundsVisible.size > 0 ? 'Skjul' : 'Se'} tidligere runder
               </button>
             )}
             <button
@@ -737,11 +782,7 @@ const MatchProgramPage = () => {
         </PageCard>
       )}
 
-      <div className={`grid gap-4 lg:items-start transition-all duration-300 ${
-        previousRoundsVisible.size > 0 
-          ? 'lg:grid-cols-[minmax(200px,240px)_1fr_320px]' 
-          : 'lg:grid-cols-[minmax(200px,240px)_1fr]'
-      }`}>
+      <div className="grid gap-4 lg:grid-cols-[minmax(200px,240px)_1fr] lg:items-start">
         {/* Bench */}
         <PageCard 
           className={`space-y-2 transition-all duration-200 ${
@@ -951,61 +992,96 @@ const MatchProgramPage = () => {
         </section>
       </div>
 
-      {/* Previous Rounds Side Panel */}
+      {/* Previous Rounds Popup Window */}
       {previousRoundsVisible.size > 0 && (
-        <div className="flex flex-col gap-4 overflow-y-auto max-h-[calc(100vh-200px)]">
-          <div className="sticky top-0 bg-[hsl(var(--surface))] pb-2 z-10">
-            <h2 className="text-lg font-semibold text-[hsl(var(--foreground))] mb-2">
-              Tidligere Runder
-            </h2>
-          </div>
-          {Array.from({ length: selectedRound - 1 })
-            .map((_, i) => selectedRound - 1 - i)
-            .filter((round) => previousRoundsVisible.has(round))
-            .map((round) => (
-              <div key={round} className="space-y-3">
-                <h3 className="text-sm font-semibold text-[hsl(var(--muted))] uppercase tracking-wide">
-                  Runde {round}
-                </h3>
-                <div className="grid grid-cols-1 gap-2">
-                  {(previousRoundsMatches[round] || []).map((court) => (
-                    <PageCard key={court.courtIdx} className="space-y-2 p-3 opacity-75">
-                      <header className="flex items-center justify-between mb-1">
-                        <h4 className="text-xs font-semibold text-[hsl(var(--foreground))]">Bane {court.courtIdx}</h4>
-                        <span className="text-[10px] text-[hsl(var(--muted))]">{court.slots.length}/{EMPTY_SLOTS}</span>
-                      </header>
-                      <div className="flex flex-col gap-1.5">
-                        {Array.from({ length: 4 }).map((_, slotIdx) => {
-                          const entry = court.slots.find((slot) => slot.slot === slotIdx)
-                          const player = entry?.player
-                          return (
-                            <div
-                              key={slotIdx}
-                              className={`flex min-h-[40px] items-center rounded-md px-2 py-1 text-xs ring-1 ${
-                                player
-                                  ? `${getPlayerSlotBgColor(player.gender)} ring-[hsl(var(--line)/.12)]`
-                                  : 'bg-[hsl(var(--surface-2))] ring-[hsl(var(--line)/.12)]'
-                              }`}
-                            >
-                              {player ? (
-                                <div className="flex items-center gap-1.5 min-w-0 flex-1">
-                                  <span className="text-xs font-medium text-[hsl(var(--foreground))] truncate">
-                                    {player.alias ?? player.name}
-                                  </span>
-                                </div>
-                              ) : (
-                                <span className="text-[10px] text-[hsl(var(--muted))]">Tom</span>
-                              )}
-                            </div>
-                          )
-                        })}
-                      </div>
-                    </PageCard>
-                  ))}
-                </div>
+        <>
+          {/* Subtle backdrop - visual only, doesn't block interaction */}
+          <div 
+            className="fixed inset-0 z-40 bg-[hsl(var(--bg-canvas)/.1)] pointer-events-none"
+          />
+          {/* Floating Popup Window */}
+          <div 
+            className="fixed z-50 w-[400px] max-h-[85vh] rounded-xl bg-[hsl(var(--surface))] shadow-2xl ring-2 ring-[hsl(var(--line)/.2)] overflow-hidden flex flex-col pointer-events-auto select-none"
+            style={{
+              left: `${popupPosition.x}px`,
+              top: `${popupPosition.y}px`,
+              cursor: isDragging ? 'grabbing' : 'default'
+            }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            {/* Header - draggable */}
+            <div 
+              className="flex items-center justify-between px-4 py-3 border-b border-[hsl(var(--line)/.12)] bg-[hsl(var(--surface-2))] cursor-grab active:cursor-grabbing"
+              onMouseDown={handleMouseDown}
+            >
+              <div className="flex items-center gap-2">
+                <svg className="h-4 w-4 text-[hsl(var(--muted))]" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 8h16M4 16h16" />
+                </svg>
+                <h2 className="text-lg font-semibold text-[hsl(var(--foreground))]">
+                  Tidligere runder
+                </h2>
               </div>
-            ))}
-        </div>
+              <button
+                type="button"
+                onClick={() => setPreviousRoundsVisible(new Set())}
+                className="rounded-md p-1.5 text-[hsl(var(--muted))] hover:bg-[hsl(var(--surface))] hover:text-[hsl(var(--foreground))] transition-all duration-200"
+                title="Luk"
+              >
+                <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                </svg>
+              </button>
+            </div>
+            {/* Scrollable Content */}
+            <div className="flex-1 overflow-y-auto p-4 space-y-4">
+              {Array.from({ length: selectedRound - 1 })
+                .map((_, i) => selectedRound - 1 - i)
+                .filter((round) => previousRoundsVisible.has(round))
+                .map((round) => (
+                  <div key={round} className="space-y-2">
+                    <h3 className="text-sm font-semibold text-[hsl(var(--muted))] uppercase tracking-wide sticky top-0 bg-[hsl(var(--surface))] pb-1">
+                      Runde {round}
+                    </h3>
+                    <div className="grid grid-cols-2 gap-2">
+                      {(previousRoundsMatches[round] || []).map((court) => (
+                        <PageCard key={court.courtIdx} className="space-y-1.5 p-2.5 opacity-75">
+                          <header className="flex items-center justify-between mb-1">
+                            <h4 className="text-xs font-semibold text-[hsl(var(--foreground))]">Bane {court.courtIdx}</h4>
+                            <span className="text-[10px] text-[hsl(var(--muted))]">{court.slots.length}/{EMPTY_SLOTS}</span>
+                          </header>
+                          <div className="flex flex-col gap-1">
+                            {Array.from({ length: 4 }).map((_, slotIdx) => {
+                              const entry = court.slots.find((slot) => slot.slot === slotIdx)
+                              const player = entry?.player
+                              return (
+                                <div
+                                  key={slotIdx}
+                                  className={`flex min-h-[36px] items-center rounded-md px-2 py-1 text-xs ring-1 ${
+                                    player
+                                      ? `${getPlayerSlotBgColor(player.gender)} ring-[hsl(var(--line)/.12)]`
+                                      : 'bg-[hsl(var(--surface-2))] ring-[hsl(var(--line)/.12)]'
+                                  }`}
+                                >
+                                  {player ? (
+                                    <span className="text-xs font-medium text-[hsl(var(--foreground))] truncate">
+                                      {player.alias ?? player.name}
+                                    </span>
+                                  ) : (
+                                    <span className="text-[10px] text-[hsl(var(--muted))]">Tom</span>
+                                  )}
+                                </div>
+                              )
+                            })}
+                          </div>
+                        </PageCard>
+                      ))}
+                    </div>
+                  </div>
+                ))}
+            </div>
+          </div>
+        </>
       )}
     </section>
   )
