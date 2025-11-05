@@ -1,0 +1,20 @@
+{
+	"folders": [
+		{
+			"path": "../../../.."
+		}
+	],
+	"settings": {
+		"workbench.colorCustomizations": {
+			"activityBar.background": "#850091",
+			"activityBar.foreground": "#ffffff",
+			"activityBarBadge.background": "#ffffff",
+			"activityBarBadge.foreground": "#b558e7",
+			"sideBar.border": "#58B4E733"
+		},
+		"typescript.tsserver.experimental.enableProjectDiagnostics": true,
+		"files.associations": {
+			"*.css": "tailwindcss"
+		}
+	}
+}

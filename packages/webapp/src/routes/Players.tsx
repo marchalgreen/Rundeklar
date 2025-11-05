@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useState } from 'react'
-import type { Player, PlayerGender, PlayerCategory } from '@badminton/common'
+import type { Player, PlayerGender, PlayerCategory } from '@herlev-hjorten/common'
 import { Pencil, Plus, Trash2, UsersRound } from 'lucide-react'
 import api from '../api'
 import { Badge, Button, EmptyState, PageCard } from '../components/ui'

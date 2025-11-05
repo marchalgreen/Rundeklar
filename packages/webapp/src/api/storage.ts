@@ -5,9 +5,9 @@ import type {
   Court,
   Match,
   MatchPlayer
-} from '@badminton/common'
+} from '@herlev-hjorten/common'
 
-const STORAGE_KEY = 'badminton-klub-db-v2'
+const STORAGE_KEY = 'herlev-hjorten-db-v2'
 
 export type DatabaseState = {
   players: Player[]

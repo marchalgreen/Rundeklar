@@ -11,7 +11,7 @@ import type {
   PlayerListFilters,
   PlayerUpdateInput,
   TrainingSession
-} from '@badminton/common'
+} from '@herlev-hjorten/common'
 import { buildAssignments } from '../lib/matchmaker'
 import { createId, getStateCopy, loadState, updateState } from './storage'
 import type { DatabaseState } from './storage'

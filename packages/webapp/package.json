@@ -1,5 +1,5 @@
 {
-  "name": "@badminton/webapp",
+  "name": "@herlev-hjorten/webapp",
   "version": "0.1.0",
   "private": true,
   "type": "module",
@@ -11,7 +11,7 @@
     "test": "vitest run"
   },
   "dependencies": {
-    "@badminton/common": "workspace:*",
+    "@herlev-hjorten/common": "workspace:*",
     "clsx": "^2.1.0",
     "lucide-react": "^0.429.0",
     "react": "^19.0.0",

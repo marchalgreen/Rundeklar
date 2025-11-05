@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react'
-import type { CheckedInPlayer, Player, TrainingSession } from '@badminton/common'
+import type { CheckedInPlayer, Player, TrainingSession } from '@herlev-hjorten/common'
 import { clsx } from 'clsx'
 import { UsersRound } from 'lucide-react'
 import api from '../api'

@@ -5,7 +5,7 @@ import type {
   CourtWithPlayers,
   Player,
   TrainingSession
-} from '@badminton/common'
+} from '@herlev-hjorten/common'
 import api from '../api'
 import { PageCard } from '../components/ui'
 import { useToast } from '../components/ui/Toast'
