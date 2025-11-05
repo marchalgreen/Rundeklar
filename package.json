@@ -9,7 +9,12 @@
     "lint": "pnpm --filter webapp lint",
     "test": "pnpm --filter webapp test"
   },
-  "devDependencies": {},
+  "devDependencies": {
+    "eslint-config-prettier": "^10.1.8",
+    "eslint-plugin-react": "^7.37.5",
+    "eslint-plugin-react-hooks": "^7.0.1",
+    "typescript-eslint": "^8.46.3"
+  },
   "pnpm": {
     "packageManager": "pnpm@9.6.0"
   }

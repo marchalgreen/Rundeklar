@@ -12,7 +12,6 @@ import type {
   PlayerUpdateInput,
   TrainingSession
 } from '@herlev-hjorten/common'
-import { buildAssignments } from '../lib/matchmaker'
 import { createId, getStateCopy, loadState, updateState } from './storage'
 import type { DatabaseState } from './storage'
 
@@ -429,8 +428,6 @@ const autoArrangeMatches = async (round?: number): Promise<AutoArrangeResult> =>
   // Helper function to create balanced 2v2 match with variety preference
   const createDoublesMatch = (players: Player[]): { courtIdx: number; playerIds: string[] } | null => {
     if (players.length !== 4) return null
-    
-    const levels = players.map((p) => p.level ?? 0)
     let bestSplit: [number, number] = [0, 0]
     let bestScore = Infinity
     

@@ -1,19 +1,11 @@
-import { HashRouter, Routes, Route, Navigate, useLocation } from 'react-router-dom'
-import { useMemo } from 'react'
+import { HashRouter, Routes, Route, Navigate } from 'react-router-dom'
 import PlayersPage from './routes/Players'
 import CheckInPage from './routes/CheckIn'
 import MatchProgramPage from './routes/MatchProgram'
 import { SidebarItem } from './components/navigation/SidebarItem'
 import { UserCheck, UsersRound, Grid2x2 } from 'lucide-react'
 
-const navItems = [
-  { to: '/check-in', label: 'Indtjekning', icon: <UserCheck size={18} /> },
-  { to: '/match-program', label: 'Kampprogram', icon: <Grid2x2 size={18} /> },
-  { to: '/players', label: 'Spillere', icon: <UsersRound size={18} /> }
-]
-
 const Header = () => {
-  const location = useLocation()
   return (
     <header className="relative flex items-center ring-1 ring-[hsl(var(--line)/.12)] bg-[hsl(var(--surface)/.7)] px-6 py-4 backdrop-blur shadow-[inset_0_-1px_0_hsl(var(--line)/.08)]">
       {/* Left section: Logo and text */}

@@ -33,6 +33,7 @@ const sizeClasses: Record<ButtonSize, string> = {
   md: 'h-11 px-5 text-base rounded-lg'
 }
 
+/* eslint-disable react/prop-types */
 export const Button = forwardRef<HTMLButtonElement, ButtonProps>(
   ({ className, variant = 'primary', size = 'md', loading = false, children, disabled, ...props }, ref) => (
     <button
@@ -46,5 +47,6 @@ export const Button = forwardRef<HTMLButtonElement, ButtonProps>(
     </button>
   )
 )
+/* eslint-enable react/prop-types */
 
 Button.displayName = 'Button'

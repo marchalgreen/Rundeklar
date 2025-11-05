@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from 'react'
+import React, { useCallback, useEffect, useMemo, useState } from 'react'
 import type {
   AutoArrangeResult,
   CheckedInPlayer,
@@ -27,14 +27,14 @@ const MatchProgramPage = () => {
   const [dragOverCourt, setDragOverCourt] = useState<number | null>(null)
   const [dragOverSlot, setDragOverSlot] = useState<{ courtIdx: number; slot: number } | null>(null)
 
-  const loadSession = async () => {
+  const loadSession = useCallback(async () => {
     try {
       const active = await api.session.getActive()
       setSession(active)
     } catch (err: any) {
       setError(err.message ?? 'Kunne ikke hente træning')
     }
-  }
+  }, [])
 
   const loadCheckIns = async () => {
     if (!session) {
@@ -62,14 +62,14 @@ const MatchProgramPage = () => {
     }
   }
 
-  const hydrate = async () => {
+  const hydrate = useCallback(async () => {
     setLoading(true)
     setError(null)
     await loadSession()
     setLoading(false)
-  }
+  }, [loadSession])
 
-  useEffect(() => { void hydrate() }, [])
+  useEffect(() => { void hydrate() }, [hydrate])
 
   useEffect(() => {
     if (!session) {
@@ -277,7 +277,7 @@ const MatchProgramPage = () => {
     await handleMove(playerId, courtIdx, slot)
   }
 
-  const onDropToCourt = async (event: React.DragEvent<HTMLDivElement>, courtIdx: number) => {
+  const onDropToCourt = async (event: React.DragEvent<HTMLDivElement>, _courtIdx: number) => {
     // Only allow dropping to specific slots, not to the entire court
     // This prevents automatic placement
     event.preventDefault()
@@ -289,7 +289,7 @@ const MatchProgramPage = () => {
     return [0, 1, 2, 3].find((idx: number) => !occupied.has(idx))
   }
 
-  const handleQuickAssign = async (playerId: string, courtIdx: number) => {
+  const _handleQuickAssign = async (playerId: string, courtIdx: number) => {
     const court = matches.find((c) => c.courtIdx === courtIdx)
     if (!court) return
     const slot = getFirstFreeSlot(court)

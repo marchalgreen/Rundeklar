@@ -14,11 +14,11 @@ export type SidebarNavProps = {
   size?: 'sm' | 'lg'
 }
 
-export const SidebarNav = ({ items, orientation = 'vertical', size = 'sm' }: SidebarNavProps) => {
+export const SidebarNav = ({ items, orientation = 'vertical', size: _size = 'sm' }: SidebarNavProps) => {
   const location = useLocation()
   const refs = useRef<(HTMLAnchorElement | null)[]>([])
 
-  const activeIndex = useMemo(() => {
+  const _activeIndex = useMemo(() => {
     const idx = items.findIndex((item) => location.pathname.includes(item.to.replace('#', '')))
     return idx === -1 ? 0 : idx
   }, [items, location.pathname])

@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from 'react'
+import React, { useCallback, useEffect, useMemo, useState } from 'react'
 import type { Player, PlayerGender, PlayerCategory } from '@herlev-hjorten/common'
 import { Pencil, Plus, Trash2, UsersRound } from 'lucide-react'
 import api from '../api'
@@ -29,7 +29,7 @@ const PlayersPage = () => {
   const [formActive, setFormActive] = useState(true)
   const { notify } = useToast()
 
-  const loadPlayers = async () => {
+  const loadPlayers = useCallback(async () => {
     setLoading(true)
     setError(null)
     try {
@@ -43,7 +43,7 @@ const PlayersPage = () => {
     } finally {
       setLoading(false)
     }
-  }
+  }, [search, showInactive])
 
   useEffect(() => {
     void loadPlayers()
@@ -122,7 +122,7 @@ const PlayersPage = () => {
     }
   }
 
-  const toggleActive = async (player: Player) => {
+  const toggleActive = useCallback(async (player: Player) => {
     try {
       await api.players.update({ id: player.id, patch: { active: !player.active } })
       await loadPlayers()
@@ -130,7 +130,7 @@ const PlayersPage = () => {
     } catch (err: any) {
       setError(err.message ?? 'Kunne ikke opdatere spiller')
     }
-  }
+  }, [loadPlayers, notify])
 
   const columns: Column<Player>[] = useMemo(
     () => [
@@ -201,7 +201,7 @@ const PlayersPage = () => {
         )
       }
     ],
-    []
+    [toggleActive]
   )
 
   return (

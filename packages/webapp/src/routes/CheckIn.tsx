@@ -3,23 +3,13 @@ import type { CheckedInPlayer, Player, TrainingSession } from '@herlev-hjorten/c
 import { clsx } from 'clsx'
 import { UsersRound } from 'lucide-react'
 import api from '../api'
-import { Button, PageCard, EmptyState, Badge } from '../components/ui'
+import { Button, PageCard, EmptyState } from '../components/ui'
 import { TableSearch } from '../components/ui/Table'
 import { useToast } from '../components/ui/Toast'
-
-const LETTER_FILTERS = ['Alle', ...'ABCDEFGHIJKLMNOPQRSTUVWXYZÆØÅ'.split('')]
 
 // Split letters into two balanced rows (15 items each)
 const LETTER_FILTERS_ROW1 = ['Alle', ...'ABCDEFGHIJKLMNOPQRSTUVWXYZÆØÅ'.split('').slice(0, 14)]
 const LETTER_FILTERS_ROW2 = 'ABCDEFGHIJKLMNOPQRSTUVWXYZÆØÅ'.split('').slice(14)
-
-const getInitials = (name: string) =>
-  name
-    .split(' ')
-    .filter(Boolean)
-    .slice(0, 2)
-    .map((part) => part[0]?.toUpperCase())
-    .join('')
 
 const getInitialsBgColor = (gender: 'Herre' | 'Dame' | null | undefined) => {
   if (gender === 'Herre') {
@@ -121,7 +111,7 @@ const CheckInPage = () => {
       return
     }
     void loadCheckIns()
-  }, [session?.id, loadCheckIns])
+  }, [session, loadCheckIns])
 
   const checkedInIds = useMemo(() => new Set(checkedIn.map((player) => player.id)), [checkedIn])
 
@@ -377,7 +367,7 @@ const CheckInPage = () => {
               disabled={players.filter((p) => !checkedInIds.has(p.id)).length < 28}
               className="border-2 border-dashed border-[hsl(var(--primary)/.4)] bg-[hsl(var(--primary)/.05)] text-[hsl(var(--primary))] hover:bg-[hsl(var(--primary)/.1)] hover:border-[hsl(var(--primary)/.6)] text-sm font-medium whitespace-nowrap"
             >
-              🎭 DEMO: Tjek 28 tilfældige spillere ind (4 med "Kun 1 runde")
+              🎭 DEMO: Tjek 28 tilfældige spillere ind (4 med &quot;Kun 1 runde&quot;)
             </Button>
           )}
         </div>

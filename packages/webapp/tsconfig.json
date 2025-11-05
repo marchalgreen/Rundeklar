@@ -1,6 +1,7 @@
 {
-  "extends": "../../tsconfig.json",
   "compilerOptions": {
+    "target": "ES2020",
+    "lib": ["ES2020", "ES2019", "ES2018", "ES2017", "ES2016", "ES2015", "DOM", "DOM.Iterable"],
     "jsx": "react-jsx",
     "module": "ESNext",
     "moduleResolution": "Bundler",
@@ -8,13 +9,15 @@
     "strict": true,
     "noImplicitAny": false,
     "esModuleInterop": true,
+    "allowSyntheticDefaultImports": true,
     "skipLibCheck": true,
     "forceConsistentCasingInFileNames": true,
     "baseUrl": ".",
     "paths": {
-      "@herlev-hjorten/common": ["../common/dist"],
+      "@herlev-hjorten/common": ["../common/dist", "../common/src"],
       "@herlev-hjorten/webapp/*": ["src/*"]
-    }
+    },
+    "resolveJsonModule": true
   },
   "include": ["src", "vite.config.ts", "tailwind.config.ts", "postcss.config.cjs"]
 }
