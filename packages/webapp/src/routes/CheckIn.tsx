@@ -283,14 +283,17 @@ const CheckInPage = () => {
 
       <div className="grid gap-4 lg:grid-cols-[35%_65%] lg:items-start">
         {/* Checked-in players section */}
-        <PageCard className="space-y-2 lg:sticky lg:top-6 lg:self-start">
+        <PageCard 
+          className="space-y-2 flex flex-col lg:sticky lg:top-6 lg:self-start" 
+          style={{ maxHeight: 'calc(100vh - 120px)' }}
+        >
           <header className="flex items-center justify-between">
             <h3 className="text-sm font-semibold">Tjekket ind</h3>
             <span className="rounded-full bg-[hsl(var(--surface-2))] px-2 py-0.5 text-xs font-medium">
               {checkedIn.length}
             </span>
           </header>
-          <div className="flex flex-col space-y-2 max-h-[calc(100vh-300px)] overflow-y-auto pr-2">
+          <div className="flex flex-col space-y-2 overflow-y-auto pr-2 flex-1 min-h-0">
             {checkedIn.length === 0 ? (
               <p className="text-xs text-[hsl(var(--muted))] text-center py-4">Ingen spillere tjekket ind</p>
             ) : (
