@@ -12,7 +12,7 @@ import { useToast } from '../components/ui/Toast'
 
 const EMPTY_SLOTS = 4
 
-const CoachPage = () => {
+const MatchProgramPage = () => {
   const [session, setSession] = useState<TrainingSession | null>(null)
   const [checkedIn, setCheckedIn] = useState<CheckedInPlayer[]>([])
   const [matches, setMatches] = useState<CourtWithPlayers[]>([])
@@ -704,4 +704,4 @@ const CoachPage = () => {
   )
 }
 
-export default CoachPage
+export default MatchProgramPage
