@@ -316,11 +316,15 @@ const autoArrangeMatches = async (round?: number): Promise<AutoArrangeResult> =>
       .map((mp) => mp.playerId)
   )
 
-  const benchPlayerIds = checkIns
-    .map((checkIn: CheckIn) => checkIn.playerId)
-    .filter((playerId: string) => !assignedPlayers.has(playerId))
+  // Get bench players with their full data
+  const benchPlayers = checkIns
+    .map((checkIn: CheckIn) => {
+      const player = state.players.find((p: Player) => p.id === checkIn.playerId)
+      return player ? { ...player, checkInId: checkIn.id } : null
+    })
+    .filter((p): p is Player & { checkInId: string } => p !== null && !assignedPlayers.has(p.id))
 
-  if (!benchPlayerIds.length) {
+  if (!benchPlayers.length) {
     return { filledCourts: 0, benched: 0 }
   }
 
@@ -338,14 +342,179 @@ const autoArrangeMatches = async (round?: number): Promise<AutoArrangeResult> =>
     .filter((idx) => !occupied.has(idx))
 
   if (!availableCourtIdxs.length) {
-    return { filledCourts: 0, benched: benchPlayerIds.length }
+    return { filledCourts: 0, benched: benchPlayers.length }
   }
 
-  const { assignments, leftoverPlayerIds } = buildAssignments({
-    benchPlayerIds,
-    availableCourtIdxs,
-    slotsPerCourt: 4
-  })
+  // Sort players by level (ascending - lower Niveau = better player)
+  benchPlayers.sort((a, b) => (a.level ?? 0) - (b.level ?? 0))
+
+  // Separate players by category
+  const singlesPlayers = benchPlayers.filter((p) => p.primaryCategory === 'Single')
+  const doublesPlayers = benchPlayers.filter((p) => p.primaryCategory === 'Double')
+  const beggePlayers = benchPlayers.filter((p) => p.primaryCategory === 'Begge' || !p.primaryCategory)
+
+  // Smart matching algorithm
+  const assignments: Array<{ courtIdx: number; playerIds: string[] }> = []
+  const usedPlayerIds = new Set<string>()
+  let courtIdxIndex = 0
+
+  // Strategy 1: Create 1v1 matches (2 players) with Singles and Begge players
+  // Priority: Singles players first, then Begge players
+  const singlesEligible = [...singlesPlayers, ...beggePlayers].filter((p) => !usedPlayerIds.has(p.id))
+  
+  while (singlesEligible.length >= 2 && courtIdxIndex < availableCourtIdxs.length) {
+    const player1 = singlesEligible.shift()!
+    const player1Level = player1.level ?? 0
+    
+    // Find best match - try to balance total level on each side
+    let bestMatchIndex = -1
+    let bestBalance = Infinity
+    
+    for (let i = 0; i < singlesEligible.length; i++) {
+      const player2 = singlesEligible[i]
+      const player2Level = player2.level ?? 0
+      // Balance: difference between sides (should be close to 0)
+      const balance = Math.abs(player1Level - player2Level)
+      if (balance < bestBalance) {
+        bestBalance = balance
+        bestMatchIndex = i
+      }
+    }
+    
+    if (bestMatchIndex >= 0) {
+      const player2 = singlesEligible.splice(bestMatchIndex, 1)[0]
+      const courtIdx = availableCourtIdxs[courtIdxIndex++]
+      assignments.push({
+        courtIdx,
+        playerIds: [player1.id, player2.id]
+      })
+      usedPlayerIds.add(player1.id)
+      usedPlayerIds.add(player2.id)
+    } else {
+      break
+    }
+  }
+
+  // Strategy 2: Create 2v2 matches (4 players) with Doubles players and remaining players
+  // Group Doubles players and any remaining players into doubles matches
+  const doublesEligible = [...doublesPlayers, ...benchPlayers.filter((p) => !usedPlayerIds.has(p.id))]
+  
+  while (doublesEligible.length >= 4 && courtIdxIndex < availableCourtIdxs.length) {
+    // Sort remaining players by level
+    doublesEligible.sort((a, b) => (a.level ?? 0) - (b.level ?? 0))
+    
+    // Take first 4 players and try to balance teams
+    const players = doublesEligible.splice(0, 4)
+    const levels = players.map((p) => p.level ?? 0)
+    
+    // Try to balance: split into two teams of 2
+    // Best split: minimize difference between team totals
+    let bestSplit: [number, number] = [0, 0]
+    let bestDiff = Infinity
+    
+    // Try all combinations of splitting 4 players into 2 teams
+    for (let i = 0; i < 3; i++) {
+      for (let j = i + 1; j < 4; j++) {
+        const team1Total = levels[i] + levels[j]
+        const team2Total = levels.reduce((sum, l, idx) => sum + (idx === i || idx === j ? 0 : l), 0)
+        const diff = Math.abs(team1Total - team2Total)
+        if (diff < bestDiff) {
+          bestDiff = diff
+          bestSplit = [i, j]
+        }
+      }
+    }
+    
+    const [i, j] = bestSplit
+    const team1 = [players[i].id, players[j].id]
+    const team2 = players.filter((_, idx) => idx !== i && idx !== j).map((p) => p.id)
+    
+    const courtIdx = availableCourtIdxs[courtIdxIndex++]
+    assignments.push({
+      courtIdx,
+      playerIds: [...team1, ...team2]
+    })
+    
+    players.forEach((p) => usedPlayerIds.add(p.id))
+  }
+
+  // Strategy 3: Fill remaining courts with any combination possible
+  const remainingPlayers = benchPlayers.filter((p) => !usedPlayerIds.has(p.id))
+  
+  while (remainingPlayers.length >= 2 && courtIdxIndex < availableCourtIdxs.length) {
+    remainingPlayers.sort((a, b) => (a.level ?? 0) - (b.level ?? 0))
+    
+    // Try to create 1v1 if possible
+    if (remainingPlayers.length >= 2) {
+      const player1 = remainingPlayers.shift()!
+      const player1Level = player1.level ?? 0
+      
+      let bestMatchIndex = -1
+      let bestBalance = Infinity
+      
+      for (let i = 0; i < remainingPlayers.length; i++) {
+        const player2 = remainingPlayers[i]
+        const player2Level = player2.level ?? 0
+        // Only create 1v1 if neither player is Doubles-only
+        if (player2.primaryCategory === 'Double') continue
+        
+        const balance = Math.abs(player1Level - player2Level)
+        if (balance < bestBalance) {
+          bestBalance = balance
+          bestMatchIndex = i
+        }
+      }
+      
+      if (bestMatchIndex >= 0) {
+        const player2 = remainingPlayers.splice(bestMatchIndex, 1)[0]
+        const courtIdx = availableCourtIdxs[courtIdxIndex++]
+        assignments.push({
+          courtIdx,
+          playerIds: [player1.id, player2.id]
+        })
+        usedPlayerIds.add(player1.id)
+        usedPlayerIds.add(player2.id)
+        continue
+      }
+    }
+    
+    // If can't create 1v1, try 2v2
+    if (remainingPlayers.length >= 4) {
+      const players = remainingPlayers.splice(0, 4)
+      const levels = players.map((p) => p.level ?? 0)
+      
+      let bestSplit: [number, number] = [0, 0]
+      let bestDiff = Infinity
+      
+      for (let i = 0; i < 3; i++) {
+        for (let j = i + 1; j < 4; j++) {
+          const team1Total = levels[i] + levels[j]
+          const team2Total = levels.reduce((sum, l, idx) => sum + (idx === i || idx === j ? 0 : l), 0)
+          const diff = Math.abs(team1Total - team2Total)
+          if (diff < bestDiff) {
+            bestDiff = diff
+            bestSplit = [i, j]
+          }
+        }
+      }
+      
+      const [i, j] = bestSplit
+      const team1 = [players[i].id, players[j].id]
+      const team2 = players.filter((_, idx) => idx !== i && idx !== j).map((p) => p.id)
+      
+      const courtIdx = availableCourtIdxs[courtIdxIndex++]
+      assignments.push({
+        courtIdx,
+        playerIds: [...team1, ...team2]
+      })
+      
+      players.forEach((p) => usedPlayerIds.add(p.id))
+    } else {
+      break
+    }
+  }
+
+  const leftoverPlayerIds = benchPlayers.filter((p) => !usedPlayerIds.has(p.id)).map((p) => p.id)
 
   if (!assignments.length) {
     return { filledCourts: 0, benched: leftoverPlayerIds.length }
