@@ -21,7 +21,7 @@
       .nav-list {
         display: flex;
         flex-direction: row;
-        gap: 8px;
+        gap: 12px;
       }
 
       /* Base item (menu, not jumbo button) */
@@ -29,12 +29,12 @@
         position: relative;
         display: flex;
         align-items: center;
-        gap: 8px;
-        height: 40px;                 /* compact height for top nav */
-        padding: 0 16px;
+        gap: 10px;
+        height: 44px;                 /* slightly larger for top nav */
+        padding: 0 20px;
         border-radius: 10px;
         font-weight: 600;
-        font-size: 14px;
+        font-size: 15px;
         color: hsl(var(--muted));
         background: transparent;
         transition:

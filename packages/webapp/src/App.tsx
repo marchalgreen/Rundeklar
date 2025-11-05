@@ -14,14 +14,13 @@ const navItems = [
 
 const Header = () => {
   const location = useLocation()
-  const current = useMemo(() => navItems.find((item) => location.pathname.includes(item.to.replace('#', ''))), [location.pathname])
   return (
-    <header className="flex items-center justify-between gap-4 ring-1 ring-[hsl(var(--line)/.12)] bg-[hsl(var(--surface)/.7)] px-6 py-4 backdrop-blur shadow-[inset_0_-1px_0_hsl(var(--line)/.08)]">
-      <div>
-        <p className="text-xs uppercase tracking-wide text-[hsl(var(--muted))]">Herlev/Hjorten</p>
-        <h1 className="text-xl font-semibold text-[hsl(var(--foreground))]">{current?.label ?? 'Oversigt'}</h1>
+    <header className="relative flex items-center justify-between gap-4 ring-1 ring-[hsl(var(--line)/.12)] bg-[hsl(var(--surface)/.7)] px-6 py-4 backdrop-blur shadow-[inset_0_-1px_0_hsl(var(--line)/.08)]">
+      <div className="flex items-center gap-3">
+        <img src="/logo.jpeg" alt="Herlev/Hjorten" className="h-11 w-11 rounded-full ring-1 ring-[hsl(var(--line)/.2)] object-cover" />
+        <p className="text-base font-semibold uppercase tracking-wide text-[hsl(var(--foreground))]">Herlev/Hjorten</p>
       </div>
-      <nav aria-label="Primær navigation" className="flex items-center gap-2">
+      <nav aria-label="Primær navigation" className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 flex items-center gap-3">
         <SidebarItem to="/check-in" icon={<Search />} label="Check ind" />
         <SidebarItem to="/coach" icon={<Grid2x2 />} label="Kampprogram" />
         <SidebarItem to="/players" icon={<UsersRound />} label="Spillere" />
@@ -36,7 +35,7 @@ const App = () => {
       <div className="flex min-h-screen flex-col text-[hsl(var(--foreground))]">
         <Header />
         <main className="flex-1 overflow-y-auto">
-          <div className="flex w-full flex-col gap-6 px-4 pb-10 pt-6 md:px-6">
+          <div className="flex w-full flex-col gap-6 px-6 pb-10 pt-6 md:px-8 lg:px-12">
             <Routes>
               <Route path="/players" element={<PlayersPage />} />
               <Route path="/check-in" element={<CheckInPage />} />
