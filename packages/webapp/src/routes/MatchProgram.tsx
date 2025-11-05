@@ -27,6 +27,8 @@ const MatchProgramPage = () => {
   const [dragOverCourt, setDragOverCourt] = useState<number | null>(null)
   const [dragOverSlot, setDragOverSlot] = useState<{ courtIdx: number; slot: number } | null>(null)
   const [recentlySwappedPlayers, setRecentlySwappedPlayers] = useState<Set<string>>(new Set())
+  const [previousRoundsVisible, setPreviousRoundsVisible] = useState<Set<number>>(new Set())
+  const [previousRoundsMatches, setPreviousRoundsMatches] = useState<Record<number, CourtWithPlayers[]>>({})
 
   const loadSession = useCallback(async () => {
     try {
@@ -187,6 +189,163 @@ const MatchProgramPage = () => {
     const female = checkedIn.filter((player) => player.gender === 'Dame').length
     return { male, female }
   }, [checkedIn])
+
+  // Load previous round matches when viewing a previous round
+  const loadPreviousRound = useCallback(async (round: number) => {
+    if (!session || round >= selectedRound || round < 1) return
+    if (previousRoundsMatches[round]) return // Already loaded
+    
+    try {
+      const data = await api.matches.list(round)
+      setPreviousRoundsMatches((prev) => ({ ...prev, [round]: data }))
+    } catch (err: any) {
+      setError(err.message ?? 'Kunne ikke hente tidligere runde')
+    }
+  }, [session, selectedRound, previousRoundsMatches])
+
+  // Check if 3+ players on a court have played together in previous rounds
+  const hasDuplicateMatchup = useCallback(async (court: CourtWithPlayers): Promise<boolean> => {
+    if (selectedRound <= 1) return false // No previous rounds to check
+    
+    const currentPlayerIds = court.slots
+      .map((slot) => slot.player?.id)
+      .filter((id): id is string => !!id)
+    
+    if (currentPlayerIds.length < 3) return false // Need at least 3 players
+    
+    // Load all previous rounds if not already loaded
+    for (let round = 1; round < selectedRound; round++) {
+      if (!previousRoundsMatches[round]) {
+        await loadPreviousRound(round)
+      }
+    }
+    
+    // Wait a bit for state to update after loading
+    await new Promise((resolve) => setTimeout(resolve, 50))
+    
+    // Re-fetch previous rounds matches from state
+    const updatedPreviousRounds = { ...previousRoundsMatches }
+    
+    // Check each previous round
+    for (let round = 1; round < selectedRound; round++) {
+      let previousMatches = updatedPreviousRounds[round]
+      
+      // If still not loaded, try loading directly
+      if (!previousMatches) {
+        try {
+          const data = await api.matches.list(round)
+          previousMatches = data
+          updatedPreviousRounds[round] = data
+        } catch {
+          continue
+        }
+      }
+      
+      if (!previousMatches) continue
+      
+      for (const previousCourt of previousMatches) {
+        const previousPlayerIds = previousCourt.slots
+          .map((slot) => slot.player?.id)
+          .filter((id): id is string => !!id)
+        
+        // Count how many players from current court were in previous court
+        const overlap = currentPlayerIds.filter((id) => previousPlayerIds.includes(id))
+        
+        if (overlap.length >= 3) {
+          return true // Found a duplicate match with 3+ same players
+        }
+      }
+    }
+    
+    return false
+  }, [selectedRound, previousRoundsMatches, loadPreviousRound])
+
+  const [courtsWithDuplicatesSet, setCourtsWithDuplicatesSet] = useState<Set<number>>(new Set())
+  const [duplicatePlayersMap, setDuplicatePlayersMap] = useState<Map<number, Set<string>>>(new Map())
+
+  // Check for duplicates when matches or selectedRound changes
+  useEffect(() => {
+    if (selectedRound <= 1) {
+      setCourtsWithDuplicatesSet(new Set())
+      setDuplicatePlayersMap(new Map())
+      return
+    }
+    
+    if (matches.length === 0) {
+      setCourtsWithDuplicatesSet(new Set())
+      setDuplicatePlayersMap(new Map())
+      return
+    }
+    
+    const checkDuplicates = async () => {
+      const duplicates = new Set<number>()
+      const playerDuplicatesMap = new Map<number, Set<string>>()
+      
+      // Load all previous rounds first
+      for (let round = 1; round < selectedRound; round++) {
+        if (!previousRoundsMatches[round]) {
+          try {
+            const data = await api.matches.list(round)
+            setPreviousRoundsMatches((prev) => ({ ...prev, [round]: data }))
+          } catch {
+            // Continue even if one round fails to load
+          }
+        }
+      }
+      
+      // Wait for state to update
+      await new Promise((resolve) => setTimeout(resolve, 100))
+      
+      // Now check duplicates
+      for (const court of matches) {
+        const currentPlayerIds = court.slots
+          .map((slot) => slot.player?.id)
+          .filter((id): id is string => !!id)
+        
+        if (currentPlayerIds.length < 3) continue
+        
+        // Check all previous rounds
+        let duplicatePlayerIds = new Set<string>()
+        
+        for (let round = 1; round < selectedRound; round++) {
+          // Get previous matches - try state first, then API
+          let previousMatches = previousRoundsMatches[round]
+          if (!previousMatches) {
+            try {
+              previousMatches = await api.matches.list(round)
+            } catch {
+              continue
+            }
+          }
+          
+          if (!previousMatches) continue
+          
+          for (const previousCourt of previousMatches) {
+            const previousPlayerIds = previousCourt.slots
+              .map((slot) => slot.player?.id)
+              .filter((id): id is string => !!id)
+            
+            const overlap = currentPlayerIds.filter((id) => previousPlayerIds.includes(id))
+            
+            if (overlap.length >= 3) {
+              duplicates.add(court.courtIdx)
+              // Track which players are duplicates - add all overlapping players
+              overlap.forEach((id) => duplicatePlayerIds.add(id))
+            }
+          }
+        }
+        
+        if (duplicatePlayerIds.size > 0) {
+          playerDuplicatesMap.set(court.courtIdx, duplicatePlayerIds)
+        }
+      }
+      
+      setCourtsWithDuplicatesSet(duplicates)
+      setDuplicatePlayersMap(playerDuplicatesMap)
+    }
+    
+    void checkDuplicates()
+  }, [matches, selectedRound, previousRoundsMatches])
 
   const handleStartTraining = async () => {
     try {
@@ -377,6 +536,7 @@ const MatchProgramPage = () => {
     const isCourtHovered = dragOverCourt === court.courtIdx && !player
     const isDragOverOccupied = isDragOver && !!player
     const isRecentlySwapped = player && recentlySwappedPlayers.has(player.id)
+    const isDuplicatePlayer = player && duplicatePlayersMap.get(court.courtIdx)?.has(player.id)
     
     return (
       <div
@@ -391,18 +551,18 @@ const MatchProgramPage = () => {
             event.dataTransfer.effectAllowed = 'move'
           }
         }}
-        className={`flex min-h-[52px] items-center justify-between rounded-md px-3 py-2 text-sm transition-all duration-200 ease-[cubic-bezier(.2,.8,.2,1)] motion-reduce:transition-none ring-1 ${
+        className={`flex min-h-[52px] items-center justify-between rounded-md px-3 py-2 text-sm transition-all duration-200 ease-[cubic-bezier(.2,.8,.2,1)] motion-reduce:transition-none ${
           isRecentlySwapped
             ? `${getPlayerSlotBgColor(player.gender)} animate-swap-in ring-2 ring-[hsl(var(--primary)/.5)] shadow-lg`
             : isDragOverOccupied && player
             ? `${getPlayerSlotBgColor(player.gender)} ring-2 ring-[hsl(var(--primary)/.6)] shadow-lg border-2 border-[hsl(var(--primary)/.4)]`
             : player
-            ? `${getPlayerSlotBgColor(player.gender)} hover:shadow-sm ring-[hsl(var(--line)/.12)] cursor-grab active:cursor-grabbing`
+            ? `${getPlayerSlotBgColor(player.gender)} hover:shadow-sm ring-1 ring-[hsl(var(--line)/.12)] cursor-grab active:cursor-grabbing`
             : isDragOver
             ? 'bg-[hsl(var(--primary)/.15)] ring-2 ring-[hsl(var(--primary)/.5)] shadow-md'
             : isCourtHovered
-            ? 'bg-[hsl(var(--primary)/.08)] ring-[hsl(var(--primary)/.3)]'
-            : 'bg-[hsl(var(--surface-2))] text-[hsl(var(--muted))] ring-[hsl(var(--line)/.12)]'
+            ? 'bg-[hsl(var(--primary)/.08)] ring-1 ring-[hsl(var(--primary)/.3)]'
+            : 'bg-[hsl(var(--surface-2))] text-[hsl(var(--muted))] ring-1 ring-[hsl(var(--line)/.12)]'
         }`}
         onDragOver={(event: React.DragEvent<HTMLDivElement>) => {
           // Allow drag over even if slot is occupied (for swapping)
@@ -422,9 +582,16 @@ const MatchProgramPage = () => {
         {player ? (
           <>
             <div className="flex flex-col gap-1 min-w-0 flex-1">
-            <span className="text-sm font-semibold text-[hsl(var(--foreground))] truncate">
-              {player.alias ?? player.name}
-            </span>
+            <div className="flex items-center gap-1.5">
+              <span className="text-sm font-semibold text-[hsl(var(--foreground))] truncate">
+                {player.alias ?? player.name}
+              </span>
+              {isDuplicatePlayer && (
+                <span className="inline-flex h-3 w-3 flex-shrink-0 items-center justify-center rounded-full bg-[hsl(var(--destructive)/.3)] text-[8px] font-bold text-[hsl(var(--destructive))] ring-1 ring-[hsl(var(--destructive)/.4)]">
+                  !
+                </span>
+              )}
+            </div>
               <div className="flex items-center gap-1.5">
                 {getCategoryBadge(player.primaryCategory)}
                 <span className="text-xs text-[hsl(var(--muted))]">Rangliste: {player.level ?? '–'}</span>
@@ -501,6 +668,32 @@ const MatchProgramPage = () => {
         </div>
         <div className="flex-1 flex flex-col gap-2 items-end">
           <div className="flex gap-2">
+            {selectedRound > 1 && (
+              <button
+                type="button"
+                onClick={async () => {
+                  // Load all previous rounds if not already loaded
+                  for (let round = 1; round < selectedRound; round++) {
+                    if (!previousRoundsMatches[round]) {
+                      await loadPreviousRound(round)
+                    }
+                  }
+                  // Toggle all previous rounds visibility
+                  if (previousRoundsVisible.size > 0) {
+                    setPreviousRoundsVisible(new Set())
+                  } else {
+                    const rounds = new Set<number>()
+                    for (let round = 1; round < selectedRound; round++) {
+                      rounds.add(round)
+                    }
+                    setPreviousRoundsVisible(rounds)
+                  }
+                }}
+                className="rounded-md px-4 py-2 text-sm font-medium transition-all duration-200 ease-[cubic-bezier(.2,.8,.2,1)] motion-reduce:transition-none bg-[hsl(var(--surface-glass)/.85)] text-[hsl(var(--foreground))] hover:bg-[hsl(var(--surface-glass)/.95)] ring-1 ring-[hsl(var(--line)/.12)] hover:shadow-sm"
+              >
+                {previousRoundsVisible.size > 0 ? 'Skjul' : 'Se'} Tidligere Runder
+              </button>
+            )}
             <button
               type="button"
               onClick={handleAutoMatch}
@@ -544,7 +737,11 @@ const MatchProgramPage = () => {
         </PageCard>
       )}
 
-      <div className="grid gap-4 lg:grid-cols-[minmax(200px,240px)_1fr] lg:items-start">
+      <div className={`grid gap-4 lg:items-start transition-all duration-300 ${
+        previousRoundsVisible.size > 0 
+          ? 'lg:grid-cols-[minmax(200px,240px)_1fr_320px]' 
+          : 'lg:grid-cols-[minmax(200px,240px)_1fr]'
+      }`}>
         {/* Bench */}
         <PageCard 
           className={`space-y-2 transition-all duration-200 ${
@@ -690,8 +887,10 @@ const MatchProgramPage = () => {
           {matches.map((court) => (
             <PageCard
               key={court.courtIdx}
-              className={`space-y-2 hover:shadow-md p-4 transition-all duration-200 ${
-                dragOverCourt === court.courtIdx
+              className={`space-y-2 hover:shadow-md p-4 transition-all duration-200 relative ${
+                courtsWithDuplicatesSet.has(court.courtIdx)
+                  ? 'ring-2 ring-[hsl(var(--destructive)/.45)] border border-[hsl(var(--destructive)/.3)] bg-[hsl(var(--destructive)/.03)]'
+                  : dragOverCourt === court.courtIdx
                   ? 'ring-2 ring-[hsl(var(--primary)/.4)] bg-[hsl(var(--primary)/.05)] shadow-lg'
                   : ''
               }`}
@@ -706,7 +905,22 @@ const MatchProgramPage = () => {
               onDrop={(event) => void onDropToCourt(event, court.courtIdx)}
             >
               <header className="flex items-center justify-between mb-2">
-                <h3 className="text-base font-semibold text-[hsl(var(--foreground))]">Bane {court.courtIdx}</h3>
+                <div className="flex items-center gap-2">
+                  <h3 className="text-base font-semibold text-[hsl(var(--foreground))]">Bane {court.courtIdx}</h3>
+                  {courtsWithDuplicatesSet.has(court.courtIdx) && (
+                    <span
+                      className="group relative"
+                      title="3+ spillere har allerede spillet sammen i en tidligere runde"
+                    >
+                      <span className="inline-flex h-4 w-4 items-center justify-center rounded-full bg-[hsl(var(--destructive)/.2)] text-[10px] font-bold text-[hsl(var(--destructive))] ring-1 ring-[hsl(var(--destructive)/.3)]">
+                        !
+                      </span>
+                      <span className="absolute left-1/2 top-full z-10 mt-2 hidden -translate-x-1/2 whitespace-nowrap rounded-md bg-[hsl(var(--foreground))] px-2 py-1 text-xs text-[hsl(var(--background))] shadow-lg group-hover:block">
+                        3+ spillere har allerede spillet sammen i en tidligere runde
+                      </span>
+                    </span>
+                  )}
+                </div>
                 <span className="text-xs text-[hsl(var(--muted))]">{court.slots.length}/{EMPTY_SLOTS}</span>
               </header>
               
@@ -736,6 +950,63 @@ const MatchProgramPage = () => {
           ))}
         </section>
       </div>
+
+      {/* Previous Rounds Side Panel */}
+      {previousRoundsVisible.size > 0 && (
+        <div className="flex flex-col gap-4 overflow-y-auto max-h-[calc(100vh-200px)]">
+          <div className="sticky top-0 bg-[hsl(var(--surface))] pb-2 z-10">
+            <h2 className="text-lg font-semibold text-[hsl(var(--foreground))] mb-2">
+              Tidligere Runder
+            </h2>
+          </div>
+          {Array.from({ length: selectedRound - 1 })
+            .map((_, i) => selectedRound - 1 - i)
+            .filter((round) => previousRoundsVisible.has(round))
+            .map((round) => (
+              <div key={round} className="space-y-3">
+                <h3 className="text-sm font-semibold text-[hsl(var(--muted))] uppercase tracking-wide">
+                  Runde {round}
+                </h3>
+                <div className="grid grid-cols-1 gap-2">
+                  {(previousRoundsMatches[round] || []).map((court) => (
+                    <PageCard key={court.courtIdx} className="space-y-2 p-3 opacity-75">
+                      <header className="flex items-center justify-between mb-1">
+                        <h4 className="text-xs font-semibold text-[hsl(var(--foreground))]">Bane {court.courtIdx}</h4>
+                        <span className="text-[10px] text-[hsl(var(--muted))]">{court.slots.length}/{EMPTY_SLOTS}</span>
+                      </header>
+                      <div className="flex flex-col gap-1.5">
+                        {Array.from({ length: 4 }).map((_, slotIdx) => {
+                          const entry = court.slots.find((slot) => slot.slot === slotIdx)
+                          const player = entry?.player
+                          return (
+                            <div
+                              key={slotIdx}
+                              className={`flex min-h-[40px] items-center rounded-md px-2 py-1 text-xs ring-1 ${
+                                player
+                                  ? `${getPlayerSlotBgColor(player.gender)} ring-[hsl(var(--line)/.12)]`
+                                  : 'bg-[hsl(var(--surface-2))] ring-[hsl(var(--line)/.12)]'
+                              }`}
+                            >
+                              {player ? (
+                                <div className="flex items-center gap-1.5 min-w-0 flex-1">
+                                  <span className="text-xs font-medium text-[hsl(var(--foreground))] truncate">
+                                    {player.alias ?? player.name}
+                                  </span>
+                                </div>
+                              ) : (
+                                <span className="text-[10px] text-[hsl(var(--muted))]">Tom</span>
+                              )}
+                            </div>
+                          )
+                        })}
+                      </div>
+                    </PageCard>
+                  ))}
+                </div>
+              </div>
+            ))}
+        </div>
+      )}
     </section>
   )
 }
