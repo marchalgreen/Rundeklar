@@ -7,7 +7,7 @@ import { SidebarItem } from './components/navigation/SidebarItem'
 import { Search, UsersRound, Grid2x2 } from 'lucide-react'
 
 const navItems = [
-  { to: '/check-in', label: 'Check ind', icon: <Search size={18} /> },
+  { to: '/check-in', label: 'Tjek ind', icon: <Search size={18} /> },
   { to: '/coach', label: 'Kampprogram', icon: <Grid2x2 size={18} /> },
   { to: '/players', label: 'Spillere', icon: <UsersRound size={18} /> }
 ]
@@ -34,7 +34,7 @@ const Header = () => {
         className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 flex items-center gap-2"
         style={{ width: '496px' }}
       >
-        <SidebarItem to="/check-in" icon={<Search />} label="Check ind" />
+        <SidebarItem to="/check-in" icon={<Search />} label="Tjek ind" />
         <SidebarItem to="/coach" icon={<Grid2x2 />} label="Kampprogram" />
         <SidebarItem to="/players" icon={<UsersRound />} label="Spillere" />
       </nav>

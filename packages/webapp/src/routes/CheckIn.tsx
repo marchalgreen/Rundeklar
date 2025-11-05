@@ -310,13 +310,13 @@ const CheckInPage = () => {
   return (
     <section className="flex flex-col gap-6 pt-6">
       <header className="mb-2">
-        <h1 className="text-2xl font-semibold text-[hsl(var(--foreground))]">Check ind</h1>
+        <h1 className="text-2xl font-semibold text-[hsl(var(--foreground))]">Indtjekning</h1>
         <p className="mt-1 text-base text-[hsl(var(--muted))]">
           Aktiv træning: {new Date(session.date).toLocaleDateString('da-DK')}
         </p>
         {checkedIn.length > 0 && (
           <div className="mt-1">
-            <p className="text-base text-[hsl(var(--muted))]">Tjekket ind: {checkedIn.length}</p>
+            <p className="text-base text-[hsl(var(--muted))]">Indtjekkede spillere: {checkedIn.length}</p>
             <p className="text-base text-[hsl(var(--muted))]">
               Herrer: {genderBreakdown.male} • Damer: {genderBreakdown.female}
             </p>
@@ -382,7 +382,7 @@ const CheckInPage = () => {
                       onClick={() => handleCheckOut(player)}
                       className="text-xs px-3 py-1.5 flex-shrink-0"
                     >
-                      Check ud
+                      Tjek ud
                     </Button>
                   </div>
                 )
@@ -515,7 +515,7 @@ const CheckInPage = () => {
                       }}
                       className={clsx('ring-2 ring-[hsl(var(--accent)/.2)]', 'text-xs px-3 py-1.5')}
                     >
-                      Check ind
+                      Tjek ind
                     </Button>
                   </div>
                 </div>
