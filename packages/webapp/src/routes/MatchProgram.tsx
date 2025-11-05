@@ -26,6 +26,7 @@ const MatchProgramPage = () => {
   const [dragOverBench, setDragOverBench] = useState(false)
   const [dragOverCourt, setDragOverCourt] = useState<number | null>(null)
   const [dragOverSlot, setDragOverSlot] = useState<{ courtIdx: number; slot: number } | null>(null)
+  const [recentlySwappedPlayers, setRecentlySwappedPlayers] = useState<Set<string>>(new Set())
 
   const loadSession = useCallback(async () => {
     try {
@@ -300,6 +301,13 @@ const MatchProgramPage = () => {
         )
         await loadMatches()
         await loadCheckIns()
+        
+        // Add animation class to the swapped player (the one who was moved to the source location)
+        setRecentlySwappedPlayers(new Set([occupyingPlayer.id]))
+        // Clear animation after it completes
+        setTimeout(() => {
+          setRecentlySwappedPlayers(new Set())
+        }, 1000)
       } catch (err: any) {
         setError(err.message ?? 'Kunne ikke bytte spillere')
       }
@@ -368,6 +376,7 @@ const MatchProgramPage = () => {
     const isDragOver = dragOverSlot?.courtIdx === court.courtIdx && dragOverSlot?.slot === slotIndex
     const isCourtHovered = dragOverCourt === court.courtIdx && !player
     const isDragOverOccupied = isDragOver && !!player
+    const isRecentlySwapped = player && recentlySwappedPlayers.has(player.id)
     
     return (
       <div
@@ -383,7 +392,9 @@ const MatchProgramPage = () => {
           }
         }}
         className={`flex min-h-[52px] items-center justify-between rounded-md px-3 py-2 text-sm transition-all duration-200 ease-[cubic-bezier(.2,.8,.2,1)] motion-reduce:transition-none ring-1 ${
-          isDragOverOccupied && player
+          isRecentlySwapped
+            ? `${getPlayerSlotBgColor(player.gender)} animate-swap-in ring-2 ring-[hsl(var(--primary)/.5)] shadow-lg`
+            : isDragOverOccupied && player
             ? `${getPlayerSlotBgColor(player.gender)} ring-2 ring-[hsl(var(--primary)/.6)] shadow-lg border-2 border-[hsl(var(--primary)/.4)]`
             : player
             ? `${getPlayerSlotBgColor(player.gender)} hover:shadow-sm ring-[hsl(var(--line)/.12)] cursor-grab active:cursor-grabbing`
