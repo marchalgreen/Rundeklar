@@ -20,6 +20,7 @@ const CoachPage = () => {
   const [info, setInfo] = useState<string | null>(null)
   const [moveMenuPlayer, setMoveMenuPlayer] = useState<string | null>(null)
   const [selectedRound, setSelectedRound] = useState<number>(1)
+  const [unavailablePlayers, setUnavailablePlayers] = useState<Set<string>>(new Set())
 
   const loadSession = async () => {
     try {
@@ -91,6 +92,8 @@ const CoachPage = () => {
         if (assignedIds.has(player.id)) return false
         // Exclude players who only want to play 1 round if we're viewing rounds 2 or 3
         if (selectedRound > 1 && player.maxRounds === 1) return false
+        // Exclude players marked as unavailable/injured
+        if (unavailablePlayers.has(player.id)) return false
         return true
       })
       .sort((a, b) => {
@@ -108,8 +111,49 @@ const CoachPage = () => {
         const categoryB = categoryOrder[b.primaryCategory ?? ''] ?? 4
         return categoryA - categoryB
       }),
-    [checkedIn, assignedIds, selectedRound]
+    [checkedIn, assignedIds, selectedRound, unavailablePlayers]
   )
+
+  const inactivePlayers = useMemo(
+    () => checkedIn
+      .filter((player) => {
+        // Exclude players already assigned to a court
+        if (assignedIds.has(player.id)) return false
+        // Include players who only want to play 1 round if we're viewing rounds 2 or 3
+        const isOneRoundOnly = selectedRound > 1 && player.maxRounds === 1
+        // Include players marked as unavailable/injured
+        const isUnavailable = unavailablePlayers.has(player.id)
+        return isOneRoundOnly || isUnavailable
+      })
+      .sort((a, b) => {
+        // Primary sort: Gender (Herre, Dame, then null/undefined)
+        const genderOrder: Record<string, number> = { Herre: 1, Dame: 2 }
+        const genderA = genderOrder[a.gender ?? ''] ?? 3
+        const genderB = genderOrder[b.gender ?? ''] ?? 3
+        if (genderA !== genderB) {
+          return genderA - genderB
+        }
+        
+        // Secondary sort: PlayingCategory (Begge, Double, Single, then null/undefined)
+        const categoryOrder: Record<string, number> = { Begge: 1, Double: 2, Single: 3 }
+        const categoryA = categoryOrder[a.primaryCategory ?? ''] ?? 4
+        const categoryB = categoryOrder[b.primaryCategory ?? ''] ?? 4
+        return categoryA - categoryB
+      }),
+    [checkedIn, assignedIds, selectedRound, unavailablePlayers]
+  )
+
+  const handleMarkUnavailable = (playerId: string) => {
+    setUnavailablePlayers((prev) => new Set(prev).add(playerId))
+  }
+
+  const handleMarkAvailable = (playerId: string) => {
+    setUnavailablePlayers((prev) => {
+      const newSet = new Set(prev)
+      newSet.delete(playerId)
+      return newSet
+    })
+  }
 
   const genderBreakdown = useMemo(() => {
     const male = checkedIn.filter((player) => player.gender === 'Herre').length
@@ -285,13 +329,28 @@ const CoachPage = () => {
                 <span className="text-xs text-[hsl(var(--muted))]">Rangliste: {player.level ?? '–'}</span>
               </div>
             </div>
-            <button
-              type="button"
-              onClick={() => handleMove(player.id)}
-              className="rounded px-2 py-1 text-xs font-medium text-[hsl(var(--muted))] hover:text-[hsl(var(--foreground))] hover:bg-[hsl(var(--surface-glass)/.85)] ring-1 ring-[hsl(var(--line)/.12)] transition-all duration-200 ease-[cubic-bezier(.2,.8,.2,1)] motion-reduce:transition-none flex-shrink-0 ml-1"
-            >
-              Bænk
-            </button>
+            <div className="flex items-center gap-1 flex-shrink-0 ml-1">
+              <button
+                type="button"
+                onClick={() => handleMove(player.id)}
+                className="rounded px-2 py-1 text-xs font-medium text-[hsl(var(--muted))] hover:text-[hsl(var(--foreground))] hover:bg-[hsl(var(--surface-glass)/.85)] ring-1 ring-[hsl(var(--line)/.12)] transition-all duration-200 ease-[cubic-bezier(.2,.8,.2,1)] motion-reduce:transition-none"
+              >
+                Bænk
+              </button>
+              {selectedRound > 1 && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    handleMove(player.id)
+                    handleMarkUnavailable(player.id)
+                  }}
+                  className="rounded px-2 py-1 text-xs font-medium text-[hsl(var(--destructive))] hover:bg-[hsl(var(--destructive)/.1)] ring-1 ring-[hsl(var(--destructive)/.2)] transition-all duration-200 ease-[cubic-bezier(.2,.8,.2,1)] motion-reduce:transition-none"
+                  title="Marker som inaktiv/skadet"
+                >
+                  Inaktiv
+                </button>
+              )}
+            </div>
           </>
         ) : (
           <span className="text-xs text-[hsl(var(--muted))]">Tom plads</span>
@@ -460,6 +519,100 @@ const CoachPage = () => {
               </div>
             ))}
           </div>
+          
+          {/* Inactive Players Section */}
+          {inactivePlayers.length > 0 && (
+            <>
+              <div className="mt-4 pt-4 border-t border-[hsl(var(--line)/.12)]">
+                <header className="flex items-center justify-between mb-2">
+                  <h4 className="text-xs font-semibold text-[hsl(var(--muted))] uppercase tracking-wide">
+                    Inaktive / Kun 1 runde
+                  </h4>
+                  <span className="rounded-full bg-[hsl(var(--surface-2))] px-2 py-0.5 text-[10px] font-medium text-[hsl(var(--muted))]">
+                    {inactivePlayers.length}
+                  </span>
+                </header>
+                <div className="flex flex-col space-y-2">
+                  {inactivePlayers.map((player) => {
+                    const isOneRoundOnly = selectedRound > 1 && player.maxRounds === 1
+                    const isUnavailable = unavailablePlayers.has(player.id)
+                    return (
+                      <div
+                        key={player.id}
+                        className={`flex items-center justify-between gap-2 rounded-md border-hair px-2 py-2 min-h-[48px] opacity-60 hover:opacity-100 hover:shadow-sm cursor-grab active:cursor-grabbing transition-all ring-1 ring-[hsl(var(--line)/.12)] ${getPlayerSlotBgColor(player.gender)}`}
+                        draggable
+                        onDragStart={(event) => {
+                          event.dataTransfer.setData('application/x-player-id', player.id)
+                          event.dataTransfer.effectAllowed = 'move'
+                        }}
+                      >
+                        <div className="min-w-0 flex-1">
+                          <p className="text-xs font-semibold text-[hsl(var(--foreground))] truncate">
+                            {player.alias ?? player.name}
+                            {isOneRoundOnly && !isUnavailable && (
+                              <span className="ml-1 text-[10px] font-normal text-[hsl(var(--muted))]">• Kun 1 runde</span>
+                            )}
+                            {isUnavailable && (
+                              <span className="ml-1 text-[10px] font-normal text-[hsl(var(--destructive))]">• Inaktiv</span>
+                            )}
+                          </p>
+                          <div className="flex items-center gap-1.5">
+                            {getCategoryBadge(player.primaryCategory)}
+                            <p className="text-[10px] text-[hsl(var(--muted))] truncate">
+                              Rangliste: {player.level ?? '–'}
+                            </p>
+                          </div>
+                        </div>
+                        <div className="flex items-center gap-1 flex-shrink-0">
+                          {isUnavailable && (
+                            <button
+                              type="button"
+                              onClick={() => handleMarkAvailable(player.id)}
+                              className="rounded px-2 py-0.5 text-[10px] font-medium text-[hsl(var(--success))] hover:bg-[hsl(var(--success)/.1)] ring-1 ring-[hsl(var(--success)/.2)] transition-all duration-200 ease-[cubic-bezier(.2,.8,.2,1)] motion-reduce:transition-none hover:shadow-sm"
+                              title="Gendan til bænk"
+                            >
+                              Aktiver
+                            </button>
+                          )}
+                          <button
+                            type="button"
+                            onClick={() => setMoveMenuPlayer(moveMenuPlayer === player.id ? null : player.id)}
+                            className="rounded px-2 py-0.5 text-[10px] font-medium text-[hsl(var(--foreground))] hover:bg-[hsl(var(--surface-2)/.7)] border-hair transition-all duration-200 ease-[cubic-bezier(.2,.8,.2,1)] motion-reduce:transition-none hover:shadow-sm"
+                          >
+                            Flyt
+                          </button>
+                          {moveMenuPlayer === player.id && (
+                            <div className="flex items-center gap-1 text-[10px]">
+                              <select
+                                className="rounded border-hair bg-[hsl(var(--surface))] px-1 py-0.5 text-[hsl(var(--foreground))] focus:ring-1 focus:ring-[hsl(var(--ring))] outline-none transition-all duration-200 motion-reduce:transition-none"
+                                defaultValue=""
+                                onChange={(event) => {
+                                  const val = Number(event.target.value)
+                                  if (!Number.isNaN(val)) {
+                                    void handleQuickAssign(player.id, val)
+                                    if (isUnavailable) {
+                                      handleMarkAvailable(player.id)
+                                    }
+                                  }
+                                }}
+                              >
+                                <option value="">Vælg</option>
+                                {matches.map((court) => (
+                                  <option key={court.courtIdx} value={court.courtIdx} disabled={getFirstFreeSlot(court) === undefined}>
+                                    Bane {court.courtIdx}
+                                  </option>
+                                ))}
+                              </select>
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    )
+                  })}
+                </div>
+              </div>
+            </>
+          )}
         </PageCard>
 
         {/* Courts */}
