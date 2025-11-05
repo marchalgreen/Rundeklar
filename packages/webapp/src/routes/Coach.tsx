@@ -8,6 +8,7 @@ import type {
 } from '@badminton/common'
 import api from '../api'
 import { PageCard } from '../components/ui'
+import { useToast } from '../components/ui/Toast'
 
 const EMPTY_SLOTS = 4
 
@@ -17,8 +18,8 @@ const CoachPage = () => {
   const [matches, setMatches] = useState<CourtWithPlayers[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
-  const [info, setInfo] = useState<string | null>(null)
   const [moveMenuPlayer, setMoveMenuPlayer] = useState<string | null>(null)
+  const { notify } = useToast()
   const [selectedRound, setSelectedRound] = useState<number>(1)
   const [unavailablePlayers, setUnavailablePlayers] = useState<Set<string>>(new Set())
   const [dragOverInactive, setDragOverInactive] = useState(false)
@@ -190,8 +191,7 @@ const CoachPage = () => {
     try {
       const active = await api.session.startOrGetActive()
       setSession(active)
-      setInfo('Træning startet')
-      setTimeout(() => setInfo(null), 1800)
+      notify({ variant: 'success', title: 'Træning startet' })
     } catch (err: any) {
       setError(err.message ?? 'Kunne ikke starte træning')
     }
@@ -202,8 +202,7 @@ const CoachPage = () => {
     try {
       await api.session.endActive()
       setSession(null)
-      setInfo('Træning afsluttet')
-      setTimeout(() => setInfo(null), 1800)
+      notify({ variant: 'success', title: 'Træning afsluttet' })
     } catch (err: any) {
       setError(err.message ?? 'Kunne ikke afslutte træning')
     }
@@ -215,8 +214,10 @@ const CoachPage = () => {
       const result: AutoArrangeResult = await api.matches.autoArrange(selectedRound)
       await loadMatches()
       await loadCheckIns()
-      setInfo(`Fordelte spillere på ${result.filledCourts} baner (Runde ${selectedRound})`)
-      setTimeout(() => setInfo(null), 3000)
+      notify({ 
+        variant: 'success', 
+        title: `Fordelte spillere på ${result.filledCourts} baner (Runde ${selectedRound})` 
+      })
     } catch (err: any) {
       setError(err.message ?? 'Kunne ikke matche spillere')
     }
@@ -459,15 +460,6 @@ const CoachPage = () => {
           </div>
         </div>
         <div className="flex-1 flex flex-col gap-2 items-end">
-          {info && (
-            <span
-              className="inline-block rounded-full bg-[hsl(var(--success)/.15)] px-3 py-1 text-sm text-[hsl(var(--success))] transition-all duration-200 ease-[cubic-bezier(.2,.8,.2,1)] motion-reduce:transition-none"
-              role="status"
-              aria-live="polite"
-            >
-              {info}
-            </span>
-          )}
           {error && <span className="block text-sm text-[hsl(var(--destructive))]">{error}</span>}
           <div className="flex gap-2">
           <button
