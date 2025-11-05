@@ -40,6 +40,7 @@ const CheckInPage = () => {
   const [filterLetter, setFilterLetter] = useState('Alle')
   const [error, setError] = useState<string | null>(null)
   const [oneRoundOnlyPlayers, setOneRoundOnlyPlayers] = useState<Set<string>>(new Set())
+  const [justCheckedIn, setJustCheckedIn] = useState<Set<string>>(new Set())
   const { notify } = useToast()
 
   const refreshSession = useCallback(async () => {
@@ -109,12 +110,28 @@ const CheckInPage = () => {
       if (!session) return
       setError(null)
       try {
+        // Add visual feedback immediately
+        setJustCheckedIn((prev) => new Set(prev).add(player.id))
         await api.checkIns.add({ playerId: player.id, maxRounds })
         await loadCheckIns()
         const roundsText = maxRounds === 1 ? ' (kun 1 runde)' : ''
         notify({ variant: 'success', title: 'Spiller tjekket ind', description: `${player.name}${roundsText}` })
+        // Remove visual feedback after animation (scale up then down)
+        setTimeout(() => {
+          setJustCheckedIn((prev) => {
+            const newSet = new Set(prev)
+            newSet.delete(player.id)
+            return newSet
+          })
+        }, 500)
       } catch (err: any) {
         setError(err.message ?? 'Kunne ikke tjekke ind')
+        // Remove visual feedback on error
+        setJustCheckedIn((prev) => {
+          const newSet = new Set(prev)
+          newSet.delete(player.id)
+          return newSet
+        })
       }
     },
     [loadCheckIns, notify, session]
@@ -226,15 +243,27 @@ const CheckInPage = () => {
               const checkedInPlayer = checkedIn.find((p) => p.id === player.id)
               const isOneRoundOnly = checkedInPlayer?.maxRounds === 1
               const oneRoundOnly = oneRoundOnlyPlayers.has(player.id)
+              const isJustCheckedIn = justCheckedIn.has(player.id)
               const initials = getInitials(player.name)
               
               return (
                 <div
                   key={player.id}
+                  onClick={() => {
+                    if (!isChecked) {
+                      handleCheckIn(player, oneRoundOnly ? 1 : undefined)
+                      // Clear the checkbox after check-in
+                      const newSet = new Set(oneRoundOnlyPlayers)
+                      newSet.delete(player.id)
+                      setOneRoundOnlyPlayers(newSet)
+                    }
+                  }}
                   className={clsx(
-                    'card-glass-active border-hair flex min-h-[72px] items-center justify-between gap-4 rounded-xl px-4 py-4',
-                    'transition-all duration-200 ease-[cubic-bezier(.2,.8,.2,1)] motion-reduce:transition-none hover:shadow-sm',
-                    isChecked && 'bg-[hsl(var(--success)/.06)]'
+                    'border-hair flex min-h-[72px] items-center justify-between gap-4 rounded-xl px-4 py-4',
+                    'transition-all duration-300 ease-[cubic-bezier(.2,.8,.2,1)] motion-reduce:transition-none',
+                    !isChecked && 'card-glass-active cursor-pointer hover:shadow-sm hover:ring-[hsl(var(--accent)/.15)]',
+                    isChecked && 'bg-[hsl(206_88%_92%)] ring-1 ring-[hsl(206_88%_85%)]',
+                    isJustCheckedIn && 'bg-[hsl(206_88%_75%)] ring-2 ring-[hsl(206_88%_60%)] scale-[1.03] shadow-lg'
                   )}
                 >
                   <div className="flex items-center gap-4">
@@ -256,7 +285,10 @@ const CheckInPage = () => {
                   </div>
                   <div className="flex items-center gap-3">
                     {!isChecked && (
-                      <label className="flex items-center gap-2 cursor-pointer">
+                      <label 
+                        className="flex items-center gap-2 cursor-pointer"
+                        onClick={(e) => e.stopPropagation()} // Prevent row click from triggering
+                      >
                         <input
                           type="checkbox"
                           checked={oneRoundOnly}
@@ -278,7 +310,8 @@ const CheckInPage = () => {
                     <Button
                       variant={isChecked ? 'secondary' : 'primary'}
                       size="sm"
-                      onClick={() => {
+                      onClick={(e) => {
+                        e.stopPropagation() // Prevent row click from triggering
                         if (isChecked) {
                           handleCheckOut(player)
                         } else {
