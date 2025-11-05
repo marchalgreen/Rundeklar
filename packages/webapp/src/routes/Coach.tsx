@@ -338,9 +338,16 @@ const CoachPage = () => {
     return (
       <div
         key={slotIndex}
+        draggable={!!player}
+        onDragStart={(event: React.DragEvent<HTMLDivElement>) => {
+          if (player) {
+            event.dataTransfer.setData('application/x-player-id', player.id)
+            event.dataTransfer.effectAllowed = 'move'
+          }
+        }}
         className={`flex min-h-[52px] items-center justify-between rounded-md px-3 py-2 text-sm transition-all duration-200 ease-[cubic-bezier(.2,.8,.2,1)] motion-reduce:transition-none ring-1 ${
           player
-            ? `${getPlayerSlotBgColor(player.gender)} hover:shadow-sm ring-[hsl(var(--line)/.12)]`
+            ? `${getPlayerSlotBgColor(player.gender)} hover:shadow-sm ring-[hsl(var(--line)/.12)] cursor-grab active:cursor-grabbing`
             : isDragOver
             ? 'bg-[hsl(var(--primary)/.15)] ring-2 ring-[hsl(var(--primary)/.5)] shadow-md'
             : isCourtHovered
@@ -367,14 +374,7 @@ const CoachPage = () => {
         {player ? (
           <>
             <div className="flex flex-col gap-1 min-w-0 flex-1">
-            <span
-              draggable
-                onDragStart={(event: React.DragEvent) => {
-                event.dataTransfer.setData('application/x-player-id', player.id)
-                event.dataTransfer.effectAllowed = 'move'
-              }}
-                className="cursor-grab active:cursor-grabbing text-sm font-semibold text-[hsl(var(--foreground))] truncate"
-            >
+            <span className="text-sm font-semibold text-[hsl(var(--foreground))] truncate">
               {player.alias ?? player.name}
             </span>
               <div className="flex items-center gap-1.5">
@@ -385,7 +385,11 @@ const CoachPage = () => {
             <div className="flex items-center gap-1 flex-shrink-0 ml-1">
               <button
                 type="button"
-                onClick={() => handleMove(player.id)}
+                onClick={(e) => {
+                  e.stopPropagation()
+                  handleMove(player.id)
+                }}
+                onMouseDown={(e) => e.stopPropagation()}
                 className="rounded px-2 py-1 text-xs font-medium text-[hsl(var(--muted))] hover:text-[hsl(var(--foreground))] hover:bg-[hsl(var(--surface-glass)/.85)] ring-1 ring-[hsl(var(--line)/.12)] transition-all duration-200 ease-[cubic-bezier(.2,.8,.2,1)] motion-reduce:transition-none"
               >
                 BÆNK
@@ -393,10 +397,12 @@ const CoachPage = () => {
               {selectedRound > 1 && (
                 <button
                   type="button"
-                  onClick={() => {
+                  onClick={(e) => {
+                    e.stopPropagation()
                     handleMove(player.id)
                     handleMarkUnavailable(player.id)
                   }}
+                  onMouseDown={(e) => e.stopPropagation()}
                   className="rounded px-2 py-1 text-xs font-medium text-[hsl(var(--destructive))] hover:bg-[hsl(var(--destructive)/.1)] ring-1 ring-[hsl(var(--destructive)/.2)] transition-all duration-200 ease-[cubic-bezier(.2,.8,.2,1)] motion-reduce:transition-none"
                   title="Marker som inaktiv/skadet"
                 >
