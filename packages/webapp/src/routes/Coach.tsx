@@ -562,37 +562,6 @@ const CoachPage = () => {
                     </p>
                   </div>
                 </div>
-                <div className="flex items-center gap-1 flex-shrink-0" data-flyt-menu>
-                  <button
-                    type="button"
-                    onClick={() => setMoveMenuPlayer(moveMenuPlayer === player.id ? null : player.id)}
-                    className="rounded px-2 py-0.5 text-[10px] font-medium text-[hsl(var(--foreground))] hover:bg-[hsl(var(--surface-2)/.7)] border-hair transition-all duration-200 ease-[cubic-bezier(.2,.8,.2,1)] motion-reduce:transition-none hover:shadow-sm"
-                  >
-                    FLYT
-                  </button>
-                  {moveMenuPlayer === player.id && (
-                    <div className="flex items-center gap-1 text-[10px]">
-                      <select
-                        className="rounded border-hair bg-[hsl(var(--surface))] px-1 py-0.5 text-[hsl(var(--foreground))] focus:ring-1 focus:ring-[hsl(var(--ring))] outline-none transition-all duration-200 motion-reduce:transition-none"
-                        defaultValue=""
-                        onChange={(event) => {
-                          const val = Number(event.target.value)
-                          if (!Number.isNaN(val)) {
-                            void handleQuickAssign(player.id, val)
-                            setMoveMenuPlayer(null)
-                          }
-                        }}
-                      >
-                        <option value="">Vælg</option>
-                        {matches.map((court) => (
-                          <option key={court.courtIdx} value={court.courtIdx} disabled={getFirstFreeSlot(court) === undefined}>
-                            Bane {court.courtIdx}
-                          </option>
-                        ))}
-                      </select>
-                    </div>
-                  )}
-                </div>
               </div>
             ))}
           </div>
@@ -639,24 +608,19 @@ const CoachPage = () => {
                         }}
                       >
                         <div className="min-w-0 flex-1">
-                          <p className="text-xs font-semibold text-[hsl(var(--foreground))] truncate">
-                            {player.alias ?? player.name}
-                            {isOneRoundOnly && !isUnavailable && (
-                              <span className="ml-1 text-[10px] font-normal text-[hsl(var(--muted))]">• Kun 1 runde</span>
-                            )}
-                            {isUnavailable && (
-                              <span className="ml-1 text-[10px] font-normal text-[hsl(var(--destructive))]">• Inaktiv</span>
-                            )}
-                          </p>
+                          <p className="text-xs font-semibold text-[hsl(var(--foreground))] truncate">{player.alias ?? player.name}</p>
                           <div className="flex items-center gap-1.5">
                             {getCategoryBadge(player.primaryCategory)}
-                            <p className="text-[10px] text-[hsl(var(--muted))] truncate">
-                              Rangliste: {player.level ?? '–'}
-                            </p>
+                            {isOneRoundOnly && !isUnavailable && (
+                              <span className="text-[10px] font-normal text-[hsl(var(--muted))]">Kun 1 runde</span>
+                            )}
+                            {isUnavailable && (
+                              <span className="text-[10px] font-normal text-[hsl(var(--destructive))]">Inaktiv</span>
+                            )}
                           </div>
                         </div>
-                        <div className="flex items-center gap-1 flex-shrink-0" data-flyt-menu>
-                          {isUnavailable && (
+                        {isUnavailable && (
+                          <div className="flex items-center gap-1 flex-shrink-0">
                             <button
                               type="button"
                               onClick={() => handleMarkAvailable(player.id)}
@@ -665,40 +629,8 @@ const CoachPage = () => {
                             >
                               Aktiver
                             </button>
-                          )}
-                          <button
-                            type="button"
-                            onClick={() => setMoveMenuPlayer(moveMenuPlayer === player.id ? null : player.id)}
-                            className="rounded px-2 py-0.5 text-[10px] font-medium text-[hsl(var(--foreground))] hover:bg-[hsl(var(--surface-2)/.7)] border-hair transition-all duration-200 ease-[cubic-bezier(.2,.8,.2,1)] motion-reduce:transition-none hover:shadow-sm"
-                          >
-                            FLYT
-                          </button>
-                          {moveMenuPlayer === player.id && (
-                            <div className="flex items-center gap-1 text-[10px]">
-                              <select
-                                className="rounded border-hair bg-[hsl(var(--surface))] px-1 py-0.5 text-[hsl(var(--foreground))] focus:ring-1 focus:ring-[hsl(var(--ring))] outline-none transition-all duration-200 motion-reduce:transition-none"
-                                defaultValue=""
-                                onChange={(event) => {
-                                  const val = Number(event.target.value)
-                                  if (!Number.isNaN(val)) {
-                                    void handleQuickAssign(player.id, val)
-                                    if (isUnavailable) {
-                                      handleMarkAvailable(player.id)
-                                    }
-                                    setMoveMenuPlayer(null)
-                                  }
-                                }}
-                              >
-                                <option value="">Vælg</option>
-                                {matches.map((court) => (
-                                  <option key={court.courtIdx} value={court.courtIdx} disabled={getFirstFreeSlot(court) === undefined}>
-                                    Bane {court.courtIdx}
-                                  </option>
-                                ))}
-                              </select>
-                            </div>
-                          )}
-                        </div>
+                          </div>
+                        )}
                       </div>
                     )
                   })}
