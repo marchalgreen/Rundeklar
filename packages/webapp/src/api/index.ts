@@ -347,7 +347,7 @@ const autoArrangeMatches = async (round?: number): Promise<AutoArrangeResult> =>
     return { filledCourts: 0, benched: benchPlayers.length }
   }
 
-  // Sort players by level (ascending - lower Niveau = better player)
+  // Sort players by level (ascending - lower Rangliste = better player)
   benchPlayers.sort((a, b) => (a.level ?? 0) - (b.level ?? 0))
 
   // For rounds 2+, track previous matchups to avoid repeating partners/opponents

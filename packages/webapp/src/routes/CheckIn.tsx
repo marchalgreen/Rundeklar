@@ -266,14 +266,14 @@ const CheckInPage = () => {
   return (
     <section className="flex flex-col gap-6 pt-6">
       <header className="mb-2">
-        <h1 className="text-2xl font-semibold">Check ind</h1>
-        <p className="mt-1 text-[hsl(var(--muted))]">
+        <h1 className="text-2xl font-semibold text-[hsl(var(--foreground))]">Check ind</h1>
+        <p className="mt-1 text-base text-[hsl(var(--muted))]">
           Aktiv træning: {new Date(session.date).toLocaleDateString('da-DK')}
         </p>
         {checkedIn.length > 0 && (
-          <div className="mt-2">
-            <p className="text-sm text-[hsl(var(--muted))]">Tjekket ind: {checkedIn.length}</p>
-            <p className="text-xs text-[hsl(var(--muted))]">
+          <div className="mt-1">
+            <p className="text-base text-[hsl(var(--muted))]">Tjekket ind: {checkedIn.length}</p>
+            <p className="text-base text-[hsl(var(--muted))]">
               Herrer: {genderBreakdown.male} • Damer: {genderBreakdown.female}
             </p>
           </div>

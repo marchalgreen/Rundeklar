@@ -148,7 +148,7 @@ const PlayersPage = () => {
       },
       {
         id: 'level',
-        header: 'Niveau',
+        header: 'Rangliste',
         align: 'center',
         sortable: true,
         sortValue: (row) => row.level ?? 0,
@@ -208,8 +208,8 @@ const PlayersPage = () => {
     <section className="flex flex-col gap-6 pt-6">
       <header className="flex items-center justify-between mb-4">
         <div>
-          <h1 className="text-lg font-medium text-[hsl(var(--foreground))]">Spillere</h1>
-          <p className="text-sm text-[hsl(var(--muted))] mt-1">Administrer medlemslisten og deres status.</p>
+          <h1 className="text-2xl font-semibold text-[hsl(var(--foreground))]">Spillere</h1>
+          <p className="text-base text-[hsl(var(--muted))] mt-1">Administrer medlemslisten og deres status.</p>
           {error && (
             <span className="mt-2 inline-block text-sm text-[hsl(var(--destructive))]">{error}</span>
           )}
@@ -289,7 +289,7 @@ const PlayersPage = () => {
                 />
               </label>
               <label className="flex flex-col gap-2 text-sm">
-                <span className="font-medium text-[hsl(var(--foreground))]">Niveau</span>
+                <span className="font-medium text-[hsl(var(--foreground))]">Rangliste</span>
                 <input
                   type="number"
                   value={formLevel}

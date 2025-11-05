@@ -282,7 +282,7 @@ const CoachPage = () => {
             </span>
               <div className="flex items-center gap-1.5">
                 {getCategoryBadge(player.primaryCategory)}
-                <span className="text-xs text-[hsl(var(--muted))]">Niveau {player.level ?? '–'}</span>
+                <span className="text-xs text-[hsl(var(--muted))]">Rangliste: {player.level ?? '–'}</span>
               </div>
             </div>
             <button
@@ -310,29 +310,37 @@ const CoachPage = () => {
 
   return (
     <section className="flex h-full flex-col gap-6 pt-6">
-      <header className="flex items-start justify-between mb-2">
-        <div>
-          <h1 className="text-2xl font-semibold">Kampprogram</h1>
-          <p className="mt-1 text-[hsl(var(--muted))]">Tjekket ind: {checkedIn.length}</p>
+      <header className="relative flex items-start justify-between mb-2">
+        <div className="flex-1">
+          <h1 className="text-2xl font-semibold text-[hsl(var(--foreground))]">Kampprogram</h1>
+          <p className="mt-1 text-base text-[hsl(var(--muted))]">Tjekket ind: {checkedIn.length}</p>
           {checkedIn.length > 0 && (
-            <p className="mt-0.5 text-sm text-[hsl(var(--muted))]">
+            <p className="mt-0.5 text-base text-[hsl(var(--muted))]">
               Herrer: {genderBreakdown.male} • Damer: {genderBreakdown.female}
             </p>
           )}
         </div>
-        <div className="flex items-center">
-          <select
-            value={selectedRound}
-            onChange={(e) => setSelectedRound(Number(e.target.value))}
-            className="rounded-md px-5 py-3.5 text-lg font-medium bg-[hsl(var(--surface))] text-[hsl(var(--foreground))] ring-1 ring-[hsl(var(--line)/.12)] focus:ring-2 focus:ring-[hsl(var(--ring))] outline-none transition-all duration-200 motion-reduce:transition-none cursor-pointer"
-            disabled={!session}
-          >
-            <option value={1}>Runde 1</option>
-            <option value={2}>Runde 2</option>
-            <option value={3}>Runde 3</option>
-          </select>
+        <div className="absolute left-1/2 top-0 -translate-x-1/2 flex items-center">
+          <div className="relative">
+            <select
+              value={selectedRound}
+              onChange={(e) => setSelectedRound(Number(e.target.value))}
+              className="rounded-xl px-8 py-4 pr-12 text-lg font-semibold bg-gradient-to-b from-[hsl(var(--surface-glass)/.95)] to-[hsl(var(--surface)/.98)] backdrop-blur-sm text-[hsl(var(--foreground))] ring-2 ring-[hsl(var(--primary)/.25)] shadow-[0_4px_12px_hsl(var(--primary)/.15)] hover:shadow-[0_6px_20px_hsl(var(--primary)/.2)] hover:ring-[hsl(var(--primary)/.35)] focus:ring-[hsl(var(--primary)/.45)] focus:ring-2 focus:shadow-[0_6px_20px_hsl(var(--primary)/.25)] outline-none transition-all duration-300 ease-[cubic-bezier(.2,.8,.2,1)] motion-reduce:transition-none cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed appearance-none"
+              disabled={!session}
+              style={{
+                backgroundImage: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 16 16'%3E%3Cpath fill='%23666' d='M8 11L3 6h10z'/%3E%3C/svg%3E")`,
+                backgroundRepeat: 'no-repeat',
+                backgroundPosition: 'right 16px center',
+                backgroundSize: '16px 16px'
+              }}
+            >
+              <option value={1}>Runde 1</option>
+              <option value={2}>Runde 2</option>
+              <option value={3}>Runde 3</option>
+            </select>
+          </div>
         </div>
-        <div className="flex flex-col gap-2">
+        <div className="flex-1 flex flex-col gap-2 items-end">
           {info && (
             <span
               className="inline-block rounded-full bg-[hsl(var(--success)/.15)] px-3 py-1 text-sm text-[hsl(var(--success))] transition-all duration-200 ease-[cubic-bezier(.2,.8,.2,1)] motion-reduce:transition-none"
@@ -417,7 +425,7 @@ const CoachPage = () => {
                   <div className="flex items-center gap-1.5">
                     {getCategoryBadge(player.primaryCategory)}
                     <p className="text-[10px] text-[hsl(var(--muted))] truncate">
-                      Niveau {player.level ?? '–'}
+                      Rangliste: {player.level ?? '–'}
                     </p>
                   </div>
                 </div>
