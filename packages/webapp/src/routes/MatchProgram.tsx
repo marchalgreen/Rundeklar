@@ -609,16 +609,16 @@ const MatchProgramPage = () => {
         }}
         className={`flex min-h-[52px] items-center justify-between rounded-md px-3 py-2 text-sm transition-all duration-200 ease-[cubic-bezier(.2,.8,.2,1)] motion-reduce:transition-none ${
           isRecentlySwapped
-            ? `${getPlayerSlotBgColor(player.gender)} animate-swap-in ring-2 ring-[hsl(var(--primary)/.5)] shadow-lg`
+            ? `${getPlayerSlotBgColor(player.gender)} animate-swap-in ring-2 ring-[hsl(var(--primary)/.5)] shadow-lg border-2 border-transparent`
             : isDragOverOccupied && player
             ? `${getPlayerSlotBgColor(player.gender)} ring-2 ring-[hsl(var(--primary)/.6)] shadow-lg border-2 border-[hsl(var(--primary)/.4)]`
             : player
-            ? `${getPlayerSlotBgColor(player.gender)} hover:shadow-sm ring-1 ring-[hsl(var(--line)/.12)] cursor-grab active:cursor-grabbing`
+            ? `${getPlayerSlotBgColor(player.gender)} hover:shadow-sm ring-1 ring-[hsl(var(--line)/.12)] cursor-grab active:cursor-grabbing border-2 border-transparent`
             : isDragOver
-            ? 'bg-[hsl(var(--primary)/.15)] ring-2 ring-[hsl(var(--primary)/.5)] shadow-md'
+            ? 'bg-[hsl(var(--primary)/.15)] ring-2 ring-[hsl(var(--primary)/.5)] shadow-md border-2 border-transparent'
             : isCourtHovered
-            ? 'bg-[hsl(var(--primary)/.08)] ring-1 ring-[hsl(var(--primary)/.3)]'
-            : 'bg-[hsl(var(--surface-2))] text-[hsl(var(--muted))] ring-1 ring-[hsl(var(--line)/.12)]'
+            ? 'bg-[hsl(var(--primary)/.08)] ring-1 ring-[hsl(var(--primary)/.3)] border-2 border-transparent'
+            : 'bg-[hsl(var(--surface-2))] text-[hsl(var(--muted))] ring-1 ring-[hsl(var(--line)/.12)] border-2 border-transparent'
         }`}
         onDragOver={(event: React.DragEvent<HTMLDivElement>) => {
           // Allow drag over even if slot is occupied (for swapping)
@@ -668,7 +668,20 @@ const MatchProgramPage = () => {
             </div>
           </>
         ) : (
-          <span className="text-xs text-[hsl(var(--muted))]">Tom plads</span>
+          <>
+            <div className="flex flex-col gap-1 min-w-0 flex-1">
+              <div className="flex items-center gap-1.5">
+                <span className="text-sm font-semibold text-[hsl(var(--muted))]">Tom plads</span>
+              </div>
+              <div className="flex items-center gap-1.5">
+                <span className="inline-flex items-center justify-center rounded-full w-5 h-5 opacity-0"></span>
+                <span className="text-xs text-[hsl(var(--muted))] opacity-0">Rangliste: –</span>
+              </div>
+            </div>
+            <div className="flex items-center gap-1 flex-shrink-0 ml-1">
+              <span className="opacity-0 text-xs font-medium px-2 py-1">BÆNK</span>
+            </div>
+          </>
         )}
       </div>
     )
