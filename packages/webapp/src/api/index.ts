@@ -348,28 +348,98 @@ const autoArrangeMatches = async (round?: number): Promise<AutoArrangeResult> =>
   // Sort players by level (ascending - lower Niveau = better player)
   benchPlayers.sort((a, b) => (a.level ?? 0) - (b.level ?? 0))
 
+  // For rounds 2+, track previous matchups to avoid repeating partners/opponents
+  const previousMatchups = new Set<string>()
+  if (round !== undefined && round > 1) {
+    // Get all previous matches (earlier rounds)
+    const earlierMatches = state.matches.filter(
+      (match: Match) => match.sessionId === session.id && match.round !== undefined && match.round !== null && match.round < round
+    )
+    
+    // Track all player pairs that have played together (as teammates or opponents)
+    earlierMatches.forEach((match: Match) => {
+      const matchPlayerIds = state.matchPlayers
+        .filter((mp) => mp.matchId === match.id)
+        .map((mp) => mp.playerId)
+      
+      // Create all possible pairs from this match (both teammates and opponents)
+      for (let i = 0; i < matchPlayerIds.length; i++) {
+        for (let j = i + 1; j < matchPlayerIds.length; j++) {
+          const pair = [matchPlayerIds[i], matchPlayerIds[j]].sort().join('|')
+          previousMatchups.add(pair)
+        }
+      }
+    })
+  }
+
+  // Helper function to check if two players have played together before
+  const havePlayedTogether = (playerId1: string, playerId2: string): boolean => {
+    const pair = [playerId1, playerId2].sort().join('|')
+    return previousMatchups.has(pair)
+  }
+
+  // Helper function to score a match combination (lower is better)
+  // Prefers new matchups over repeat matchups, and balanced levels
+  const scoreMatchup = (player1: Player, player2: Player, isTeam: boolean): number => {
+    const levelDiff = Math.abs((player1.level ?? 0) - (player2.level ?? 0))
+    const isRepeat = havePlayedTogether(player1.id, player2.id)
+    // If it's a repeat matchup, add a penalty (higher score = worse)
+    // For teammates (2v2), we want to avoid repeat partners more
+    // For opponents (1v1), we want to avoid repeat opponents more
+    const repeatPenalty = isRepeat ? (isTeam ? 1000 : 500) : 0
+    return levelDiff + repeatPenalty
+  }
+
+  // Helper function to score a team split for 2v2
+  const scoreTeamSplit = (players: Player[], team1: [number, number], team2: [number, number]): number => {
+    const [i, j] = team1
+    const [k, l] = team2
+    
+    // Score within-team balance (partners)
+    const team1Score = scoreMatchup(players[i], players[j], true)
+    const team2Score = scoreMatchup(players[k], players[l], true)
+    
+    // Score cross-team balance (opponents)
+    const crossTeamScore = 
+      scoreMatchup(players[i], players[k], false) +
+      scoreMatchup(players[i], players[l], false) +
+      scoreMatchup(players[j], players[k], false) +
+      scoreMatchup(players[j], players[l], false)
+    
+    // Calculate level balance
+    const levels = players.map((p) => p.level ?? 0)
+    const team1Total = levels[i] + levels[j]
+    const team2Total = levels[k] + levels[l]
+    const levelBalance = Math.abs(team1Total - team2Total)
+    
+    // Combine all factors (lower is better)
+    return team1Score + team2Score + crossTeamScore / 4 + levelBalance
+  }
+
   // Smart matching algorithm - PRIORITY: Get ALL players assigned to a court
   // Rule: Double players NEVER play Singles
+  // For rounds 2+: Prefer new partner/opponent combinations
   const assignments: Array<{ courtIdx: number; playerIds: string[] }> = []
   const usedPlayerIds = new Set<string>()
   let courtIdxIndex = 0
   const remainingPlayers = [...benchPlayers]
 
-  // Helper function to create balanced 2v2 match
+  // Helper function to create balanced 2v2 match with variety preference
   const createDoublesMatch = (players: Player[]): { courtIdx: number; playerIds: string[] } | null => {
     if (players.length !== 4) return null
     
     const levels = players.map((p) => p.level ?? 0)
     let bestSplit: [number, number] = [0, 0]
-    let bestDiff = Infinity
+    let bestScore = Infinity
     
+    // Try all combinations of splitting 4 players into 2 teams
     for (let i = 0; i < 3; i++) {
       for (let j = i + 1; j < 4; j++) {
-        const team1Total = levels[i] + levels[j]
-        const team2Total = levels.reduce((sum, l, idx) => sum + (idx === i || idx === j ? 0 : l), 0)
-        const diff = Math.abs(team1Total - team2Total)
-        if (diff < bestDiff) {
-          bestDiff = diff
+        const team1: [number, number] = [i, j]
+        const team2: [number, number] = [0, 1, 2, 3].filter((idx) => idx !== i && idx !== j) as [number, number]
+        const score = scoreTeamSplit(players, team1, team2)
+        if (score < bestScore) {
+          bestScore = score
           bestSplit = [i, j]
         }
       }
@@ -385,20 +455,18 @@ const autoArrangeMatches = async (round?: number): Promise<AutoArrangeResult> =>
     }
   }
 
-  // Helper function to create balanced 1v1 match
+  // Helper function to create balanced 1v1 match with variety preference
   const createSinglesMatch = (players: Player[]): { courtIdx: number; playerIds: string[] } | null => {
     if (players.length < 2) return null
     
     const player1 = players[0]
-    const player1Level = player1.level ?? 0
     let bestMatchIndex = 1
-    let bestBalance = Math.abs(player1Level - (players[1]?.level ?? 0))
+    let bestScore = scoreMatchup(player1, players[1], false)
     
     for (let i = 2; i < players.length; i++) {
-      const player2Level = players[i].level ?? 0
-      const balance = Math.abs(player1Level - player2Level)
-      if (balance < bestBalance) {
-        bestBalance = balance
+      const score = scoreMatchup(player1, players[i], false)
+      if (score < bestScore) {
+        bestScore = score
         bestMatchIndex = i
       }
     }
@@ -691,8 +759,21 @@ const movePlayer = async (payload: MatchMovePayload, round?: number): Promise<vo
       state.matches.push(targetMatch)
     }
 
+    // Only check slots in the current round's match
+    // Filter matchPlayers by matchId to ensure we only check the current match
     const existingSlots = state.matchPlayers.filter((mp) => mp.matchId === targetMatch!.id)
-    const slotTaken = existingSlots.find((mp) => mp.slot === parsed.toSlot)
+    
+    // When checking if a slot is taken, exclude the current player if they're already in this match
+    // This prevents false positives when the player is already in the slot
+    const slotTaken = existingSlots.find((mp) => {
+      // Skip the current player's existing slot if they're already in this match
+      if (currentMatch?.id === targetMatch!.id && currentMatchPlayer && mp.id === currentMatchPlayer.id) {
+        return false
+      }
+      return mp.slot === parsed.toSlot
+    })
+    
+    // Only throw error if slot is taken by a different player
     if (slotTaken && slotTaken.playerId !== parsed.playerId) {
       throw new Error('Pladsen er optaget')
     }

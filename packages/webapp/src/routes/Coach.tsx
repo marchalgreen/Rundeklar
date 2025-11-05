@@ -294,7 +294,7 @@ const CoachPage = () => {
         <div className="flex items-center gap-4">
           <div>
             <h1 className="text-2xl font-semibold">Kampprogram</h1>
-            <p className="mt-1 text-[hsl(var(--muted))]">Tjekkede spillere: {checkedIn.length}</p>
+            <p className="mt-1 text-[hsl(var(--muted))]">Indtjekkede spillere: {checkedIn.length}</p>
           </div>
           <select
             value={selectedRound}
