@@ -549,9 +549,9 @@ const MatchProgramPage = () => {
                   <p className="text-xs font-semibold text-[hsl(var(--foreground))] truncate">{player.alias ?? player.name}</p>
                   <div className="flex items-center gap-1.5 mt-1">
                     {getCategoryBadge(player.primaryCategory)}
-                    <p className="text-[10px] text-[hsl(var(--muted))] truncate">
+                    <span className="text-[10px] text-[hsl(var(--muted))] whitespace-nowrap">
                       Rangliste: {player.level ?? '–'}
-                    </p>
+                    </span>
                   </div>
                 </div>
                 <div className="w-[70px] flex-shrink-0" aria-hidden="true">
@@ -604,13 +604,13 @@ const MatchProgramPage = () => {
                       >
                         <div className="min-w-0 flex-1">
                           <p className="text-xs font-semibold text-[hsl(var(--foreground))] truncate">{player.alias ?? player.name}</p>
-                          <div className="flex items-center gap-1.5 mt-1">
+                          <div className="flex items-center gap-1.5 mt-1 flex-wrap">
                             {getCategoryBadge(player.primaryCategory)}
                             {isOneRoundOnly && !isUnavailable && (
-                              <span className="text-[10px] font-normal text-[hsl(var(--muted))]">Kun 1 runde</span>
+                              <span className="text-[10px] font-normal text-[hsl(var(--muted))] whitespace-nowrap">Kun 1 runde</span>
                             )}
                             {isUnavailable && (
-                              <span className="text-[10px] font-normal text-[hsl(var(--destructive))]">Inaktiv</span>
+                              <span className="text-[10px] font-normal text-[hsl(var(--destructive))] whitespace-nowrap">Inaktiv</span>
                             )}
                           </div>
                         </div>

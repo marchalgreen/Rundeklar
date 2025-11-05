@@ -417,15 +417,19 @@ const CheckInPage = () => {
                     <div className="flex items-center gap-2 min-w-0 flex-1">
                       {getCategoryBadge(player.primaryCategory)}
                       <div className="min-w-0 flex-1">
-                        <p className="text-xs font-semibold text-[hsl(var(--foreground))] truncate">
-                          {player.name}
-                          {player.alias && (
-                            <span className="text-[10px] font-normal text-[hsl(var(--muted))]"> ({player.alias})</span>
-                          )}
+                        <div className="flex items-center gap-1.5 flex-wrap">
+                          <p className="text-xs font-semibold text-[hsl(var(--foreground))] truncate">
+                            {player.name}
+                            {player.alias && (
+                              <span className="text-[10px] font-normal text-[hsl(var(--muted))]"> ({player.alias})</span>
+                            )}
+                          </p>
                           {isOneRoundOnly && (
-                            <span className="ml-1.5 text-[10px] text-[hsl(var(--muted))]">• Kun 1 runde</span>
+                            <span className="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-medium bg-[hsl(var(--surface-2))] text-[hsl(var(--muted))] border border-[hsl(var(--line)/.2)] whitespace-nowrap">
+                              Kun 1 runde
+                            </span>
                           )}
-                        </p>
+                        </div>
                       </div>
                     </div>
                     <Button
@@ -552,7 +556,9 @@ const CheckInPage = () => {
                           }}
                           className="w-4 h-4 rounded ring-1 ring-[hsl(var(--line)/.12)] focus:ring-2 focus:ring-[hsl(var(--ring))] outline-none transition-all duration-200 motion-reduce:transition-none cursor-pointer flex-shrink-0"
                         />
-                        <span className="text-xs text-[hsl(var(--muted))] whitespace-nowrap font-medium">Kun 1 runde</span>
+                        <span className="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-medium bg-[hsl(var(--surface-2))] text-[hsl(var(--muted))] border border-[hsl(var(--line)/.2)] whitespace-nowrap">
+                          Kun 1 runde
+                        </span>
                       </label>
                     <Button
                       variant="primary"
