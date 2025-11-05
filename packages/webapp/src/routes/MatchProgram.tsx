@@ -442,21 +442,6 @@ const MatchProgramPage = () => {
               >
                 BÆNK
               </button>
-              {selectedRound > 1 && (
-                <button
-                  type="button"
-                  onClick={(e) => {
-                    e.stopPropagation()
-                    handleMove(player.id)
-                    handleMarkUnavailable(player.id)
-                  }}
-                  onMouseDown={(e) => e.stopPropagation()}
-                  className="rounded px-2 py-1 text-xs font-medium text-[hsl(var(--destructive))] hover:bg-[hsl(var(--destructive)/.1)] ring-1 ring-[hsl(var(--destructive)/.2)] transition-all duration-200 ease-[cubic-bezier(.2,.8,.2,1)] motion-reduce:transition-none"
-                  title="Marker som inaktiv/skadet"
-                >
-                  Inaktiv
-                </button>
-              )}
             </div>
           </>
         ) : (
