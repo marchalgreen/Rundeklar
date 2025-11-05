@@ -544,7 +544,7 @@ const MatchProgramPage = () => {
             {bench.map((player) => (
               <div
                 key={player.id}
-                className={`flex items-center justify-between gap-2 rounded-md border-hair px-2 py-2 min-h-[48px] hover:shadow-sm cursor-grab active:cursor-grabbing transition-all ring-1 ring-[hsl(var(--line)/.12)] ${getPlayerSlotBgColor(player.gender)}`}
+                className={`flex items-center gap-2 rounded-md border-hair px-2 py-2 min-h-[48px] hover:shadow-sm cursor-grab active:cursor-grabbing transition-all ring-1 ring-[hsl(var(--line)/.12)] ${getPlayerSlotBgColor(player.gender)}`}
                 draggable
                 onDragStart={(event) => {
                   event.dataTransfer.setData('application/x-player-id', player.id)
@@ -559,9 +559,6 @@ const MatchProgramPage = () => {
                       Rangliste: {player.level ?? '–'}
                     </span>
                   </div>
-                </div>
-                <div className="w-[70px] flex-shrink-0" aria-hidden="true">
-                  {/* Spacer to match inactive card width */}
                 </div>
               </div>
             ))}
