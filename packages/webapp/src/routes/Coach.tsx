@@ -97,6 +97,12 @@ const CoachPage = () => {
     [checkedIn, assignedIds]
   )
 
+  const genderBreakdown = useMemo(() => {
+    const male = checkedIn.filter((player) => player.gender === 'Herre').length
+    const female = checkedIn.filter((player) => player.gender === 'Dame').length
+    return { male, female }
+  }, [checkedIn])
+
   const handleStartTraining = async () => {
     try {
       const active = await api.session.startOrGetActive()
@@ -294,7 +300,12 @@ const CoachPage = () => {
         <div className="flex items-center gap-4">
           <div>
             <h1 className="text-2xl font-semibold">Kampprogram</h1>
-            <p className="mt-1 text-[hsl(var(--muted))]">Indtjekkede spillere: {checkedIn.length}</p>
+            <p className="mt-1 text-[hsl(var(--muted))]">Tjekket ind: {checkedIn.length}</p>
+            {checkedIn.length > 0 && (
+              <p className="mt-0.5 text-sm text-[hsl(var(--muted))]">
+                Herrer: {genderBreakdown.male} • Damer: {genderBreakdown.female}
+              </p>
+            )}
           </div>
           <select
             value={selectedRound}
