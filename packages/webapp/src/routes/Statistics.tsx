@@ -190,7 +190,7 @@ const StatisticsPage = () => {
   }
 
   return (
-    <section className="flex flex-col gap-6 pt-6">
+    <section className="pt-6 space-y-6">
       <header className="flex items-center justify-between mb-4">
         <div className="flex-1">
           <h1 className="text-2xl font-semibold text-[hsl(var(--foreground))]">Statistik</h1>

@@ -966,10 +966,17 @@ const MatchProgramPage = () => {
                         onDragStart={(event) => {
                           event.dataTransfer.setData('application/x-player-id', player.id)
                           event.dataTransfer.effectAllowed = 'move'
-                          // Prevent layout shift by using a transparent drag image
-                          const img = new Image()
-                          img.src = 'data:image/gif;base64,R0lGODlhAQABAIAAAAUEBAAAACwAAAAAAQABAAACAkQBADs='
-                          event.dataTransfer.setDragImage(img, 0, 0)
+                          // Create a clone of the element for drag preview to prevent layout shift
+                          const dragElement = event.currentTarget.cloneNode(true) as HTMLElement
+                          dragElement.style.position = 'absolute'
+                          dragElement.style.top = '-1000px'
+                          dragElement.style.width = `${event.currentTarget.offsetWidth}px`
+                          dragElement.style.opacity = '0.8'
+                          document.body.appendChild(dragElement)
+                          const rect = event.currentTarget.getBoundingClientRect()
+                          event.dataTransfer.setDragImage(dragElement, event.clientX - rect.left, event.clientY - rect.top)
+                          // Clean up after a short delay
+                          setTimeout(() => document.body.removeChild(dragElement), 0)
                         }}
                         >
                           <div className="min-w-0 flex-1">
