@@ -552,7 +552,7 @@ const CheckInPage = () => {
                   className={clsx(
                     'border-hair flex min-h-[56px] items-center justify-between gap-3 rounded-lg px-3 py-2.5',
                     'transition-all duration-300 ease-[cubic-bezier(.2,.8,.2,1)] motion-reduce:transition-none',
-                    'cursor-pointer hover:shadow-sm hover:ring-2 hover:ring-[hsl(var(--accent)/.15)]',
+                    'cursor-pointer hover:shadow-sm ring-0 hover:ring-2 hover:ring-[hsl(var(--accent)/.15)]',
                     getPlayerBgColor(),
                     catLetter && 'cat-rail',
                     isJustCheckedIn && 'ring-2 ring-[hsl(206_88%_60%)] scale-[1.02] shadow-lg',

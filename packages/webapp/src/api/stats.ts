@@ -9,8 +9,7 @@ import type {
   TrainingSession,
   CheckIn
 } from '@herlev-hjorten/common'
-import { createId, getStateCopy, loadState, updateState } from './storage'
-import type { DatabaseState } from './storage'
+import { createId, getStateCopy, getStatisticsSnapshots, createStatisticsSnapshot, createSession, createCheckIn } from './supabase'
 
 /**
  * Determines season from a date string (August to July).
@@ -66,7 +65,7 @@ const getTeamStructure = (matchPlayers: MatchPlayer[]): { team1: string[]; team2
  * @throws Error if session not found or not ended
  */
 const snapshotSession = async (sessionId: string): Promise<StatisticsSnapshot> => {
-  const state = getStateCopy()
+  const state = await getStateCopy()
   const session = state.sessions.find((s) => s.id === sessionId)
   if (!session) {
     throw new Error('Session ikke fundet')
@@ -89,22 +88,13 @@ const snapshotSession = async (sessionId: string): Promise<StatisticsSnapshot> =
   )
   const sessionCheckIns = state.checkIns.filter((c) => c.sessionId === sessionId)
 
-  const snapshot: StatisticsSnapshot = {
-    id: createId(),
+  const snapshot = await createStatisticsSnapshot({
     sessionId: session.id,
     sessionDate: session.date,
     season,
     matches: sessionMatches.map((m) => ({ ...m })),
     matchPlayers: sessionMatchPlayers.map((mp) => ({ ...mp })),
-    checkIns: sessionCheckIns.map((c) => ({ ...c })),
-    createdAt: new Date().toISOString()
-  }
-
-  updateState((state: DatabaseState) => {
-    if (!state.statistics) {
-      state.statistics = []
-    }
-    state.statistics.push(snapshot)
+    checkIns: sessionCheckIns.map((c) => ({ ...c }))
   })
 
   return snapshot
@@ -115,9 +105,9 @@ const snapshotSession = async (sessionId: string): Promise<StatisticsSnapshot> =
  * @returns Array of unique season strings, sorted
  */
 const getAllSeasons = async (): Promise<string[]> => {
-  const state = getStateCopy()
+  const statistics = await getStatisticsSnapshots()
   const seasons = new Set<string>()
-  state.statistics?.forEach((stat) => {
+  statistics.forEach((stat) => {
     seasons.add(stat.season)
   })
   return Array.from(seasons).sort()
@@ -129,8 +119,7 @@ const getAllSeasons = async (): Promise<string[]> => {
  * @returns Array of statistics snapshots
  */
 const getSessionHistory = async (filters?: StatisticsFilters): Promise<StatisticsSnapshot[]> => {
-  const state = getStateCopy()
-  let snapshots = state.statistics ?? []
+  let snapshots = await getStatisticsSnapshots()
 
   if (filters?.season) {
     snapshots = snapshots.filter((s) => s.season === filters.season)
@@ -153,10 +142,10 @@ const getSessionHistory = async (filters?: StatisticsFilters): Promise<Statistic
  * @returns Record mapping season to check-in count
  */
 const getCheckInsBySeason = async (playerId: string): Promise<Record<string, number>> => {
-  const state = getStateCopy()
+  const statistics = await getStatisticsSnapshots()
   const bySeason: Record<string, number> = {}
 
-  state.statistics?.forEach((stat) => {
+  statistics.forEach((stat) => {
     const checkInCount = stat.checkIns.filter((c) => c.playerId === playerId).length
     if (checkInCount > 0) {
       bySeason[stat.season] = (bySeason[stat.season] ?? 0) + checkInCount
@@ -176,10 +165,10 @@ const getTopPartners = async (
   playerId: string,
   limit: number = 5
 ): Promise<Array<{ playerId: string; count: number; names: string }>> => {
-  const state = getStateCopy()
+  const [state, statistics] = await Promise.all([getStateCopy(), getStatisticsSnapshots()])
   const partnerCounts = new Map<string, number>()
 
-  state.statistics?.forEach((stat) => {
+  statistics.forEach((stat) => {
     // Group matchPlayers by matchId
     const matchGroups = new Map<string, MatchPlayer[]>()
     stat.matchPlayers.forEach((mp) => {
@@ -238,10 +227,10 @@ const getTopOpponents = async (
   playerId: string,
   limit: number = 5
 ): Promise<Array<{ playerId: string; count: number; names: string }>> => {
-  const state = getStateCopy()
+  const [state, statistics] = await Promise.all([getStateCopy(), getStatisticsSnapshots()])
   const opponentCounts = new Map<string, number>()
 
-  state.statistics?.forEach((stat) => {
+  statistics.forEach((stat) => {
     // Group matchPlayers by matchId
     const matchGroups = new Map<string, MatchPlayer[]>()
     stat.matchPlayers.forEach((mp) => {
@@ -296,11 +285,11 @@ const getPlayerComparison = async (
   playerId1: string,
   playerId2: string
 ): Promise<{ partnerCount: number; opponentCount: number }> => {
-  const state = getStateCopy()
+  const statistics = await getStatisticsSnapshots()
   let partnerCount = 0
   let opponentCount = 0
 
-  state.statistics?.forEach((stat) => {
+  statistics.forEach((stat) => {
     // Group matchPlayers by matchId
     const matchGroups = new Map<string, MatchPlayer[]>()
     stat.matchPlayers.forEach((mp) => {
@@ -343,14 +332,14 @@ const getPlayerStatistics = async (
   playerId: string,
   filters?: StatisticsFilters
 ): Promise<PlayerStatistics> => {
-  const state = getStateCopy()
+  const state = await getStateCopy()
   const player = state.players.find((p) => p.id === playerId)
   if (!player) {
     throw new Error('Spiller ikke fundet')
   }
 
   // Filter statistics by filters
-  let relevantStats = state.statistics ?? []
+  let relevantStats = await getStatisticsSnapshots()
   if (filters?.season) {
     relevantStats = relevantStats.filter((s) => s.season === filters.season)
   }
@@ -505,17 +494,15 @@ const getPlayerStatistics = async (
  * This function is for demo/testing purposes only.
  */
 const generateDummyHistoricalData = async (): Promise<void> => {
-  const state = getStateCopy()
+  const state = await getStateCopy()
 
   const players = state.players.filter((p) => p.active)
   if (players.length < 8) {
     throw new Error('Mindst 8 aktive spillere kræves for at generere dummy data')
   }
 
-  // Clear existing statistics before generating new data
-  updateState((state: DatabaseState) => {
-    state.statistics = []
-  })
+  // Note: We don't clear existing statistics in Supabase - this function generates additional data
+  // If you want to clear, you would need to delete from Supabase directly
 
   const courts = state.courts
   const now = new Date()
@@ -550,176 +537,163 @@ const generateDummyHistoricalData = async (): Promise<void> => {
   // Sort sessions by date
   sessions.sort((a, b) => a.date.localeCompare(b.date))
 
-  updateState((state: DatabaseState) => {
-    if (!state.statistics) {
-      state.statistics = []
+  // Process each session and create in Supabase
+  for (const sessionInfo of sessions) {
+    const sessionDate = new Date(sessionInfo.date)
+      
+    // Create ended session in Supabase
+    const session = await createSession({
+      date: sessionInfo.date,
+      status: 'ended'
+    })
+    const sessionId = session.id
+
+    // Randomly select ~26 players to check in on average (target: 1.7 matches per check-in)
+    // Use a range around 26 to make it realistic
+    const checkInCount = Math.min(
+      Math.floor(Math.random() * 10) + 22, // 22-32 players, average ~26
+      players.length
+    )
+    const shuffledPlayers = [...players].sort(() => Math.random() - 0.5)
+    const checkedInPlayers = shuffledPlayers.slice(0, checkInCount)
+
+    // Create check-ins in Supabase
+    const checkIns: CheckIn[] = []
+    for (const player of checkedInPlayers) {
+      const checkInTime = new Date(sessionDate)
+      checkInTime.setMinutes(checkInTime.getMinutes() - Math.floor(Math.random() * 60)) // Random time before session
+      
+      const checkIn = await createCheckIn({
+        sessionId,
+        playerId: player.id,
+        maxRounds: null
+      })
+      checkIns.push(checkIn)
     }
 
-    sessions.forEach((sessionInfo) => {
-      const sessionId = createId()
-      const sessionDate = new Date(sessionInfo.date)
-      
-      // Create ended session
-      const session: TrainingSession = {
-        id: sessionId,
-        date: sessionInfo.date,
-        status: 'ended',
-        createdAt: sessionInfo.date
-      }
-      state.sessions.push(session)
+    // Generate 2 rounds on average (1-3 rounds per session)
+    const roundsPerSession = Math.floor(Math.random() * 3) + 1 // 1-3 rounds, average ~2
+    const allMatches: Match[] = []
+    const allMatchPlayers: MatchPlayer[] = []
+    
+    // Track how many matches each player has been assigned to in this session
+    const playerMatchCount = new Map<string, number>()
+    checkedInPlayers.forEach((p) => playerMatchCount.set(p.id, 0))
+    
+    // Target: ~1.7 matches per player per session
+    // Calculate how many player slots we need: checkedInPlayers.length × 1.7
+    const targetPlayerSlots = Math.round(checkedInPlayers.length * 1.7)
+    
+    // With 2 rounds and 5-7 courts, we can create 10-14 matches
+    // If mostly 2v2 (4 players per match), that's 40-56 player slots
+    // If mostly 1v1 (2 players per match), that's 20-28 player slots
+    // We need to ensure we create enough matches to reach target
+    const avgPlayersPerMatch = 3 // Mix of 1v1 and 2v2 averages to ~3
+    const neededMatches = Math.ceil(targetPlayerSlots / avgPlayersPerMatch)
+    const courtsPerRound = Math.ceil(neededMatches / roundsPerSession)
 
-      // Randomly select ~26 players to check in on average (target: 1.7 matches per check-in)
-      // Use a range around 26 to make it realistic
-      const checkInCount = Math.min(
-        Math.floor(Math.random() * 10) + 22, // 22-32 players, average ~26
-        players.length
+    for (let roundNum = 1; roundNum <= roundsPerSession; roundNum++) {
+      // Create matches - ensure enough courts to reach ~1.7 matches per player
+      const courtCount = Math.min(
+        Math.max(courtsPerRound, Math.floor(Math.random() * 3) + 5), // At least courtsPerRound, but 5-7 if possible
+        courts.length,
+        Math.floor(checkedInPlayers.length / 2) // Ensure we can assign at least 2 players per court
       )
-      const shuffledPlayers = [...players].sort(() => Math.random() - 0.5)
-      const checkedInPlayers = shuffledPlayers.slice(0, checkInCount)
-
-      // Create check-ins
-      const checkIns: CheckIn[] = []
-      checkedInPlayers.forEach((player) => {
-        const checkInTime = new Date(sessionDate)
-        checkInTime.setMinutes(checkInTime.getMinutes() - Math.floor(Math.random() * 60)) // Random time before session
-        
-        checkIns.push({
-          id: createId(),
-          sessionId,
-          playerId: player.id,
-          createdAt: checkInTime.toISOString(),
-          maxRounds: null
-        })
+      const usedCourts = courts.slice(0, courtCount)
+      const matches: Match[] = []
+      const matchPlayers: MatchPlayer[] = []
+      
+      // For each round, sort players by match count (fewer matches first) to ensure fair distribution
+      // Re-sort at the start of each round based on current match counts
+      const sortedPlayers = [...checkedInPlayers].sort((a, b) => {
+        const countA = playerMatchCount.get(a.id) ?? 0
+        const countB = playerMatchCount.get(b.id) ?? 0
+        return countA - countB // Players with fewer matches first
       })
 
-      // Generate 2 rounds on average (1-3 rounds per session)
-      const roundsPerSession = Math.floor(Math.random() * 3) + 1 // 1-3 rounds, average ~2
-      const allMatches: Match[] = []
-      const allMatchPlayers: MatchPlayer[] = []
-      
-      // Track how many matches each player has been assigned to in this session
-      const playerMatchCount = new Map<string, number>()
-      checkedInPlayers.forEach((p) => playerMatchCount.set(p.id, 0))
-      
-      // Target: ~1.7 matches per player per session
-      // Calculate how many player slots we need: checkedInPlayers.length × 1.7
-      const targetPlayerSlots = Math.round(checkedInPlayers.length * 1.7)
-      
-      // With 2 rounds and 5-7 courts, we can create 10-14 matches
-      // If mostly 2v2 (4 players per match), that's 40-56 player slots
-      // If mostly 1v1 (2 players per match), that's 20-28 player slots
-      // We need to ensure we create enough matches to reach target
-      const avgPlayersPerMatch = 3 // Mix of 1v1 and 2v2 averages to ~3
-      const neededMatches = Math.ceil(targetPlayerSlots / avgPlayersPerMatch)
-      const courtsPerRound = Math.ceil(neededMatches / roundsPerSession)
-
-      for (let roundNum = 1; roundNum <= roundsPerSession; roundNum++) {
-        // Create matches - ensure enough courts to reach ~1.7 matches per player
-        const courtCount = Math.min(
-          Math.max(courtsPerRound, Math.floor(Math.random() * 3) + 5), // At least courtsPerRound, but 5-7 if possible
-          courts.length,
-          Math.floor(checkedInPlayers.length / 2) // Ensure we can assign at least 2 players per court
-        )
-        const usedCourts = courts.slice(0, courtCount)
-        const matches: Match[] = []
-        const matchPlayers: MatchPlayer[] = []
+      usedCourts.forEach((court, courtIndex) => {
+        const matchId = createId()
+        const matchStart = new Date(sessionDate)
+        // Stagger start times: round 1 starts at session time, round 2 starts 45 min later, etc.
+        matchStart.setMinutes(matchStart.getMinutes() + (roundNum - 1) * 45 + courtIndex * 5)
         
-        // For each round, sort players by match count (fewer matches first) to ensure fair distribution
-        // Re-sort at the start of each round based on current match counts
-        const sortedPlayers = [...checkedInPlayers].sort((a, b) => {
+        matches.push({
+          id: matchId,
+          sessionId,
+          courtId: court.id,
+          startedAt: matchStart.toISOString(),
+          endedAt: new Date(matchStart.getTime() + 45 * 60000).toISOString(), // 45 minutes later
+          round: roundNum
+        })
+
+        // Re-sort players before each court to prioritize those with fewer matches
+        sortedPlayers.sort((a, b) => {
           const countA = playerMatchCount.get(a.id) ?? 0
           const countB = playerMatchCount.get(b.id) ?? 0
-          return countA - countB // Players with fewer matches first
+          return countA - countB
         })
 
-        usedCourts.forEach((court, courtIndex) => {
-          const matchId = createId()
-          const matchStart = new Date(sessionDate)
-          // Stagger start times: round 1 starts at session time, round 2 starts 45 min later, etc.
-          matchStart.setMinutes(matchStart.getMinutes() + (roundNum - 1) * 45 + courtIndex * 5)
-          
-          matches.push({
-            id: matchId,
-            sessionId,
-            courtId: court.id,
-            startedAt: matchStart.toISOString(),
-            endedAt: new Date(matchStart.getTime() + 45 * 60000).toISOString(), // 45 minutes later
-            round: roundNum
-          })
+        if (sortedPlayers.length < 2) return
 
-          // Re-sort players before each court to prioritize those with fewer matches
-          sortedPlayers.sort((a, b) => {
-            const countA = playerMatchCount.get(a.id) ?? 0
-            const countB = playerMatchCount.get(b.id) ?? 0
-            return countA - countB
-          })
-
-          if (sortedPlayers.length < 2) return
-
-          // Prefer 2v2 matches to use more players and reach target faster
-          // But still allow some 1v1 for variety
-          const currentAvgMatches = Array.from(playerMatchCount.values()).reduce((a, b) => a + b, 0) / checkedInPlayers.length
-          const needsMoreMatches = currentAvgMatches < 1.7
+        // Prefer 2v2 matches to use more players and reach target faster
+        // But still allow some 1v1 for variety
+        const currentAvgMatches = Array.from(playerMatchCount.values()).reduce((a, b) => a + b, 0) / checkedInPlayers.length
+        const needsMoreMatches = currentAvgMatches < 1.7
+        
+        // If we need more matches, prefer 2v2 (uses 4 players vs 2)
+        const isDoubles = sortedPlayers.length >= 4 && (needsMoreMatches || Math.random() > 0.3)
+        
+        if (isDoubles && sortedPlayers.length >= 4) {
+          // 2v2 match - take first 4 players (those with fewest matches)
+          const selectedPlayers = sortedPlayers.slice(0, 4)
           
-          // If we need more matches, prefer 2v2 (uses 4 players vs 2)
-          const isDoubles = sortedPlayers.length >= 4 && (needsMoreMatches || Math.random() > 0.3)
-          
-          if (isDoubles && sortedPlayers.length >= 4) {
-            // 2v2 match - take first 4 players (those with fewest matches)
-            const selectedPlayers = sortedPlayers.slice(0, 4)
-            
-            // Assign slots 0, 1, 2, 3
-            selectedPlayers.forEach((player, index) => {
-              playerMatchCount.set(player.id, (playerMatchCount.get(player.id) ?? 0) + 1)
-              matchPlayers.push({
-                id: createId(),
-                matchId,
-                playerId: player.id,
-                slot: index
-              })
-            })
-          } else {
-            // 1v1 match - take first 2 players (those with fewest matches)
-            const selectedPlayers = sortedPlayers.slice(0, 2)
-            
-            // Assign slots 1 and 2
-            selectedPlayers.forEach((player) => {
-              playerMatchCount.set(player.id, (playerMatchCount.get(player.id) ?? 0) + 1)
-            })
+          // Assign slots 0, 1, 2, 3
+          selectedPlayers.forEach((player, index) => {
+            playerMatchCount.set(player.id, (playerMatchCount.get(player.id) ?? 0) + 1)
             matchPlayers.push({
               id: createId(),
               matchId,
-              playerId: selectedPlayers[0].id,
-              slot: 1
+              playerId: player.id,
+              slot: index
             })
-            matchPlayers.push({
-              id: createId(),
-              matchId,
-              playerId: selectedPlayers[1].id,
-              slot: 2
-            })
-          }
-        })
+          })
+        } else {
+          // 1v1 match - take first 2 players (those with fewest matches)
+          const selectedPlayers = sortedPlayers.slice(0, 2)
+          
+          // Assign slots 1 and 2
+          selectedPlayers.forEach((player) => {
+            playerMatchCount.set(player.id, (playerMatchCount.get(player.id) ?? 0) + 1)
+          })
+          matchPlayers.push({
+            id: createId(),
+            matchId,
+            playerId: selectedPlayers[0].id,
+            slot: 1
+          })
+          matchPlayers.push({
+            id: createId(),
+            matchId,
+            playerId: selectedPlayers[1].id,
+            slot: 2
+          })
+        }
+      })
 
-        allMatches.push(...matches)
-        allMatchPlayers.push(...matchPlayers)
-      }
+      allMatches.push(...matches)
+      allMatchPlayers.push(...matchPlayers)
+    }
 
-      // Create snapshot
-      const snapshot: StatisticsSnapshot = {
-        id: createId(),
-        sessionId,
-        sessionDate: sessionInfo.date,
-        season: sessionInfo.season,
-        matches: allMatches.map((m) => ({ ...m })),
-        matchPlayers: allMatchPlayers.map((mp) => ({ ...mp })),
-        checkIns: checkIns.map((c) => ({ ...c })),
-        createdAt: new Date().toISOString()
-      }
-
-      state.statistics.push(snapshot)
+    // Create snapshot in Supabase
+    await createStatisticsSnapshot({
+      sessionId,
+      sessionDate: sessionInfo.date,
+      season: sessionInfo.season,
+      matches: allMatches.map((m) => ({ ...m })),
+      matchPlayers: allMatchPlayers.map((mp) => ({ ...mp })),
+      checkIns: checkIns.map((c) => ({ ...c }))
     })
-  })
+  }
 }
 
 /** Statistics API — manages historical statistics and player analytics. */

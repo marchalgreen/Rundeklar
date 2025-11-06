@@ -343,9 +343,9 @@ const PlayersPage = () => {
           {hasBackup && (
             <button
               type="button"
-              onClick={() => {
+              onClick={async () => {
                 if (confirm('Er du sikker på at du vil gendanne fra backup? Dette vil overskrive alle nuværende ændringer.')) {
-                  const restored = api.database.restoreFromBackup()
+                  const restored = await api.database.restoreFromBackup()
                   if (restored) {
                     notify({ variant: 'success', title: 'Backup gendannet', description: 'Database er gendannet fra backup' })
                     loadPlayers()

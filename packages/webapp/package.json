@@ -12,6 +12,7 @@
   },
   "dependencies": {
     "@herlev-hjorten/common": "workspace:*",
+    "@supabase/supabase-js": "^2.79.0",
     "clsx": "^2.1.0",
     "lucide-react": "^0.429.0",
     "react": "^19.0.0",

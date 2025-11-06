@@ -12,8 +12,31 @@ import type {
   PlayerUpdateInput,
   TrainingSession
 } from '@herlev-hjorten/common'
-import { createId, createBackup, restoreFromBackup, hasBackup, getStateCopy, loadState, updateState } from './storage'
-import type { DatabaseState } from './storage'
+import {
+  createId,
+  createBackup,
+  restoreFromBackup,
+  hasBackup,
+  getStateCopy,
+  getPlayers,
+  createPlayer as createPlayerInDb,
+  updatePlayer as updatePlayerInDb,
+  getSessions,
+  createSession as createSessionInDb,
+  updateSession as updateSessionInDb,
+  getCheckIns,
+  createCheckIn as createCheckInInDb,
+  deleteCheckIn as deleteCheckInInDb,
+  getCourts,
+  getMatches,
+  createMatch as createMatchInDb,
+  updateMatch as updateMatchInDb,
+  deleteMatch as deleteMatchInDb,
+  getMatchPlayers,
+  createMatchPlayer as createMatchPlayerInDb,
+  updateMatchPlayer as updateMatchPlayerInDb,
+  deleteMatchPlayer as deleteMatchPlayerInDb
+} from './supabase'
 import statsApi from './stats'
 
 /**
@@ -61,9 +84,9 @@ const playerUpdateSchema = z.object({
  * @returns Array of normalized players
  */
 const listPlayers = async (filters?: PlayerListFilters): Promise<Player[]> => {
-  const state = getStateCopy()
+  const players = await getPlayers()
   const term = filters?.q?.trim().toLowerCase()
-  const filtered = state.players.filter((player) => {
+  const filtered = players.filter((player) => {
     if (filters?.active !== undefined && Boolean(player.active) !== filters.active) {
       return false
     }
@@ -83,19 +106,13 @@ const listPlayers = async (filters?: PlayerListFilters): Promise<Player[]> => {
  */
 const createPlayer = async (input: PlayerCreateInput): Promise<Player> => {
   const parsed = playerCreateSchema.parse(input)
-  let created!: Player
-  updateState((state: DatabaseState) => {
-    created = {
-      id: createId(),
-      name: parsed.name.trim(),
-      alias: parsed.alias ? parsed.alias.trim() : null,
-      level: parsed.level ?? null,
-      gender: parsed.gender ?? null,
-      primaryCategory: parsed.primaryCategory ?? null,
-      active: parsed.active ?? true,
-      createdAt: new Date().toISOString()
-    }
-    state.players.push(created)
+  const created = await createPlayerInDb({
+    name: parsed.name.trim(),
+    alias: parsed.alias ? parsed.alias.trim() : null,
+    level: parsed.level ?? null,
+    gender: parsed.gender ?? null,
+    primaryCategory: parsed.primaryCategory ?? null,
+    active: parsed.active ?? true
   })
   return normalisePlayer(created)
 }
@@ -108,25 +125,15 @@ const createPlayer = async (input: PlayerCreateInput): Promise<Player> => {
  */
 const updatePlayer = async (input: PlayerUpdateInput): Promise<Player> => {
   const parsed = playerUpdateSchema.parse(input)
-  let updated!: Player
-  updateState((state: DatabaseState) => {
-    const index = state.players.findIndex((player) => player.id === parsed.id)
-    if (index === -1) {
-      throw new Error('Spiller ikke fundet')
-    }
-    const existing = state.players[index]
-    updated = {
-      ...existing,
-      ...parsed.patch,
-      name: parsed.patch.name !== undefined ? parsed.patch.name.trim() : existing.name,
-      alias: parsed.patch.alias !== undefined ? parsed.patch.alias : existing.alias,
-      level: parsed.patch.level !== undefined ? parsed.patch.level : existing.level,
-      gender: parsed.patch.gender !== undefined ? parsed.patch.gender : existing.gender,
-      primaryCategory: parsed.patch.primaryCategory !== undefined ? parsed.patch.primaryCategory : existing.primaryCategory,
-      active: parsed.patch.active !== undefined ? parsed.patch.active : existing.active
-    }
-    state.players[index] = updated
-  })
+  const updateData: Partial<Omit<Player, 'id' | 'createdAt'>> = {}
+  if (parsed.patch.name !== undefined) updateData.name = parsed.patch.name.trim()
+  if (parsed.patch.alias !== undefined) updateData.alias = parsed.patch.alias
+  if (parsed.patch.level !== undefined) updateData.level = parsed.patch.level
+  if (parsed.patch.gender !== undefined) updateData.gender = parsed.patch.gender
+  if (parsed.patch.primaryCategory !== undefined) updateData.primaryCategory = parsed.patch.primaryCategory
+  if (parsed.patch.active !== undefined) updateData.active = parsed.patch.active
+
+  const updated = await updatePlayerInDb(parsed.id, updateData)
   return normalisePlayer(updated)
 }
 
@@ -142,8 +149,8 @@ const playersApi = {
  * @returns Active session or null
  */
 const getActiveSession = async (): Promise<TrainingSession | null> => {
-  const state = loadState()
-  const active = state.sessions
+  const sessions = await getSessions()
+  const active = sessions
     .filter((session) => session.status === 'active')
     .sort((a: TrainingSession, b: TrainingSession) => b.createdAt.localeCompare(a.createdAt))[0]
   return active ?? null
@@ -171,14 +178,9 @@ const startOrGetActiveSession = async (): Promise<TrainingSession> => {
   if (active) return active
 
   const now = new Date().toISOString()
-  const session: TrainingSession = {
-    id: createId(),
+  const session = await createSessionInDb({
     date: now,
-    status: 'active',
-    createdAt: now
-  }
-  updateState((state: DatabaseState) => {
-    state.sessions.push(session)
+    status: 'active'
   })
   return session
 }
@@ -189,29 +191,28 @@ const startOrGetActiveSession = async (): Promise<TrainingSession> => {
  * @remarks Automatically creates a statistics snapshot when session ends.
  */
 const endActiveSession = async (): Promise<void> => {
-  let sessionId: string | null = null
-  updateState((state: DatabaseState) => {
-    const active = state.sessions.find((session) => session.status === 'active')
-    if (!active) {
-      throw new Error('Ingen aktiv træning')
-    }
-    sessionId = active.id
-    active.status = 'ended'
-    const matches = state.matches.filter((match: Match) => match.sessionId === active.id)
-    const endedAt = new Date().toISOString()
-    matches.forEach((match: Match) => {
-      match.endedAt = endedAt
-    })
-  })
+  const active = await getActiveSession()
+  if (!active) {
+    throw new Error('Ingen aktiv træning')
+  }
+
+  // Update session status to ended
+  await updateSessionInDb(active.id, { status: 'ended' })
+
+  // Update all matches for this session
+  const matches = await getMatches()
+  const sessionMatches = matches.filter((match: Match) => match.sessionId === active.id)
+  const endedAt = new Date().toISOString()
+  for (const match of sessionMatches) {
+    await updateMatchInDb(match.id, { endedAt })
+  }
 
   // Create statistics snapshot after session is marked as ended
-  if (sessionId) {
-    try {
-      await statsApi.snapshotSession(sessionId)
-    } catch (err) {
-      // Log error but don't fail the session ending
-      console.error('Failed to create statistics snapshot:', err)
-    }
+  try {
+    await statsApi.snapshotSession(active.id)
+  } catch (err) {
+    // Log error but don't fail the session ending
+    console.error('Failed to create statistics snapshot:', err)
   }
 }
 
@@ -230,29 +231,25 @@ const sessionApi = {
  */
 const addCheckIn = async (input: { playerId: string; maxRounds?: number }) => {
   const session = await ensureActiveSession()
-  const state = loadState()
-  const player = state.players.find((item) => item.id === input.playerId)
+  const players = await getPlayers()
+  const player = players.find((item) => item.id === input.playerId)
   if (!player) {
     throw new Error('Spiller ikke fundet')
   }
   if (!player.active) {
     throw new Error('Spiller er inaktiv')
   }
-  const existing = state.checkIns.find(
+  const checkIns = await getCheckIns()
+  const existing = checkIns.find(
     (checkIn) => checkIn.sessionId === session.id && checkIn.playerId === input.playerId
   )
   if (existing) {
     throw new Error('Spilleren er allerede tjekket ind')
   }
-  const checkIn = {
-    id: createId(),
+  const checkIn = await createCheckInInDb({
     sessionId: session.id,
     playerId: input.playerId,
-    createdAt: new Date().toISOString(),
     maxRounds: input.maxRounds ?? null
-  }
-  updateState((current: DatabaseState) => {
-    current.checkIns.push(checkIn)
   })
   return checkIn
 }
@@ -264,12 +261,12 @@ const addCheckIn = async (input: { playerId: string; maxRounds?: number }) => {
  */
 const listActiveCheckIns = async (): Promise<CheckedInPlayer[]> => {
   const session = await ensureActiveSession()
-  const state = loadState()
-  return state.checkIns
+  const [checkIns, players] = await Promise.all([getCheckIns(), getPlayers()])
+  return checkIns
     .filter((checkIn: CheckIn) => checkIn.sessionId === session.id)
     .sort((a: CheckIn, b: CheckIn) => a.createdAt.localeCompare(b.createdAt))
     .map((checkIn: CheckIn) => {
-      const player = state.players.find((p: Player) => p.id === checkIn.playerId)
+      const player = players.find((p: Player) => p.id === checkIn.playerId)
       if (!player) throw new Error('Manglende spillerdata')
       return {
         ...normalisePlayer(player),
@@ -286,16 +283,14 @@ const listActiveCheckIns = async (): Promise<CheckedInPlayer[]> => {
  */
 const removeCheckIn = async (input: { playerId: string }) => {
   const session = await ensureActiveSession()
-  const state = loadState()
-  const checkInIndex = state.checkIns.findIndex(
+  const checkIns = await getCheckIns()
+  const checkIn = checkIns.find(
     (checkIn: CheckIn) => checkIn.sessionId === session.id && checkIn.playerId === input.playerId
   )
-  if (checkInIndex === -1) {
+  if (!checkIn) {
     throw new Error('Spilleren er ikke tjekket ind')
   }
-  updateState((current: DatabaseState) => {
-    current.checkIns.splice(checkInIndex, 1)
-    })
+  await deleteCheckInInDb(checkIn.id)
 }
 
 /** Check-ins API — manages player check-ins for training sessions. */
@@ -311,8 +306,7 @@ const checkInsApi = {
  * @returns Array of courts with player slots
  */
 const listMatches = async (round?: number): Promise<CourtWithPlayers[]> => {
-  const state = loadState()
-  const session = await getActiveSession()
+  const [state, session] = await Promise.all([getStateCopy(), getActiveSession()])
   const courts = [...state.courts].sort((a, b) => a.idx - b.idx)
   if (!session) {
     return courts.map((court) => ({ courtIdx: court.idx, slots: [] }))
@@ -369,11 +363,20 @@ const listMatches = async (round?: number): Promise<CourtWithPlayers[]> => {
  */
 const resetMatches = async (): Promise<void> => {
   const session = await ensureActiveSession()
-  updateState((state: DatabaseState) => {
-    const matchIds = state.matches.filter((match: Match) => match.sessionId === session.id).map((m: Match) => m.id)
-    state.matches = state.matches.filter((match: Match) => match.sessionId !== session.id)
-    state.matchPlayers = state.matchPlayers.filter((mp) => !matchIds.includes(mp.matchId))
-  })
+  const [matches, matchPlayers] = await Promise.all([getMatches(), getMatchPlayers()])
+  const sessionMatchIds = matches.filter((match: Match) => match.sessionId === session.id).map((m: Match) => m.id)
+  
+  // Delete all match players for these matches
+  for (const mp of matchPlayers) {
+    if (sessionMatchIds.includes(mp.matchId)) {
+      await deleteMatchPlayerInDb(mp.id)
+    }
+  }
+  
+  // Delete all matches for this session
+  for (const matchId of sessionMatchIds) {
+    await deleteMatchInDb(matchId)
+  }
 }
 
 /**
@@ -386,7 +389,7 @@ const resetMatches = async (): Promise<void> => {
  */
 const autoArrangeMatches = async (round?: number): Promise<AutoArrangeResult> => {
   const session = await ensureActiveSession()
-  const state = loadState()
+  const state = await getStateCopy()
   const checkIns = state.checkIns
     .filter((checkIn: CheckIn) => checkIn.sessionId === session.id)
     .sort((a: CheckIn, b: CheckIn) => a.createdAt.localeCompare(b.createdAt))
@@ -419,16 +422,16 @@ const autoArrangeMatches = async (round?: number): Promise<AutoArrangeResult> =>
     return { filledCourts: 0, benched: 0 }
   }
 
-  const courts = [...state.courts].sort((a, b) => a.idx - b.idx)
+  const stateCourts = [...state.courts].sort((a, b) => a.idx - b.idx)
   
   // Only exclude courts that are occupied in THIS round
   const occupied = new Set(
     existingMatchesInRound
-      .map((match) => courts.find((court) => court.id === match.courtId)?.idx)
+      .map((match) => stateCourts.find((court) => court.id === match.courtId)?.idx)
       .filter((idx): idx is number => typeof idx === 'number')
   )
 
-  const availableCourtIdxs = courts
+  const availableCourtIdxs = stateCourts
     .map((court) => court.idx)
     .filter((idx) => !occupied.has(idx))
 
@@ -727,50 +730,48 @@ const autoArrangeMatches = async (round?: number): Promise<AutoArrangeResult> =>
     return { filledCourts: 0, benched: leftoverPlayerIds.length }
   }
 
-  updateState((mutable: DatabaseState) => {
-    const courtsByIdx = new Map(mutable.courts.map((court) => [court.idx, court]))
-    assignments.forEach(({ courtIdx, playerIds }: { courtIdx: number; playerIds: string[] }) => {
-      const court = courtsByIdx.get(courtIdx)
-      if (!court) return
-      const matchId = createId()
-      mutable.matches.push({
-        id: matchId,
-        sessionId: session.id,
-        courtId: court.id,
-        startedAt: new Date().toISOString(),
-        endedAt: null,
-        round: round ?? null
+  // Get courts to map idx to id
+  const courts = await getCourts()
+  const courtsByIdx = new Map(courts.map((court) => [court.idx, court]))
+  
+  // Create matches and match players in Supabase
+  for (const { courtIdx, playerIds } of assignments) {
+    const court = courtsByIdx.get(courtIdx)
+    if (!court) continue
+    
+    const match = await createMatchInDb({
+      sessionId: session.id,
+      courtId: court.id,
+      startedAt: new Date().toISOString(),
+      endedAt: null,
+      round: round ?? null
+    })
+    
+    // For 1v1 matches (2 players), place them in slots 1 and 2 (opposite sides of net)
+    // For 2v2 matches (4 players), use slots 0, 1, 2, 3 (normal order)
+    if (playerIds.length === 2) {
+      // 1v1 match: place players in slots 1 and 2
+      await createMatchPlayerInDb({
+        matchId: match.id,
+        playerId: playerIds[0],
+        slot: 1
       })
-      
-      // For 1v1 matches (2 players), place them in slots 1 and 2 (opposite sides of net)
-      // For 2v2 matches (4 players), use slots 0, 1, 2, 3 (normal order)
-      if (playerIds.length === 2) {
-        // 1v1 match: place players in slots 1 and 2
-        mutable.matchPlayers.push({
-          id: createId(),
-          matchId,
-          playerId: playerIds[0],
-          slot: 1
-        })
-        mutable.matchPlayers.push({
-          id: createId(),
-          matchId,
-          playerId: playerIds[1],
-          slot: 2
-        })
-      } else {
-        // 2v2 match: use slots 0, 1, 2, 3
-        playerIds.forEach((playerId: string, slot: number) => {
-        mutable.matchPlayers.push({
-          id: createId(),
-          matchId,
-          playerId,
+      await createMatchPlayerInDb({
+        matchId: match.id,
+        playerId: playerIds[1],
+        slot: 2
+      })
+    } else {
+      // 2v2 match: use slots 0, 1, 2, 3
+      for (let slot = 0; slot < playerIds.length; slot++) {
+        await createMatchPlayerInDb({
+          matchId: match.id,
+          playerId: playerIds[slot],
           slot
         })
-      })
       }
-    })
-  })
+    }
+  }
 
   return {
     filledCourts: assignments.length,
@@ -803,58 +804,58 @@ const movePlayer = async (payload: MatchMovePayload, round?: number): Promise<vo
 
   const effectiveRound = parsed.round ?? round ?? 1
   const session = await ensureActiveSession()
-  updateState((state: DatabaseState) => {
-    const checkedIn = state.checkIns.some(
-      (checkIn: CheckIn) => checkIn.sessionId === session.id && checkIn.playerId === parsed.playerId
-    )
-    if (!checkedIn) {
-      throw new Error('Spilleren er ikke tjekket ind')
+  const state = await getStateCopy()
+  
+  const checkedIn = state.checkIns.some(
+    (checkIn: CheckIn) => checkIn.sessionId === session.id && checkIn.playerId === parsed.playerId
+  )
+  if (!checkedIn) {
+    throw new Error('Spilleren er ikke tjekket ind')
+  }
+
+  // Only check matches in the current round
+  const matchesInRound = state.matches.filter(
+    (match: Match) => match.sessionId === session.id && (match.round ?? 1) === effectiveRound
+  )
+
+  // Find current match player only in the current round
+  const currentMatchPlayer = state.matchPlayers.find((mp) => {
+    if (mp.playerId !== parsed.playerId) return false
+    const match = matchesInRound.find((m: Match) => m.id === mp.matchId)
+    return match !== undefined
+  })
+  const currentMatch = currentMatchPlayer
+    ? matchesInRound.find((match: Match) => match.id === currentMatchPlayer.matchId)
+    : undefined
+
+  if (parsed.toCourtIdx === undefined) {
+    if (currentMatchPlayer) {
+      await deleteMatchPlayerInDb(currentMatchPlayer.id)
+      // Check if match has any remaining players
+      const remaining = state.matchPlayers.filter((mp) => mp.matchId === currentMatchPlayer.matchId && mp.id !== currentMatchPlayer.id)
+      if (remaining.length === 0) {
+        await deleteMatchInDb(currentMatchPlayer.matchId)
+      }
     }
+    return
+  }
 
-    // Only check matches in the current round
-    const matchesInRound = state.matches.filter(
-      (match: Match) => match.sessionId === session.id && (match.round ?? 1) === effectiveRound
-    )
+  const court = state.courts.find((court) => court.idx === parsed.toCourtIdx)
+  if (!court) {
+    throw new Error('Banen findes ikke')
+  }
 
-    // Find current match player only in the current round
-    const currentMatchPlayer = state.matchPlayers.find((mp) => {
-      if (mp.playerId !== parsed.playerId) return false
-      const match = matchesInRound.find((m: Match) => m.id === mp.matchId)
-      return match !== undefined
+  // Only find matches in the current round for this court
+  let targetMatch = matchesInRound.find((match: Match) => match.courtId === court.id)
+  if (!targetMatch) {
+    targetMatch = await createMatchInDb({
+      sessionId: session.id,
+      courtId: court.id,
+      startedAt: new Date().toISOString(),
+      endedAt: null,
+      round: effectiveRound
     })
-    const currentMatch = currentMatchPlayer
-      ? matchesInRound.find((match: Match) => match.id === currentMatchPlayer.matchId)
-      : undefined
-
-    if (parsed.toCourtIdx === undefined) {
-      if (currentMatchPlayer) {
-        state.matchPlayers = state.matchPlayers.filter((mp) => mp.id !== currentMatchPlayer.id)
-        const remaining = state.matchPlayers.filter((mp) => mp.matchId === currentMatchPlayer.matchId)
-        if (remaining.length === 0) {
-          state.matches = state.matches.filter((match) => match.id !== currentMatchPlayer.matchId)
-        }
-      }
-      return
-    }
-
-    const court = state.courts.find((court) => court.idx === parsed.toCourtIdx)
-    if (!court) {
-      throw new Error('Banen findes ikke')
-    }
-
-    // Only find matches in the current round for this court
-    let targetMatch = matchesInRound.find((match: Match) => match.courtId === court.id)
-    if (!targetMatch) {
-      targetMatch = {
-        id: createId(),
-        sessionId: session.id,
-        courtId: court.id,
-        startedAt: new Date().toISOString(),
-        endedAt: null,
-        round: effectiveRound
-      }
-      state.matches.push(targetMatch)
-    }
+  }
 
     // Only check slots in the current round's match
     // Filter matchPlayers by matchId to ensure we only check the current match
@@ -899,46 +900,30 @@ const movePlayer = async (payload: MatchMovePayload, round?: number): Promise<vo
       
       if (sourceMatch && sourceMatchPlayer) {
         // If source match is the same as target match, just swap slots
-        if (sourceMatch.id === targetMatch!.id) {
-          // Find the actual objects in state.matchPlayers array
-          const sourcePlayerIndex = state.matchPlayers.findIndex((mp) => mp.id === sourceMatchPlayer.id)
-          const occupyingPlayerIndex = state.matchPlayers.findIndex((mp) => mp.id === occupyingPlayerEntry.id)
-          
-          if (sourcePlayerIndex === -1 || occupyingPlayerIndex === -1) {
-            throw new Error('Kunne ikke finde spillerindgange til at bytte')
-          }
-          
-          // Swap the slots
-          const tempSlot = state.matchPlayers[sourcePlayerIndex].slot
-          state.matchPlayers[sourcePlayerIndex].slot = state.matchPlayers[occupyingPlayerIndex].slot
-          state.matchPlayers[occupyingPlayerIndex].slot = tempSlot
-          // Both players are now in the correct slots - done!
+        if (sourceMatch.id === targetMatch.id) {
+          // Swap the slots using Supabase
+          await updateMatchPlayerInDb(occupyingPlayerEntry.id, { slot: sourceMatchPlayer.slot })
+          await updateMatchPlayerInDb(sourceMatchPlayer.id, { slot: parsed.toSlot! })
           return
         } else {
           // Move occupying player to source match and slot
-          // Find the actual object in state.matchPlayers array
-          const occupyingPlayerIndex = state.matchPlayers.findIndex((mp) => mp.id === occupyingPlayerEntry.id)
-          if (occupyingPlayerIndex === -1) {
-            throw new Error('Kunne ikke finde spillerindgang til at flytte')
-          }
-          
           // Update occupying player to move to source location
-          state.matchPlayers[occupyingPlayerIndex].matchId = sourceMatch.id
-          state.matchPlayers[occupyingPlayerIndex].slot = sourceMatchPlayer.slot
+          await updateMatchPlayerInDb(occupyingPlayerEntry.id, { matchId: sourceMatch.id, slot: sourceMatchPlayer.slot })
           
           // Remove current player from source match
-          const sourcePlayerIndex = state.matchPlayers.findIndex((mp) => mp.id === sourceMatchPlayer.id)
-          if (sourcePlayerIndex !== -1) {
-            state.matchPlayers.splice(sourcePlayerIndex, 1)
+          if (currentMatchPlayer) {
+            await deleteMatchPlayerInDb(currentMatchPlayer.id)
           }
-          const remaining = state.matchPlayers.filter((mp) => mp.matchId === sourceMatch.id)
+          
+          // Check if source match has any remaining players
+          const remaining = state.matchPlayers.filter((mp) => mp.matchId === sourceMatch.id && mp.id !== currentMatchPlayer?.id)
           if (remaining.length === 0) {
-            state.matches = state.matches.filter((match) => match.id !== sourceMatch.id)
+            await deleteMatchInDb(sourceMatch.id)
           }
+          
           // After swap, slot is now free - place dragged player in target slot
-          state.matchPlayers.push({
-            id: createId(),
-            matchId: targetMatch!.id,
+          await createMatchPlayerInDb({
+            matchId: targetMatch.id,
             playerId: parsed.playerId,
             slot: parsed.toSlot!
           })
@@ -946,30 +931,29 @@ const movePlayer = async (payload: MatchMovePayload, round?: number): Promise<vo
         }
       } else {
         // Source is bench/inactive - move occupying player to bench
-        state.matchPlayers = state.matchPlayers.filter((mp) => mp.id !== occupyingPlayerEntry.id)
-        const remaining = state.matchPlayers.filter((mp) => mp.matchId === targetMatch!.id)
+        await deleteMatchPlayerInDb(occupyingPlayerEntry.id)
+        const remaining = state.matchPlayers.filter((mp) => mp.matchId === targetMatch.id && mp.id !== occupyingPlayerEntry.id)
         if (remaining.length === 0) {
-          state.matches = state.matches.filter((match) => match.id !== targetMatch!.id)
+          await deleteMatchInDb(targetMatch.id)
         }
+        
         // Remove current player from their match if they're in one
         if (currentMatch && currentMatchPlayer) {
-          state.matchPlayers = state.matchPlayers.filter((mp) => mp.id !== currentMatchPlayer.id)
-          const remainingInSource = state.matchPlayers.filter((mp) => mp.matchId === currentMatch.id)
+          await deleteMatchPlayerInDb(currentMatchPlayer.id)
+          const remainingInSource = state.matchPlayers.filter((mp) => mp.matchId === currentMatch.id && mp.id !== currentMatchPlayer.id)
           if (remainingInSource.length === 0) {
-            state.matches = state.matches.filter((match) => match.id !== currentMatch.id)
+            await deleteMatchInDb(currentMatch.id)
           }
         }
+        
         // Now place dragged player in the now-free slot
-        state.matchPlayers.push({
-          id: createId(),
-          matchId: targetMatch!.id,
+        await createMatchPlayerInDb({
+          matchId: targetMatch.id,
           playerId: parsed.playerId,
           slot: parsed.toSlot!
         })
         return
       }
-      // Swap complete - all cases handled above, should not reach here
-      return
     }
 
     const effectiveCount = existingSlots.length - (currentMatch?.id === targetMatch.id ? 1 : 0)
@@ -989,10 +973,10 @@ const movePlayer = async (payload: MatchMovePayload, round?: number): Promise<vo
     }
 
     if (currentMatch && currentMatch.id !== targetMatch.id && currentMatchPlayer) {
-      state.matchPlayers = state.matchPlayers.filter((mp) => mp.id !== currentMatchPlayer.id)
-      const remaining = state.matchPlayers.filter((mp) => mp.matchId === currentMatch.id)
+      await deleteMatchPlayerInDb(currentMatchPlayer.id)
+      const remaining = state.matchPlayers.filter((mp) => mp.matchId === currentMatch.id && mp.id !== currentMatchPlayer.id)
       if (remaining.length === 0) {
-        state.matches = state.matches.filter((match) => match.id !== currentMatch.id)
+        await deleteMatchInDb(currentMatch.id)
       }
     }
 
@@ -1001,17 +985,15 @@ const movePlayer = async (payload: MatchMovePayload, round?: number): Promise<vo
     }
 
     if (currentMatch && currentMatch.id === targetMatch.id && currentMatchPlayer) {
-      currentMatchPlayer.slot = parsed.toSlot!
+      await updateMatchPlayerInDb(currentMatchPlayer.id, { slot: parsed.toSlot! })
       return
     }
 
-    state.matchPlayers.push({
-      id: createId(),
+    await createMatchPlayerInDb({
       matchId: targetMatch.id,
       playerId: parsed.playerId,
       slot: parsed.toSlot!
     })
-  })
 }
 
 /** Matches API — manages court assignments and player matching. */
@@ -1027,16 +1009,12 @@ const api = {
   players: playersApi,
   session: sessionApi,
   checkIns: checkInsApi,
-  matches: matchesApi
+  matches: matchesApi,
+  database: {
+    createBackup,
+    restoreFromBackup,
+    hasBackup
+  }
 }
-
-/** Database backup/restore functions. */
-const database = {
-  createBackup,
-  restoreFromBackup,
-  hasBackup
-}
-
-api.database = database
 
 export default api
