@@ -1644,33 +1644,81 @@ const MatchProgramPage = () => {
               <div className="flex flex-col gap-2">
                 {(() => {
                   const maxCapacity = extendedCapacityCourts.get(court.courtIdx) || 4
-                  const slotsPerSide = Math.ceil(maxCapacity / 2)
-                  const topSlots = slotsPerSide
-                  const bottomSlots = maxCapacity - topSlots
                   
-                  return (
-                    <>
-                      {/* Top half */}
-                      <div className="flex flex-col gap-1.5">
-                        {Array.from({ length: topSlots }).map((_, idx) => renderPlayerSlot(court, idx))}
+                  // Render net divider (with rounded center)
+                  const renderNetDivider = () => (
+                    <div className="relative flex items-center justify-center py-1">
+                      <div className="absolute inset-0 flex items-center">
+                        <div className="h-px w-full bg-[hsl(var(--line)/.3)]"></div>
                       </div>
-                      
-                      {/* Net divider */}
-                      <div className="relative flex items-center justify-center py-1">
-                        <div className="absolute inset-0 flex items-center">
-                          <div className="h-px w-full bg-[hsl(var(--line)/.3)]"></div>
-                        </div>
-                        <div className="relative bg-[hsl(var(--surface))] px-2">
-                          <div className="h-1 w-8 rounded-full bg-[hsl(var(--primary)/.2)] ring-1 ring-[hsl(var(--primary)/.3)]"></div>
-                        </div>
+                      <div className="relative bg-[hsl(var(--surface))] px-2">
+                        <div className="h-1 w-8 rounded-full bg-[hsl(var(--primary)/.2)] ring-1 ring-[hsl(var(--primary)/.3)]"></div>
                       </div>
-                      
-                      {/* Bottom half */}
-                      <div className="flex flex-col gap-1.5">
-                        {Array.from({ length: bottomSlots }).map((_, idx) => renderPlayerSlot(court, idx + topSlots))}
-                      </div>
-                    </>
+                    </div>
                   )
+                  
+                  // Render regular divider (simple line)
+                  const renderRegularDivider = () => (
+                    <div className="relative flex items-center justify-center py-0.5">
+                      <div className="h-px w-full bg-[hsl(var(--primary)/.3)]"></div>
+                    </div>
+                  )
+                  
+                  // Render a group of slots
+                  const renderSlotGroup = (startIndex: number, count: number) => (
+                    <div className="flex flex-col gap-1.5">
+                      {Array.from({ length: count }).map((_, idx) => {
+                        const slotIndex = startIndex + idx
+                        return (
+                          <React.Fragment key={slotIndex}>
+                            {renderPlayerSlot(court, slotIndex)}
+                          </React.Fragment>
+                        )
+                      })}
+                    </div>
+                  )
+                  
+                  if (maxCapacity === 8) {
+                    // For 8 players: net divider between 2&3, regular divider between 4&5, net divider between 6&7
+                    // Structure: [0,1] - net - [2,3] - regular - [4,5] - net - [6,7]
+                    return (
+                      <>
+                        {renderSlotGroup(0, 2)}
+                        {renderNetDivider()}
+                        {renderSlotGroup(2, 2)}
+                        {renderRegularDivider()}
+                        {renderSlotGroup(4, 2)}
+                        {renderNetDivider()}
+                        {renderSlotGroup(6, 2)}
+                      </>
+                    )
+                  } else if (maxCapacity === 6) {
+                    // For 6 players: only net divider between two sets of 3 players
+                    // Structure: [0,1,2] - net - [3,4,5]
+                    return (
+                      <>
+                        {renderSlotGroup(0, 3)}
+                        {renderNetDivider()}
+                        {renderSlotGroup(3, 3)}
+                      </>
+                    )
+                  } else if (maxCapacity === 4) {
+                    // For 4 players: standard two halves with net divider
+                    return (
+                      <>
+                        {renderSlotGroup(0, 2)}
+                        {renderNetDivider()}
+                        {renderSlotGroup(2, 2)}
+                      </>
+                    )
+                  } else {
+                    // For 5 and 7 players: no dividers at all
+                    return (
+                      <>
+                        {renderSlotGroup(0, maxCapacity)}
+                      </>
+                    )
+                  }
                 })()}
               </div>
             </PageCard>
