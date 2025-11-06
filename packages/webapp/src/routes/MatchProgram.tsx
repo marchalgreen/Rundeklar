@@ -91,33 +91,63 @@ const MatchProgramPage = () => {
     }
   }
 
-  /** Loads court assignments for selected round. */
+  /** Loads court assignments for selected round. Ensures all 8 courts are always present. */
   const loadMatches = async () => {
     if (!session) {
-      setMatches([])
+      // Even without session, show all 8 empty courts
+      const allCourts: CourtWithPlayers[] = Array.from({ length: 8 }, (_, i) => ({
+        courtIdx: i + 1,
+        slots: []
+      }))
+      setMatches(allCourts)
       return
     }
     try {
       // Load from database only on initial load
       // After that, use in-memory state
+      let data: CourtWithPlayers[]
       if (!inMemoryMatches[selectedRound]) {
-        const data = await api.matches.list(selectedRound)
+        data = await api.matches.list(selectedRound)
+        // Ensure all 8 courts are present
+        const allCourts = Array.from({ length: 8 }, (_, i) => i + 1)
+        const matchesByCourt = new Map(data.map((court) => [court.courtIdx, court]))
+        data = allCourts.map((courtIdx) => {
+          const existing = matchesByCourt.get(courtIdx)
+          return existing || { courtIdx, slots: [] }
+        })
         setInMemoryMatches((prev) => ({ ...prev, [selectedRound]: data }))
         setMatches(data)
       } else {
-        // Use in-memory state
-        setMatches(inMemoryMatches[selectedRound])
+        // Use in-memory state - ensure all 8 courts are present
+        const currentMatches = inMemoryMatches[selectedRound]
+        const allCourts = Array.from({ length: 8 }, (_, i) => i + 1)
+        const matchesByCourt = new Map(currentMatches.map((court) => [court.courtIdx, court]))
+        data = allCourts.map((courtIdx) => {
+          const existing = matchesByCourt.get(courtIdx)
+          return existing || { courtIdx, slots: [] }
+        })
+        setMatches(data)
       }
     } catch (err: any) {
       setError(err.message ?? 'Kunne ikke hente baner')
     }
   }
   
-  /** Updates in-memory matches for a specific round. */
+  /** Updates in-memory matches for a specific round. Ensures all 8 courts are always present. */
   const updateInMemoryMatches = useCallback((round: number, newMatches: CourtWithPlayers[]) => {
-    setInMemoryMatches((prev) => ({ ...prev, [round]: newMatches }))
+    // Ensure all 8 courts are always present (1-8)
+    const allCourts = Array.from({ length: 8 }, (_, i) => i + 1)
+    const matchesByCourt = new Map(newMatches.map((court) => [court.courtIdx, court]))
+    
+    // Build complete matches array with all 8 courts
+    const completeMatches: CourtWithPlayers[] = allCourts.map((courtIdx) => {
+      const existing = matchesByCourt.get(courtIdx)
+      return existing || { courtIdx, slots: [] }
+    })
+    
+    setInMemoryMatches((prev) => ({ ...prev, [round]: completeMatches }))
     if (round === selectedRound) {
-      setMatches(newMatches)
+      setMatches(completeMatches)
     }
   }, [selectedRound])
 
@@ -449,20 +479,28 @@ const MatchProgramPage = () => {
     }
   }
 
-  /** Ends active training session and saves all match data to database. */
+  /** Ends active training session and saves only the final match state to database. */
   const handleEndTraining = async () => {
     if (!session) return
     try {
-      // Collect all match data from all rounds (1-4)
+      // Collect only the final match state from in-memory matches (no database fallback)
+      // Only save rounds that actually have matches (non-empty courts with players)
       const allMatchesData: Array<{ round: number; matches: CourtWithPlayers[] }> = []
       for (let round = 1; round <= 4; round++) {
-        const roundMatches = inMemoryMatches[round] || await api.matches.list(round)
-        if (roundMatches.length > 0) {
-          allMatchesData.push({ round, matches: roundMatches })
+        const roundMatches = inMemoryMatches[round]
+        // Only include rounds that have matches with actual players
+        if (roundMatches && roundMatches.length > 0) {
+          // Filter out empty courts (courts with no players)
+          const nonEmptyMatches = roundMatches.filter((court) => 
+            court.slots.length > 0 && court.slots.some((slot) => slot.player !== null && slot.player !== undefined)
+          )
+          if (nonEmptyMatches.length > 0) {
+            allMatchesData.push({ round, matches: nonEmptyMatches })
+          }
         }
       }
       
-      // Save all matches to database and end session
+      // Save only the final match state to database and end session
       await api.session.endActive(allMatchesData)
       setSession(null)
       setInMemoryMatches({}) // Clear in-memory state
@@ -595,13 +633,18 @@ const MatchProgramPage = () => {
     try {
       // Reset in-memory state only - no database write
       const currentMatches = inMemoryMatches[selectedRound] || []
-      const updatedMatches = currentMatches.map((court) => {
+      // Ensure all 8 courts are present
+      const allCourts = Array.from({ length: 8 }, (_, i) => i + 1)
+      const matchesByCourt = new Map(currentMatches.map((court) => [court.courtIdx, court]))
+      
+      const updatedMatches: CourtWithPlayers[] = allCourts.map((courtIdx) => {
+        const existing = matchesByCourt.get(courtIdx)
         // If court is locked, keep it as is
-        if (lockedCourts.has(court.courtIdx)) {
-          return court
+        if (lockedCourts.has(courtIdx) && existing) {
+          return existing
         }
-        // Otherwise, clear all slots
-        return { ...court, slots: [] }
+        // Otherwise, clear all slots (or create empty court)
+        return existing ? { ...existing, slots: [] } : { courtIdx, slots: [] }
       })
       
       updateInMemoryMatches(selectedRound, updatedMatches)
@@ -653,15 +696,24 @@ const MatchProgramPage = () => {
         return { ...court, slots: updatedSlots }
       })
 
+      // Ensure all 8 courts are present (fill in missing courts)
+      const allCourts = Array.from({ length: 8 }, (_, i) => i + 1)
+      const matchesByCourt = new Map(updatedMatches.map((court) => [court.courtIdx, court]))
+      
       // If adding to a new court that doesn't exist yet, create it
       if (courtIdx !== undefined && slot !== undefined) {
-        const targetCourt = updatedMatches.find((c) => c.courtIdx === courtIdx)
-        if (!targetCourt) {
-          updatedMatches.push({ courtIdx, slots: [{ slot, player }] })
+        if (!matchesByCourt.has(courtIdx)) {
+          matchesByCourt.set(courtIdx, { courtIdx, slots: [{ slot, player }] })
         }
       }
+      
+      // Build complete matches array with all 8 courts
+      const completeMatches: CourtWithPlayers[] = allCourts.map((idx) => {
+        const existing = matchesByCourt.get(idx)
+        return existing || { courtIdx: idx, slots: [] }
+      })
 
-      updateInMemoryMatches(selectedRound, updatedMatches)
+      updateInMemoryMatches(selectedRound, completeMatches)
       await loadCheckIns()
     } catch (err: any) {
       setError(err.message ?? 'Kunne ikke flytte spiller')
@@ -769,7 +821,15 @@ const MatchProgramPage = () => {
         }
       })
 
-      updateInMemoryMatches(selectedRound, updatedMatches)
+      // Ensure all 8 courts are present
+      const allCourts = Array.from({ length: 8 }, (_, i) => i + 1)
+      const matchesByCourt = new Map(updatedMatches.map((court) => [court.courtIdx, court]))
+      const completeMatches: CourtWithPlayers[] = allCourts.map((idx) => {
+        const existing = matchesByCourt.get(idx)
+        return existing || { courtIdx: idx, slots: [] }
+      })
+      
+      updateInMemoryMatches(selectedRound, completeMatches)
       
       // Add animation class to the swapped player
       setRecentlySwappedPlayers(new Set([occupyingPlayer.id]))

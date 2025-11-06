@@ -866,13 +866,11 @@ const autoArrangeMatches = async (round?: number, unavailablePlayerIds?: Set<str
     matchesByCourt.set(courtIdx, slots)
   }
 
-  // Build final matches array
-  const matches: CourtWithPlayers[] = stateCourts
-    .filter((court) => matchesByCourt.has(court.idx))
-    .map((court) => ({
-      courtIdx: court.idx,
-      slots: (matchesByCourt.get(court.idx) ?? []).sort((a, b) => a.slot - b.slot)
-    }))
+  // Build final matches array - ALWAYS include all 8 courts, even if empty
+  const matches: CourtWithPlayers[] = stateCourts.map((court) => ({
+    courtIdx: court.idx,
+    slots: (matchesByCourt.get(court.idx) ?? []).sort((a, b) => a.slot - b.slot)
+  }))
 
   return {
     matches,
