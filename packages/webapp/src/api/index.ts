@@ -186,26 +186,85 @@ const startOrGetActiveSession = async (): Promise<TrainingSession> => {
 }
 
 /**
- * Ends the active session and marks all related matches as ended.
+ * Saves all match data for the active session to the database.
+ * This is called when ending the training session to persist all match changes.
+ * @param matchesData - Array of CourtWithPlayers for all rounds
  * @throws Error if no active session
- * @remarks Automatically creates a statistics snapshot when session ends.
  */
-const endActiveSession = async (): Promise<void> => {
+const saveAllMatches = async (matchesData: Array<{ round: number; matches: CourtWithPlayers[] }>): Promise<void> => {
   const active = await getActiveSession()
   if (!active) {
     throw new Error('Ingen aktiv træning')
   }
 
+  const state = await getStateCopy()
+  const courts = state.courts
+  const startedAt = new Date().toISOString()
+
+  // Delete all existing matches for this session (we'll recreate them)
+  const existingMatches = state.matches.filter((match: Match) => match.sessionId === active.id)
+  const existingMatchIds = existingMatches.map((m: Match) => m.id)
+  const existingMatchPlayers = state.matchPlayers.filter((mp) => existingMatchIds.includes(mp.matchId))
+  
+  // Delete all match players first
+  await Promise.all(existingMatchPlayers.map((mp) => deleteMatchPlayerInDb(mp.id)))
+  // Then delete all matches
+  await Promise.all(existingMatchIds.map((matchId) => deleteMatchInDb(matchId)))
+
+  // Create all matches and match players for all rounds
+  for (const { round, matches: roundMatches } of matchesData) {
+    for (const courtMatch of roundMatches) {
+      const court = courts.find((c) => c.idx === courtMatch.courtIdx)
+      if (!court || courtMatch.slots.length === 0) continue
+
+      // Create match for this court and round
+      const match = await createMatchInDb({
+        sessionId: active.id,
+        courtId: court.id,
+        startedAt,
+        endedAt: null,
+        round
+      })
+
+      // Create match players for all slots
+      for (const slot of courtMatch.slots) {
+        if (slot.player) {
+          await createMatchPlayerInDb({
+            matchId: match.id,
+            playerId: slot.player.id,
+            slot: slot.slot
+          })
+        }
+      }
+    }
+  }
+}
+
+/**
+ * Ends the active session and marks all related matches as ended.
+ * @param matchesData - Optional array of CourtWithPlayers for all rounds to save before ending
+ * @throws Error if no active session
+ * @remarks Automatically creates a statistics snapshot when session ends.
+ */
+const endActiveSession = async (matchesData?: Array<{ round: number; matches: CourtWithPlayers[] }>): Promise<void> => {
+  const active = await getActiveSession()
+  if (!active) {
+    throw new Error('Ingen aktiv træning')
+  }
+
+  // Save all match data if provided (in-memory changes)
+  if (matchesData && matchesData.length > 0) {
+    await saveAllMatches(matchesData)
+  }
+
   // Update session status to ended
   await updateSessionInDb(active.id, { status: 'ended' })
 
-  // Update all matches for this session
+  // Update all matches for this session with endedAt
   const matches = await getMatches()
   const sessionMatches = matches.filter((match: Match) => match.sessionId === active.id)
   const endedAt = new Date().toISOString()
-  for (const match of sessionMatches) {
-    await updateMatchInDb(match.id, { endedAt })
-  }
+  await Promise.all(sessionMatches.map((match) => updateMatchInDb(match.id, { endedAt })))
 
   // Create statistics snapshot after session is marked as ended
   try {
@@ -220,7 +279,8 @@ const endActiveSession = async (): Promise<void> => {
 const sessionApi = {
   startOrGetActive: startOrGetActiveSession,
   getActive: getActiveSession,
-  endActive: endActiveSession
+  endActive: endActiveSession,
+  saveAllMatches
 }
 
 /**

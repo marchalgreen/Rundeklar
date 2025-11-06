@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useMemo, useState } from 'react'
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import type {
   AutoArrangeResult,
   CheckedInPlayer,
@@ -34,6 +34,23 @@ const MatchProgramPage = () => {
   const [dragSource, setDragSource] = useState<'bench' | 'inactive' | 'court' | null>(null)
   const [dragOverCourt, setDragOverCourt] = useState<number | null>(null)
   const [dragOverSlot, setDragOverSlot] = useState<{ courtIdx: number; slot: number } | null>(null)
+  
+  // Use refs to track drag state without triggering re-renders
+  const dragOverSlotRef = useRef<{ courtIdx: number; slot: number } | null>(null)
+  const dragOverCourtRef = useRef<number | null>(null)
+  const rafIdRef = useRef<number | null>(null)
+  
+  // Throttled state update function for drag over events
+  const updateDragOverState = useCallback(() => {
+    if (rafIdRef.current !== null) {
+      cancelAnimationFrame(rafIdRef.current)
+    }
+    rafIdRef.current = requestAnimationFrame(() => {
+      setDragOverSlot(dragOverSlotRef.current)
+      setDragOverCourt(dragOverCourtRef.current)
+      rafIdRef.current = null
+    })
+  }, [])
   const [recentlySwappedPlayers, setRecentlySwappedPlayers] = useState<Set<string>>(new Set())
   const [previousRoundsVisible, setPreviousRoundsVisible] = useState<Set<number>>(new Set())
   const [previousRoundsMatches, setPreviousRoundsMatches] = useState<Record<number, CourtWithPlayers[]>>({})
@@ -46,6 +63,9 @@ const MatchProgramPage = () => {
   const [lockedCourts, setLockedCourts] = useState<Set<number>>(new Set())
   // WHY: Track if auto-match has been run for the current round (to show "Omfordel" button)
   const [hasRunAutoMatch, setHasRunAutoMatch] = useState<Set<number>>(new Set())
+  
+  // WHY: Track all match changes in memory (per round) - only save to DB on "Afslut træning"
+  const [inMemoryMatches, setInMemoryMatches] = useState<Record<number, CourtWithPlayers[]>>({})
 
   /** Loads active training session from API. */
   const loadSession = useCallback(async () => {
@@ -78,12 +98,28 @@ const MatchProgramPage = () => {
       return
     }
     try {
-      const data = await api.matches.list(selectedRound)
-      setMatches(data)
+      // Load from database only on initial load
+      // After that, use in-memory state
+      if (!inMemoryMatches[selectedRound]) {
+        const data = await api.matches.list(selectedRound)
+        setInMemoryMatches((prev) => ({ ...prev, [selectedRound]: data }))
+        setMatches(data)
+      } else {
+        // Use in-memory state
+        setMatches(inMemoryMatches[selectedRound])
+      }
     } catch (err: any) {
       setError(err.message ?? 'Kunne ikke hente baner')
     }
   }
+  
+  /** Updates in-memory matches for a specific round. */
+  const updateInMemoryMatches = useCallback((round: number, newMatches: CourtWithPlayers[]) => {
+    setInMemoryMatches((prev) => ({ ...prev, [round]: newMatches }))
+    if (round === selectedRound) {
+      setMatches(newMatches)
+    }
+  }, [selectedRound])
 
   /** Initializes page state — loads session and players. */
   const hydrate = useCallback(async () => {
@@ -413,12 +449,23 @@ const MatchProgramPage = () => {
     }
   }
 
-  /** Ends active training session. */
+  /** Ends active training session and saves all match data to database. */
   const handleEndTraining = async () => {
     if (!session) return
     try {
-      await api.session.endActive()
+      // Collect all match data from all rounds (1-4)
+      const allMatchesData: Array<{ round: number; matches: CourtWithPlayers[] }> = []
+      for (let round = 1; round <= 4; round++) {
+        const roundMatches = inMemoryMatches[round] || await api.matches.list(round)
+        if (roundMatches.length > 0) {
+          allMatchesData.push({ round, matches: roundMatches })
+        }
+      }
+      
+      // Save all matches to database and end session
+      await api.session.endActive(allMatchesData)
       setSession(null)
+      setInMemoryMatches({}) // Clear in-memory state
       notify({ variant: 'success', title: 'Træning afsluttet' })
     } catch (err: any) {
       setError(err.message ?? 'Kunne ikke afslutte træning')
@@ -500,9 +547,18 @@ const MatchProgramPage = () => {
       // For initial auto-match: only fill empty courts (excludes occupied courts)
       // For re-shuffle: reshuffle all players among non-locked courts (don't clear first)
       const courtsToExclude = isReshuffle ? lockedCourts : excludedCourts
+      
+      // Call auto-arrange but don't write to DB - it will return the matches structure
+      // We need to modify autoArrange to return matches instead of writing to DB
+      // For now, call it and then load from DB, but we should refactor autoArrange
       const result: AutoArrangeResult = await api.matches.autoArrange(selectedRound, unavailablePlayers, activatedOneRoundPlayers, courtsToExclude, isReshuffle)
-      await loadMatches()
+      
+      // Load the newly created matches from DB (autoArrange still writes to DB for now)
+      // TODO: Refactor autoArrange to return matches structure instead of writing to DB
+      const newMatches = await api.matches.list(selectedRound)
+      updateInMemoryMatches(selectedRound, newMatches)
       await loadCheckIns()
+      
       notify({ 
         variant: 'success', 
         title: isReshuffle
@@ -527,14 +583,24 @@ const MatchProgramPage = () => {
     })
   }
 
-  /** Resets all court assignments for current session, respecting locked courts. */
+  /** Resets all court assignments for current session, respecting locked courts (in-memory only). */
   const handleResetMatches = async () => {
     if (!session) return
     try {
-      // Use bulk reset API for instant UX - no animations
-      await api.matches.resetForRound(selectedRound, lockedCourts)
-      await loadMatches()
+      // Reset in-memory state only - no database write
+      const currentMatches = inMemoryMatches[selectedRound] || []
+      const updatedMatches = currentMatches.map((court) => {
+        // If court is locked, keep it as is
+        if (lockedCourts.has(court.courtIdx)) {
+          return court
+        }
+        // Otherwise, clear all slots
+        return { ...court, slots: [] }
+      })
+      
+      updateInMemoryMatches(selectedRound, updatedMatches)
       await loadCheckIns()
+      
       notify({ 
         variant: 'success', 
         title: 'Kampe nulstillet (låste baner bevares)' 
@@ -545,7 +611,7 @@ const MatchProgramPage = () => {
   }
 
   /**
-   * Moves player to court/slot or removes from court.
+   * Moves player to court/slot or removes from court (in-memory only, no DB write).
    * @param playerId - Player ID to move
    * @param courtIdx - Target court index (undefined = remove from court)
    * @param slot - Target slot index (required if courtIdx provided)
@@ -553,8 +619,43 @@ const MatchProgramPage = () => {
   const handleMove = async (playerId: string, courtIdx?: number, slot?: number) => {
     if (!session) return
     try {
-      await api.matches.move({ playerId, toCourtIdx: courtIdx, toSlot: slot }, selectedRound)
-      await loadMatches()
+      // Update in-memory state only - no database write
+      const currentMatches = inMemoryMatches[selectedRound] || await api.matches.list(selectedRound)
+      const player = checkedIn.find((p) => p.id === playerId)
+      if (!player) return
+
+      const updatedMatches = currentMatches.map((court) => {
+        // Remove player from all courts first
+        const updatedSlots = court.slots.filter((s) => s.player?.id !== playerId)
+        
+        // If this is the target court, add player to the target slot
+        if (courtIdx !== undefined && court.courtIdx === courtIdx && slot !== undefined) {
+          // Check if slot is occupied
+          const slotEntry = updatedSlots.find((s) => s.slot === slot)
+          if (!slotEntry) {
+            // Slot is empty, add player
+            updatedSlots.push({ slot, player })
+          } else if (slotEntry.player?.id !== playerId) {
+            // Slot is occupied by different player - swap them
+            const swappedPlayer = slotEntry.player
+            updatedSlots.push({ slot, player })
+            // Add swapped player to the source location (if we know it)
+            // For now, just remove the occupying player (they'll be on bench)
+          }
+        }
+        
+        return { ...court, slots: updatedSlots }
+      })
+
+      // If adding to a new court that doesn't exist yet, create it
+      if (courtIdx !== undefined && slot !== undefined) {
+        const targetCourt = updatedMatches.find((c) => c.courtIdx === courtIdx)
+        if (!targetCourt) {
+          updatedMatches.push({ courtIdx, slots: [{ slot, player }] })
+        }
+      }
+
+      updateInMemoryMatches(selectedRound, updatedMatches)
       await loadCheckIns()
     } catch (err: any) {
       setError(err.message ?? 'Kunne ikke flytte spiller')
@@ -586,7 +687,7 @@ const MatchProgramPage = () => {
   }
 
   /**
-   * Handles drop to court slot — supports swapping if slot is occupied.
+   * Handles drop to court slot — supports swapping if slot is occupied (in-memory only).
    * @param event - Drag event
    * @param courtIdx - Target court index
    * @param slot - Target slot index
@@ -601,7 +702,8 @@ const MatchProgramPage = () => {
     event.preventDefault()
     
     // Check if the target slot is occupied
-    const targetCourt = matches.find((c) => c.courtIdx === courtIdx)
+    const currentMatches = inMemoryMatches[selectedRound] || matches
+    const targetCourt = currentMatches.find((c) => c.courtIdx === courtIdx)
     const targetSlotEntry = targetCourt?.slots.find((s) => s.slot === slot)
     const occupyingPlayer = targetSlotEntry?.player
     
@@ -611,30 +713,63 @@ const MatchProgramPage = () => {
     const sourceCourtIdx = sourceCourtIdxStr ? Number(sourceCourtIdxStr) : undefined
     const sourceSlot = sourceSlotStr ? Number(sourceSlotStr) : undefined
     
+    const player = checkedIn.find((p) => p.id === playerId)
+    if (!player) return
+
     if (occupyingPlayer && occupyingPlayer.id !== playerId) {
-      // Slot is occupied by a different player - swap them using the swap parameter
-      try {
-        await api.matches.move(
-          { 
-            playerId, 
-            toCourtIdx: courtIdx, 
-            toSlot: slot, 
-            swapWithPlayerId: occupyingPlayer.id 
-          } as any, 
-          selectedRound
-        )
-        await loadMatches()
-        await loadCheckIns()
-        
-        // Add animation class to the swapped player (the one who was moved to the source location)
-        setRecentlySwappedPlayers(new Set([occupyingPlayer.id]))
-        // Clear animation after it completes
-        setTimeout(() => {
-          setRecentlySwappedPlayers(new Set())
-        }, 1000)
-      } catch (err: any) {
-        setError(err.message ?? 'Kunne ikke bytte spillere')
-      }
+      // Slot is occupied by a different player - swap them in memory
+      const updatedMatches = currentMatches.map((court) => {
+        if (court.courtIdx === courtIdx) {
+          // Target court - swap players
+          const updatedSlots = court.slots
+            .filter((s) => s.slot !== slot && s.player?.id !== playerId)
+            .map((s) => {
+              // If this is the source slot and we have source info, place occupying player here
+              if (sourceCourtIdx === courtIdx && sourceSlot !== undefined && s.slot === sourceSlot) {
+                return { slot: s.slot, player: occupyingPlayer }
+              }
+              return s
+            })
+          
+          // Add dragged player to target slot
+          updatedSlots.push({ slot, player })
+          
+          // If source is different court, add occupying player to source
+          if (sourceCourtIdx !== undefined && sourceCourtIdx !== courtIdx && sourceSlot !== undefined) {
+            // We'll handle this in the source court mapping
+          }
+          
+          return { ...court, slots: updatedSlots }
+        } else if (sourceCourtIdx !== undefined && court.courtIdx === sourceCourtIdx) {
+          // Source court - remove dragged player, add occupying player if swapping
+          const updatedSlots = court.slots
+            .filter((s) => s.player?.id !== playerId)
+            .map((s) => {
+              if (sourceSlot !== undefined && s.slot === sourceSlot && occupyingPlayer) {
+                return { slot: s.slot, player: occupyingPlayer }
+              }
+              return s
+            })
+          
+          // If source slot doesn't exist, add it
+          if (sourceSlot !== undefined && !updatedSlots.find((s) => s.slot === sourceSlot) && occupyingPlayer) {
+            updatedSlots.push({ slot: sourceSlot, player: occupyingPlayer })
+          }
+          
+          return { ...court, slots: updatedSlots }
+        } else {
+          // Other courts - just remove dragged player
+          return { ...court, slots: court.slots.filter((s) => s.player?.id !== playerId) }
+        }
+      })
+
+      updateInMemoryMatches(selectedRound, updatedMatches)
+      
+      // Add animation class to the swapped player
+      setRecentlySwappedPlayers(new Set([occupyingPlayer.id]))
+      setTimeout(() => {
+        setRecentlySwappedPlayers(new Set())
+      }, 1000)
     } else {
       // Slot is empty or same player - normal move
       await handleMove(playerId, courtIdx, slot)
@@ -740,22 +875,20 @@ const MatchProgramPage = () => {
             // Store source location for swapping
             event.dataTransfer.setData('application/x-source-court-idx', String(court.courtIdx))
             event.dataTransfer.setData('application/x-source-slot', String(slotIndex))
+            // Use browser's default drag image for better performance
             event.dataTransfer.effectAllowed = 'move'
-            // Create a clone of the element for drag preview to prevent layout shift
-            const dragElement = event.currentTarget.cloneNode(true) as HTMLElement
-            dragElement.style.position = 'absolute'
-            dragElement.style.top = '-1000px'
-            dragElement.style.width = `${event.currentTarget.offsetWidth}px`
-            dragElement.style.opacity = '0.8'
-            document.body.appendChild(dragElement)
-            const rect = event.currentTarget.getBoundingClientRect()
-            event.dataTransfer.setDragImage(dragElement, event.clientX - rect.left, event.clientY - rect.top)
-            // Clean up after a short delay
-            setTimeout(() => document.body.removeChild(dragElement), 0)
           }
         }}
         onDragEnd={() => {
           setDragSource(null)
+          dragOverSlotRef.current = null
+          dragOverCourtRef.current = null
+          if (rafIdRef.current !== null) {
+            cancelAnimationFrame(rafIdRef.current)
+            rafIdRef.current = null
+          }
+          setDragOverSlot(null)
+          setDragOverCourt(null)
         }}
         className={`flex items-center gap-2 rounded-md px-2 py-2 h-[56px] w-full transition-all motion-reduce:transition-none ${
           isRecentlySwapped
@@ -774,12 +907,20 @@ const MatchProgramPage = () => {
         onDragOver={(event: React.DragEvent<HTMLDivElement>) => {
           // Allow drag over even if slot is occupied (for swapping)
           event.preventDefault()
-          setDragOverSlot({ courtIdx: court.courtIdx, slot: slotIndex })
+          // Update ref immediately for instant visual feedback
+          const newSlot = { courtIdx: court.courtIdx, slot: slotIndex }
+          if (dragOverSlotRef.current?.courtIdx !== newSlot.courtIdx || dragOverSlotRef.current?.slot !== newSlot.slot) {
+            dragOverSlotRef.current = newSlot
+            updateDragOverState()
+          }
         }}
         onDragLeave={() => {
-          setDragOverSlot(null)
+          dragOverSlotRef.current = null
+          updateDragOverState()
         }}
         onDrop={(event: React.DragEvent<HTMLDivElement>) => {
+          dragOverSlotRef.current = null
+          dragOverCourtRef.current = null
           setDragOverSlot(null)
           setDragOverCourt(null)
           // Allow dropping even if slot is occupied (for swapping)
@@ -986,17 +1127,8 @@ const MatchProgramPage = () => {
                   setDragSource('bench')
                   event.dataTransfer.setData('application/x-player-id', player.id)
                   event.dataTransfer.effectAllowed = 'move'
-                  // Create a clone of the element for drag preview to prevent layout shift
-                  const dragElement = event.currentTarget.cloneNode(true) as HTMLElement
-                  dragElement.style.position = 'absolute'
-                  dragElement.style.top = '-1000px'
-                  dragElement.style.width = `${event.currentTarget.offsetWidth}px`
-                  dragElement.style.opacity = '0.8'
-                  document.body.appendChild(dragElement)
-                  const rect = event.currentTarget.getBoundingClientRect()
-                  event.dataTransfer.setDragImage(dragElement, event.clientX - rect.left, event.clientY - rect.top)
-                  // Clean up after a short delay
-                  setTimeout(() => document.body.removeChild(dragElement), 0)
+                  // Use browser's default drag image for better performance
+                  event.dataTransfer.effectAllowed = 'move'
                 }}
                 onDragEnd={() => {
                   setDragSource(null)
@@ -1159,11 +1291,16 @@ const MatchProgramPage = () => {
               }`}
               onDragOver={(event) => {
                 event.preventDefault()
-                setDragOverCourt(court.courtIdx)
+                // Update ref immediately for instant visual feedback
+                if (dragOverCourtRef.current !== court.courtIdx) {
+                  dragOverCourtRef.current = court.courtIdx
+                  updateDragOverState()
+                }
               }}
               onDragLeave={() => {
-                setDragOverCourt(null)
-                setDragOverSlot(null)
+                dragOverCourtRef.current = null
+                dragOverSlotRef.current = null
+                updateDragOverState()
               }}
               onDrop={(event) => void onDropToCourt(event, court.courtIdx)}
             >
