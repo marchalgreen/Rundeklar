@@ -16,7 +16,7 @@ const Header = () => {
       {/* Left section: Logo and text */}
       <div className="flex items-center gap-3 flex-shrink-0">
         <img 
-          src="/logo.jpeg" 
+          src={`${import.meta.env.BASE_URL}logo.jpeg`} 
           alt="Herlev/Hjorten" 
           className="h-12 w-12 rounded-full ring-1 ring-[hsl(var(--line)/.2)] object-cover flex-shrink-0" 
         />
