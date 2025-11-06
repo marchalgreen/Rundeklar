@@ -1164,9 +1164,9 @@ const MatchProgramPage = () => {
           <p className="text-base text-[hsl(var(--muted))] mt-1">
             {session ? (
               <>
-                Tjekket ind: {checkedIn.length}
+                Aktiv træning: {new Date(session.date).toLocaleDateString('da-DK')}
                 {checkedIn.length > 0 && (
-                  <> <span className="font-bold text-[hsl(var(--foreground))]">•</span> {genderBreakdown.male} Herrer & {genderBreakdown.female} Damer</>
+                  <> <span className="font-bold text-[hsl(var(--foreground))]">•</span> Indtjekkede spillere: {checkedIn.length} <span className="font-bold text-[hsl(var(--foreground))]">•</span> {genderBreakdown.male} Herrer & {genderBreakdown.female} Damer</>
                 )}
               </>
             ) : (
