@@ -36,7 +36,7 @@ const variantIcon: Record<ToastVariant, React.ReactElement> = {
 
 /**
  * ToastProvider component — provides toast notification context.
- * @remarks Renders toasts in fixed bottom-left position with auto-dismiss.
+ * @remarks Renders toasts in fixed top-right position with auto-dismiss.
  * Supports success, warning, danger, and default variants.
  */
 export const ToastProvider = ({ children }: { children: React.ReactNode }) => {
@@ -60,7 +60,7 @@ export const ToastProvider = ({ children }: { children: React.ReactNode }) => {
   return (
     <ToastContext.Provider value={value}>
       {children}
-      <div className="pointer-events-none fixed bottom-6 left-6 z-50 flex w-80 max-w-[calc(100vw-2rem)] flex-col-reverse gap-3">
+      <div className="pointer-events-none fixed top-6 right-6 z-50 flex w-80 max-w-[calc(100vw-2rem)] flex-col gap-3">
         {toasts.map((toast) => (
           <div
             key={toast.id}
