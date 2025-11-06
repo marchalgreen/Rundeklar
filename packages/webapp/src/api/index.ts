@@ -828,6 +828,117 @@ const autoArrangeMatches = async (round?: number, unavailablePlayerIds?: Set<str
     break
   }
 
+  // CRITICAL: Ensure ALL remaining players are assigned (key strategy)
+  // If we have leftover players, we must assign them to courts
+  const leftoverPlayers = benchPlayers.filter((p) => !usedPlayerIds.has(p.id))
+  
+  if (leftoverPlayers.length > 0) {
+    // Strategy 1: Add leftover players to existing matches that have space
+    for (const leftoverPlayer of leftoverPlayers) {
+      if (usedPlayerIds.has(leftoverPlayer.id)) continue
+      
+      let added = false
+      // Try to add to existing matches with space (1-3 players)
+      for (const assignment of assignments) {
+        if (assignment.playerIds.length < 4) {
+          assignment.playerIds.push(leftoverPlayer.id)
+          usedPlayerIds.add(leftoverPlayer.id)
+          added = true
+          break
+        }
+      }
+      
+      // Strategy 2: If couldn't add to existing match, try to create new matches
+      if (!added && courtIdxIndex < availableCourtIdxs.length) {
+        // Find other leftover players to pair with
+        const otherLeftovers = leftoverPlayers.filter((p) => p.id !== leftoverPlayer.id && !usedPlayerIds.has(p.id))
+        
+        // If this is a Double player, we MUST create a 2v2 match (need 4 players)
+        if (leftoverPlayer.primaryCategory === 'Double') {
+          // Collect all available players (leftovers + can take from existing matches if needed)
+          const neededForDoubles = [leftoverPlayer, ...otherLeftovers].slice(0, 4)
+          
+          // If we don't have 4 from leftovers, try to take from existing matches
+          if (neededForDoubles.length < 4) {
+            for (const assignment of assignments) {
+              if (neededForDoubles.length >= 4) break
+              // Take one player from matches with 2+ players
+              if (assignment.playerIds.length >= 2) {
+                const playerToMove = assignment.playerIds[0]
+                const playerData = benchPlayers.find((p) => p.id === playerToMove)
+                if (playerData && !neededForDoubles.find((np) => np.id === playerToMove)) {
+                  neededForDoubles.push(playerData)
+                  assignment.playerIds = assignment.playerIds.filter((id) => id !== playerToMove)
+                  usedPlayerIds.delete(playerToMove)
+                }
+              }
+            }
+          }
+          
+          // If we have 4 players now, create 2v2 match
+          if (neededForDoubles.length === 4) {
+            assignments.push({
+              courtIdx: availableCourtIdxs[courtIdxIndex++],
+              playerIds: neededForDoubles.map((p) => p.id)
+            })
+            neededForDoubles.forEach((p) => usedPlayerIds.add(p.id))
+            added = true
+          }
+        } else {
+          // This is a singles-eligible player - try to create 1v1 or add to existing
+          const singlesEligible = [leftoverPlayer, ...otherLeftovers.filter((p) => p.primaryCategory !== 'Double')]
+          
+          if (singlesEligible.length >= 2) {
+            const pair = singlesEligible.slice(0, 2)
+            assignments.push({
+              courtIdx: availableCourtIdxs[courtIdxIndex++],
+              playerIds: pair.map((p) => p.id)
+            })
+            pair.forEach((p) => usedPlayerIds.add(p.id))
+            added = true
+          }
+        }
+      }
+      
+      // Strategy 3: If still not added, force add to any match with space
+      // For Double players: only add to matches with 2+ players (to avoid 1v1)
+      // For others: can add to any match with space
+      if (!added) {
+        for (const assignment of assignments) {
+          if (assignment.playerIds.length < 8) {
+            // If this is a Double player, only add to matches with 2+ players (avoid 1v1)
+            if (leftoverPlayer.primaryCategory === 'Double' && assignment.playerIds.length < 2) {
+              continue
+            }
+            assignment.playerIds.push(leftoverPlayer.id)
+            usedPlayerIds.add(leftoverPlayer.id)
+            added = true
+            break
+          }
+        }
+      }
+      
+      // Strategy 4: Last resort - create incomplete match (better than leaving on bench)
+      // Only for singles-eligible players (Double players should have been handled above)
+      if (!added && courtIdxIndex < availableCourtIdxs.length && leftoverPlayer.primaryCategory !== 'Double') {
+        assignments.push({
+          courtIdx: availableCourtIdxs[courtIdxIndex++],
+          playerIds: [leftoverPlayer.id]
+        })
+        usedPlayerIds.add(leftoverPlayer.id)
+      } else if (!added && leftoverPlayer.primaryCategory === 'Double') {
+        // For Double players, if we still can't assign them, force add to any match (violates rule but ensures assignment)
+        for (const assignment of assignments) {
+          if (assignment.playerIds.length < 8) {
+            assignment.playerIds.push(leftoverPlayer.id)
+            usedPlayerIds.add(leftoverPlayer.id)
+            break
+          }
+        }
+      }
+    }
+  }
+
   const leftoverPlayerIds = benchPlayers.filter((p) => !usedPlayerIds.has(p.id)).map((p) => p.id)
 
   if (!assignments.length) {
