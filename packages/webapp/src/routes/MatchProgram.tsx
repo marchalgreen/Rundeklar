@@ -1494,14 +1494,11 @@ const MatchProgramPage = () => {
                 <div className="flex items-center gap-2">
                   <h3 className="text-base font-semibold text-[hsl(var(--foreground))]">Bane {court.courtIdx}</h3>
                   {courtsWithDuplicatesSet.has(court.courtIdx) && (
-                    <span
-                      className="group relative"
-                      title="3+ spillere har allerede spillet sammen i en tidligere runde"
-                    >
+                    <span className="group relative">
                       <span className="inline-flex h-4 w-4 items-center justify-center rounded-full bg-[hsl(var(--destructive)/.2)] text-[10px] font-bold text-[hsl(var(--destructive))] ring-1 ring-[hsl(var(--destructive)/.3)]">
                         !
                       </span>
-                      <span className="absolute left-1/2 top-full z-10 mt-2 hidden -translate-x-1/2 whitespace-nowrap rounded-md bg-[hsl(var(--foreground))] px-2 py-1 text-xs text-[hsl(var(--background))] shadow-lg group-hover:block">
+                      <span className="absolute left-1/2 top-full z-10 mt-2 hidden -translate-x-1/2 whitespace-nowrap rounded-md bg-[hsl(var(--surface-2))] px-2 py-1 text-xs text-[hsl(var(--foreground))] shadow-lg ring-1 ring-[hsl(var(--line)/.12)] group-hover:block">
                         3+ spillere har allerede spillet sammen i en tidligere runde
                       </span>
                     </span>

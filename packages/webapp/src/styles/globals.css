@@ -17,16 +17,30 @@
 }
 
 @layer components {
+      /* Any top header that contains the nav list acts as the anchor */
+      header,
+      .app-header,
+      .topbar {
+        position: relative;
+      }
+
       /* Horizontal nav list container */
       .nav-list {
         display: flex;
         flex-direction: row;
         gap: 12px;
-        justify-content: center;   /* center items within the list */
-        align-items: center;       /* vertical alignment */
-        margin-inline: auto;       /* center the whole list in its parent */
-        flex-wrap: nowrap;         /* avoid line breaks that change width */
-        min-width: fit-content;    /* shrink to the actual content width */
+        justify-content: center;
+        align-items: center;
+        flex-wrap: nowrap;
+        min-width: fit-content;
+
+        /* Absolute centering inside the header anchor */
+        position: absolute;
+        left: 50%;
+        top: 50%;
+        transform: translate(-50%, -50%);
+        z-index: 1;              /* sit above background but under header actions */
+        pointer-events: auto;    /* ensure items stay clickable */
       }
 
       /* Base item (menu, not jumbo button) */
