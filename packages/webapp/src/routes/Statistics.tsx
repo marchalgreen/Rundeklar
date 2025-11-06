@@ -33,8 +33,6 @@ const StatisticsPage = () => {
   const [search, setSearch] = useState('')
   const [showSearch, setShowSearch] = useState(false)
   const [error, setError] = useState<string | null>(null)
-  const [isGeneratingDummyData, setIsGeneratingDummyData] = useState(false)
-  const [hasHistoricalData, setHasHistoricalData] = useState(false)
   const { notify } = useToast()
   
   // Player comparison state
@@ -76,41 +74,10 @@ const StatisticsPage = () => {
     [notify]
   )
 
-  /** Checks if historical data exists. */
-  const checkHistoricalData = useCallback(async () => {
-    try {
-      const seasons = await statsApi.getAllSeasons()
-      setHasHistoricalData(seasons.length > 0)
-    } catch {
-      setHasHistoricalData(false)
-    }
-  }, [])
-
-  /** Generates dummy historical data for demo purposes. */
-  const handleGenerateDummyData = useCallback(async () => {
-    setIsGeneratingDummyData(true)
-    setError(null)
-    try {
-      await statsApi.generateDummyHistoricalData()
-      await checkHistoricalData()
-      notify({ variant: 'success', title: 'Historiske dummy data er blevet genereret' })
-      // Reload statistics if a player is selected
-      if (selectedPlayerId) {
-        await loadStatistics(selectedPlayerId)
-      }
-    } catch (err: any) {
-      setError(err.message ?? 'Kunne ikke generere dummy data')
-      notify({ variant: 'danger', title: err.message ?? 'Kunne ikke generere dummy data' })
-    } finally {
-      setIsGeneratingDummyData(false)
-    }
-  }, [selectedPlayerId, loadStatistics, checkHistoricalData, notify])
-
   // WHY: Load players on mount
   useEffect(() => {
     void loadPlayers()
-    void checkHistoricalData()
-  }, [loadPlayers, checkHistoricalData])
+  }, [loadPlayers])
 
   // WHY: Load statistics when player is selected
   useEffect(() => {
@@ -196,15 +163,6 @@ const StatisticsPage = () => {
           <h1 className="text-2xl font-semibold text-[hsl(var(--foreground))]">Statistik</h1>
           <p className="text-base text-[hsl(var(--muted))] mt-1">Se spillernes statistik og sammenlign data.</p>
         </div>
-        <button
-          type="button"
-          onClick={handleGenerateDummyData}
-          disabled={isGeneratingDummyData}
-          className="px-4 py-2 text-sm font-medium text-white bg-[hsl(var(--primary))] hover:bg-[hsl(var(--primary)/.9)] rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
-        >
-          <BarChart3 className="w-4 h-4" />
-          {isGeneratingDummyData ? 'Genererer...' : 'Demo: Input historiske dummy data'}
-        </button>
       </header>
 
       {/* FilterBar */}
