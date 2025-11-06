@@ -685,10 +685,18 @@ const autoArrangeMatches = async (round?: number, unavailablePlayerIds?: Set<str
     }
   }
 
+  // Hard limit: Maximum 32 players can be assigned (8 courts × 4 players)
+  const MAX_PLAYERS_ON_COURTS = 32
+  
+  // Helper function to count total assigned players across all assignments
+  const getTotalAssignedPlayers = () => {
+    return assignments.reduce((total, assignment) => total + assignment.playerIds.length, 0)
+  }
+  
   // Main algorithm: Maximum randomization with only two constraints
-  // 1. Assign ALL players
+  // 1. Assign ALL players (up to MAX_PLAYERS_ON_COURTS limit)
   // 2. Double players never in 1v1 matches
-  while (remainingPlayers.length > 0 && courtIdxIndex < availableCourtIdxs.length) {
+  while (remainingPlayers.length > 0 && courtIdxIndex < availableCourtIdxs.length && getTotalAssignedPlayers() < MAX_PLAYERS_ON_COURTS) {
     // Completely randomize player order every iteration
     remainingPlayers = [...remainingPlayers].sort(() => random() - 0.5)
     
@@ -711,7 +719,32 @@ const autoArrangeMatches = async (round?: number, unavailablePlayerIds?: Set<str
     
     if (preferDoubles && canCreateDoubles) {
       // Create random 2v2 match
-      // Randomly select 4 players
+      // Randomly select 4 players (but check limit first)
+      const currentTotal = getTotalAssignedPlayers()
+      if (currentTotal + 4 > MAX_PLAYERS_ON_COURTS) {
+        // Can't create full 2v2, try to add remaining slots if any
+        const remainingSlots = MAX_PLAYERS_ON_COURTS - currentTotal
+        if (remainingSlots >= 2) {
+          // Create smaller match with remaining slots
+          const shuffled = [...remainingPlayers].sort(() => random() - 0.5)
+          const selectedPlayers = shuffled.slice(0, remainingSlots)
+          
+          if (selectedPlayers.length >= 2) {
+            const match = createRandomSinglesMatch(selectedPlayers)
+            if (match) {
+              assignments.push(match)
+              selectedPlayers.forEach((p) => {
+                usedPlayerIds.add(p.id)
+                const idx = remainingPlayers.findIndex((rp) => rp.id === p.id)
+                if (idx >= 0) remainingPlayers.splice(idx, 1)
+              })
+              continue
+            }
+          }
+        }
+        break // Reached limit
+      }
+      
       const shuffled = [...remainingPlayers].sort(() => random() - 0.5)
       const selectedPlayers = shuffled.slice(0, 4)
       
@@ -727,6 +760,17 @@ const autoArrangeMatches = async (round?: number, unavailablePlayerIds?: Set<str
       }
     } else if (canCreateSingles) {
       // Create random 1v1 match (only with singles-eligible players)
+      const currentTotal = getTotalAssignedPlayers()
+      if (currentTotal + 2 > MAX_PLAYERS_ON_COURTS) {
+        // Can't create full 1v1, check if we have exactly 1 slot left
+        const remainingSlots = MAX_PLAYERS_ON_COURTS - currentTotal
+        if (remainingSlots < 1) {
+          break // Reached limit
+        }
+        // Can't create 1v1 with only 1 slot, skip
+        break
+      }
+      
       const shuffled = [...singlesEligible].sort(() => random() - 0.5)
       const eligible = shuffled.filter((p) => !usedPlayerIds.has(p.id))
       
@@ -769,8 +813,12 @@ const autoArrangeMatches = async (round?: number, unavailablePlayerIds?: Set<str
         }
       }
       
-      // If we have 4, create 2v2
+      // If we have 4, create 2v2 (but check limit first)
       if (players.length === 4) {
+        const currentTotal = getTotalAssignedPlayers()
+        if (currentTotal + 4 > MAX_PLAYERS_ON_COURTS) {
+          break // Reached limit
+        }
         const match = createRandomDoublesMatch(players)
         if (match) {
           assignments.push(match)
@@ -783,8 +831,12 @@ const autoArrangeMatches = async (round?: number, unavailablePlayerIds?: Set<str
       }
     }
     
-    // If we have 2-3 players left and no Double players, create 1v1
+    // If we have 2-3 players left and no Double players, create 1v1 (but check limit first)
     if (remainingPlayers.length >= 2 && doublesOnly.length === 0) {
+      const currentTotal = getTotalAssignedPlayers()
+      if (currentTotal + 2 > MAX_PLAYERS_ON_COURTS) {
+        break // Reached limit
+      }
       const match = createRandomSinglesMatch(remainingPlayers)
       if (match) {
         assignments.push(match)
@@ -807,8 +859,12 @@ const autoArrangeMatches = async (round?: number, unavailablePlayerIds?: Set<str
       break
     }
     
-    // Last resort: try to match any remaining players (only singles-eligible)
+    // Last resort: try to match any remaining players (only singles-eligible, but check limit first)
     if (remainingPlayers.length >= 2 && singlesEligible.length >= 2) {
+      const currentTotal = getTotalAssignedPlayers()
+      if (currentTotal + 2 > MAX_PLAYERS_ON_COURTS) {
+        break // Reached limit
+      }
       const eligible = singlesEligible.filter((p) => !usedPlayerIds.has(p.id))
       if (eligible.length >= 2) {
         const match = createRandomSinglesMatch(eligible)
@@ -829,17 +885,20 @@ const autoArrangeMatches = async (round?: number, unavailablePlayerIds?: Set<str
   }
 
   // CRITICAL: Ensure ALL remaining players are assigned (key strategy)
-  // If we have leftover players, we must assign them to courts
+  // BUT: Hard limit of MAX_PLAYERS_ON_COURTS (32 players) - any additional must stay on bench
+  // If we have leftover players, we must assign them to courts (up to the limit)
   const leftoverPlayers = benchPlayers.filter((p) => !usedPlayerIds.has(p.id))
   
-  if (leftoverPlayers.length > 0) {
+  if (leftoverPlayers.length > 0 && getTotalAssignedPlayers() < MAX_PLAYERS_ON_COURTS) {
     // Strategy 1: Add leftover players to existing matches that have space
     for (const leftoverPlayer of leftoverPlayers) {
       if (usedPlayerIds.has(leftoverPlayer.id)) continue
+      if (getTotalAssignedPlayers() >= MAX_PLAYERS_ON_COURTS) break // Reached limit
       
       let added = false
       // Try to add to existing matches with space (1-3 players)
       for (const assignment of assignments) {
+        if (getTotalAssignedPlayers() >= MAX_PLAYERS_ON_COURTS) break // Reached limit
         if (assignment.playerIds.length < 4) {
           assignment.playerIds.push(leftoverPlayer.id)
           usedPlayerIds.add(leftoverPlayer.id)
@@ -849,12 +908,18 @@ const autoArrangeMatches = async (round?: number, unavailablePlayerIds?: Set<str
       }
       
       // Strategy 2: If couldn't add to existing match, try to create new matches
-      if (!added && courtIdxIndex < availableCourtIdxs.length) {
+      if (!added && courtIdxIndex < availableCourtIdxs.length && getTotalAssignedPlayers() < MAX_PLAYERS_ON_COURTS) {
         // Find other leftover players to pair with
         const otherLeftovers = leftoverPlayers.filter((p) => p.id !== leftoverPlayer.id && !usedPlayerIds.has(p.id))
         
         // If this is a Double player, we MUST create a 2v2 match (need 4 players)
         if (leftoverPlayer.primaryCategory === 'Double') {
+          const currentTotal = getTotalAssignedPlayers()
+          if (currentTotal + 4 > MAX_PLAYERS_ON_COURTS) {
+            // Can't create full 2v2 due to limit, skip
+            continue
+          }
+          
           // Collect all available players (leftovers + can take from existing matches if needed)
           const neededForDoubles = [leftoverPlayer, ...otherLeftovers].slice(0, 4)
           
@@ -886,6 +951,12 @@ const autoArrangeMatches = async (round?: number, unavailablePlayerIds?: Set<str
           }
         } else {
           // This is a singles-eligible player - try to create 1v1 or add to existing
+          const currentTotal = getTotalAssignedPlayers()
+          if (currentTotal + 2 > MAX_PLAYERS_ON_COURTS) {
+            // Can't create full 1v1 due to limit, skip
+            continue
+          }
+          
           const singlesEligible = [leftoverPlayer, ...otherLeftovers.filter((p) => p.primaryCategory !== 'Double')]
           
           if (singlesEligible.length >= 2) {
@@ -900,11 +971,12 @@ const autoArrangeMatches = async (round?: number, unavailablePlayerIds?: Set<str
         }
       }
       
-      // Strategy 3: If still not added, force add to any match with space
+      // Strategy 3: If still not added, force add to any match with space (but check limit)
       // For Double players: only add to matches with 2+ players (to avoid 1v1)
       // For others: can add to any match with space
-      if (!added) {
+      if (!added && getTotalAssignedPlayers() < MAX_PLAYERS_ON_COURTS) {
         for (const assignment of assignments) {
+          if (getTotalAssignedPlayers() >= MAX_PLAYERS_ON_COURTS) break // Reached limit
           if (assignment.playerIds.length < 8) {
             // If this is a Double player, only add to matches with 2+ players (avoid 1v1)
             if (leftoverPlayer.primaryCategory === 'Double' && assignment.playerIds.length < 2) {
@@ -920,15 +992,17 @@ const autoArrangeMatches = async (round?: number, unavailablePlayerIds?: Set<str
       
       // Strategy 4: Last resort - create incomplete match (better than leaving on bench)
       // Only for singles-eligible players (Double players should have been handled above)
-      if (!added && courtIdxIndex < availableCourtIdxs.length && leftoverPlayer.primaryCategory !== 'Double') {
+      // BUT: Only if we haven't reached the limit
+      if (!added && courtIdxIndex < availableCourtIdxs.length && leftoverPlayer.primaryCategory !== 'Double' && getTotalAssignedPlayers() < MAX_PLAYERS_ON_COURTS) {
         assignments.push({
           courtIdx: availableCourtIdxs[courtIdxIndex++],
           playerIds: [leftoverPlayer.id]
         })
         usedPlayerIds.add(leftoverPlayer.id)
-      } else if (!added && leftoverPlayer.primaryCategory === 'Double') {
+      } else if (!added && leftoverPlayer.primaryCategory === 'Double' && getTotalAssignedPlayers() < MAX_PLAYERS_ON_COURTS) {
         // For Double players, if we still can't assign them, force add to any match (violates rule but ensures assignment)
         for (const assignment of assignments) {
+          if (getTotalAssignedPlayers() >= MAX_PLAYERS_ON_COURTS) break // Reached limit
           if (assignment.playerIds.length < 8) {
             assignment.playerIds.push(leftoverPlayer.id)
             usedPlayerIds.add(leftoverPlayer.id)
