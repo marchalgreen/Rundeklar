@@ -678,7 +678,7 @@ const MatchProgramPage = () => {
             setTimeout(() => document.body.removeChild(dragElement), 0)
           }
         }}
-        className={`flex items-center gap-2 rounded-md border-hair px-2 py-2 min-h-[48px] transition-all motion-reduce:transition-none ${
+        className={`flex items-center gap-2 rounded-md border-hair px-2 py-2 min-h-[48px] w-full transition-all motion-reduce:transition-none ${
           isRecentlySwapped
             ? `${getPlayerSlotBgColor()} ${catLetter ? 'cat-rail' : ''} animate-swap-in ring-2 ring-[hsl(var(--primary)/.5)] shadow-lg hover:shadow-sm cursor-grab active:cursor-grabbing ring-1 ring-[hsl(var(--line)/.12)]`
             : isDragOverOccupied && player
@@ -896,7 +896,7 @@ const MatchProgramPage = () => {
               return (
               <div
                 key={player.id}
-                className={`flex items-center gap-2 rounded-md border-hair px-2 py-2 min-h-[48px] hover:shadow-sm cursor-grab active:cursor-grabbing transition-all ring-1 ring-[hsl(var(--line)/.12)] ${getPlayerSlotBgColor()} ${catLetter ? 'cat-rail' : ''}`}
+                className={`flex items-center gap-2 rounded-md border-hair px-2 py-2 min-h-[48px] w-full hover:shadow-sm cursor-grab active:cursor-grabbing transition-all ring-1 ring-[hsl(var(--line)/.12)] ${getPlayerSlotBgColor()} ${catLetter ? 'cat-rail' : ''}`}
                 data-cat={catLetter || undefined}
                 draggable
                 onDragStart={(event) => {
@@ -963,7 +963,7 @@ const MatchProgramPage = () => {
                       return (
                         <div
                           key={player.id}
-                          className={`flex items-center justify-between gap-2 rounded-md border-hair px-2 py-2 min-h-[48px] opacity-60 hover:opacity-100 hover:shadow-sm cursor-grab active:cursor-grabbing transition-all ring-1 ring-[hsl(var(--line)/.12)] ${getPlayerSlotBgColor()} ${catLetter ? 'cat-rail' : ''}`}
+                          className={`flex items-center justify-between gap-2 rounded-md border-hair px-2 py-2 min-h-[48px] w-full opacity-60 hover:opacity-100 hover:shadow-sm cursor-grab active:cursor-grabbing transition-all ring-1 ring-[hsl(var(--line)/.12)] ${getPlayerSlotBgColor()} ${catLetter ? 'cat-rail' : ''}`}
                           data-cat={catLetter || undefined}
                         draggable
                         onDragStart={(event) => {

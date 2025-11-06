@@ -438,7 +438,7 @@ const CheckInPage = () => {
                   <div
                     key={player.id}
                     className={clsx(
-                      'flex items-center justify-between gap-2 rounded-md border-hair px-2 py-2 min-h-[48px] hover:shadow-sm transition-all duration-300 ease-[cubic-bezier(.2,.8,.2,1)] motion-reduce:transition-none ring-1 ring-[hsl(var(--line)/.12)]',
+                      'flex items-center justify-between gap-2 rounded-md border-hair px-2 py-2 min-h-[48px] hover:shadow-sm transition-all duration-300 ease-[cubic-bezier(.2,.8,.2,1)] motion-reduce:transition-none',
                       'bg-[hsl(var(--success)/.06)]',
                       catLetter && 'cat-rail',
                       isAnimatingOut && 'opacity-0 scale-95 translate-x-4 pointer-events-none',
@@ -552,7 +552,7 @@ const CheckInPage = () => {
                   className={clsx(
                     'border-hair flex min-h-[56px] items-center justify-between gap-3 rounded-lg px-3 py-2.5',
                     'transition-all duration-300 ease-[cubic-bezier(.2,.8,.2,1)] motion-reduce:transition-none',
-                    'cursor-pointer hover:shadow-sm hover:ring-[hsl(var(--accent)/.15)] ring-1 ring-[hsl(var(--line)/.12)]',
+                    'cursor-pointer hover:shadow-sm hover:ring-2 hover:ring-[hsl(var(--accent)/.15)]',
                     getPlayerBgColor(),
                     catLetter && 'cat-rail',
                     isJustCheckedIn && 'ring-2 ring-[hsl(206_88%_60%)] scale-[1.02] shadow-lg',
