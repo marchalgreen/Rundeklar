@@ -306,6 +306,7 @@ const MatchProgramPage = () => {
 
   /**
    * Loads matches for a previous round (for duplicate detection).
+   * Uses in-memory matches first, then falls back to database.
    * @param round - Round number to load
    */
   const loadPreviousRound = useCallback(async (round: number) => {
@@ -313,12 +314,44 @@ const MatchProgramPage = () => {
     if (previousRoundsMatches[round]) return // Already loaded
     
     try {
-      const data = await api.matches.list(round)
+      // First check in-memory matches (current session changes)
+      let data: CourtWithPlayers[]
+      if (inMemoryMatches[round]) {
+        data = inMemoryMatches[round]
+      } else {
+        // Fall back to database (for rounds from previous sessions or if not in memory)
+        data = await api.matches.list(round)
+        // Ensure all 8 courts are present
+        const allCourts = Array.from({ length: 8 }, (_, i) => i + 1)
+        const matchesByCourt = new Map(data.map((court) => [court.courtIdx, court]))
+        data = allCourts.map((courtIdx) => {
+          const existing = matchesByCourt.get(courtIdx)
+          return existing || { courtIdx, slots: [] }
+        })
+      }
       setPreviousRoundsMatches((prev) => ({ ...prev, [round]: data }))
     } catch (err: any) {
       setError(err.message ?? 'Kunne ikke hente tidligere runde')
     }
-  }, [session, selectedRound, previousRoundsMatches])
+  }, [session, selectedRound, previousRoundsMatches, inMemoryMatches])
+
+  /**
+   * Syncs in-memory matches to previousRoundsMatches when they change,
+   * so "Se tidligere runder" always shows the latest data.
+   */
+  useEffect(() => {
+    // Update previousRoundsMatches for any rounds that are in inMemoryMatches
+    // and are previous rounds (round < selectedRound)
+    const updates: Record<number, CourtWithPlayers[]> = {}
+    for (let round = 1; round < selectedRound; round++) {
+      if (inMemoryMatches[round]) {
+        updates[round] = inMemoryMatches[round]
+      }
+    }
+    if (Object.keys(updates).length > 0) {
+      setPreviousRoundsMatches((prev) => ({ ...prev, ...updates }))
+    }
+  }, [inMemoryMatches, selectedRound])
 
   /**
    * Checks if 3+ players on a court have played together in previous rounds.
@@ -344,19 +377,32 @@ const MatchProgramPage = () => {
     // Wait a bit for state to update after loading
     await new Promise((resolve) => setTimeout(resolve, 50))
     
-    // Re-fetch previous rounds matches from state
+    // Re-fetch previous rounds matches from state - use in-memory matches if available
     const updatedPreviousRounds = { ...previousRoundsMatches }
     
     // Check each previous round
     for (let round = 1; round < selectedRound; round++) {
       let previousMatches = updatedPreviousRounds[round]
       
-      // If still not loaded, try loading directly
+      // If still not loaded, try loading - check in-memory first
       if (!previousMatches) {
         try {
-          const data = await api.matches.list(round)
-          previousMatches = data
-          updatedPreviousRounds[round] = data
+          // First check in-memory matches (current session changes)
+          if (inMemoryMatches[round]) {
+            previousMatches = inMemoryMatches[round]
+            updatedPreviousRounds[round] = previousMatches
+          } else {
+            // Fall back to database
+            const data = await api.matches.list(round)
+            // Ensure all 8 courts are present
+            const allCourts = Array.from({ length: 8 }, (_, i) => i + 1)
+            const matchesByCourt = new Map(data.map((court) => [court.courtIdx, court]))
+            previousMatches = allCourts.map((courtIdx) => {
+              const existing = matchesByCourt.get(courtIdx)
+              return existing || { courtIdx, slots: [] }
+            })
+            updatedPreviousRounds[round] = previousMatches
+          }
         } catch {
           continue
         }
@@ -402,11 +448,25 @@ const MatchProgramPage = () => {
       const duplicates = new Set<number>()
       const playerDuplicatesMap = new Map<number, Set<string>>()
       
-      // Load all previous rounds first
+      // Load all previous rounds first - use in-memory matches if available
       for (let round = 1; round < selectedRound; round++) {
         if (!previousRoundsMatches[round]) {
           try {
-            const data = await api.matches.list(round)
+            // First check in-memory matches (current session changes)
+            let data: CourtWithPlayers[]
+            if (inMemoryMatches[round]) {
+              data = inMemoryMatches[round]
+            } else {
+              // Fall back to database (for rounds from previous sessions or if not in memory)
+              data = await api.matches.list(round)
+              // Ensure all 8 courts are present
+              const allCourts = Array.from({ length: 8 }, (_, i) => i + 1)
+              const matchesByCourt = new Map(data.map((court) => [court.courtIdx, court]))
+              data = allCourts.map((courtIdx) => {
+                const existing = matchesByCourt.get(courtIdx)
+                return existing || { courtIdx, slots: [] }
+              })
+            }
             setPreviousRoundsMatches((prev) => ({ ...prev, [round]: data }))
           } catch {
             // Continue even if one round fails to load
@@ -429,11 +489,18 @@ const MatchProgramPage = () => {
         let duplicatePlayerIds = new Set<string>()
         
         for (let round = 1; round < selectedRound; round++) {
-          // Get previous matches - try state first, then API
-          let previousMatches = previousRoundsMatches[round]
+          // Get previous matches - try in-memory first, then state, then API
+          let previousMatches = inMemoryMatches[round] || previousRoundsMatches[round]
           if (!previousMatches) {
             try {
-              previousMatches = await api.matches.list(round)
+              const data = await api.matches.list(round)
+              // Ensure all 8 courts are present
+              const allCourts = Array.from({ length: 8 }, (_, i) => i + 1)
+              const matchesByCourt = new Map(data.map((court) => [court.courtIdx, court]))
+              previousMatches = allCourts.map((courtIdx) => {
+                const existing = matchesByCourt.get(courtIdx)
+                return existing || { courtIdx, slots: [] }
+              })
             } catch {
               continue
             }
@@ -1619,7 +1686,7 @@ const MatchProgramPage = () => {
                       Runde {round}
                     </h3>
                     <div className="grid grid-cols-2 gap-2">
-                      {(previousRoundsMatches[round] || []).map((court) => (
+                      {(inMemoryMatches[round] || previousRoundsMatches[round] || []).map((court) => (
                         <PageCard key={court.courtIdx} className="space-y-1.5 p-2.5 opacity-75">
                           <header className="flex items-center justify-between mb-1">
                             <h4 className="text-xs font-semibold text-[hsl(var(--foreground))]">Bane {court.courtIdx}</h4>
