@@ -864,7 +864,7 @@ const MatchProgramPage = () => {
       <div className="grid gap-4 lg:grid-cols-[minmax(200px,240px)_1fr] lg:items-start">
         {/* Bench */}
         <PageCard 
-          className={`space-y-2 transition-all duration-200 ${
+          className={`space-y-2 transition-all duration-200 p-4 ${
             dragOverBench 
               ? 'ring-2 ring-[hsl(var(--primary)/.4)] bg-[hsl(var(--primary)/.05)]' 
               : ''
@@ -885,7 +885,7 @@ const MatchProgramPage = () => {
               {bench.length}
             </span>
           </header>
-          <div className="flex flex-col space-y-2 max-h-[calc(100vh-380px)] overflow-y-auto scrollbar-thin">
+          <div className="flex flex-col space-y-2 max-h-[calc(100vh-380px)] overflow-y-auto scrollbar-thin min-w-0">
             {bench.length === 0 && (
               <p className="rounded-md bg-[hsl(var(--surface-2))] px-2 py-4 text-center text-xs text-[hsl(var(--muted))] border-hair">
                 Træk spillere her for at aktivere dem
@@ -930,7 +930,7 @@ const MatchProgramPage = () => {
             
             {/* Inactive Players Section */}
             <div 
-              className={`mt-4 pt-4 border-t transition-all duration-200 ${
+              className={`mt-4 pt-4 border-t transition-all duration-200 min-w-0 ${
                 dragOverInactive 
                   ? 'border-[hsl(var(--destructive)/.4)] bg-[hsl(var(--destructive)/.05)]' 
                   : 'border-[hsl(var(--line)/.12)]'
@@ -955,7 +955,7 @@ const MatchProgramPage = () => {
                       {inactivePlayers.length}
                     </span>
                   </header>
-                  <div className="flex flex-col space-y-2">
+                  <div className="flex flex-col space-y-2 min-w-0">
                     {inactivePlayers.map((player) => {
                       const isOneRoundOnly = selectedRound > 1 && player.maxRounds === 1
                       const isUnavailable = unavailablePlayers.has(player.id)
@@ -963,7 +963,7 @@ const MatchProgramPage = () => {
                       return (
                         <div
                           key={player.id}
-                          className={`flex items-center justify-between gap-2 rounded-md px-2 py-2 h-[56px] w-full opacity-60 hover:opacity-100 hover:shadow-sm cursor-grab active:cursor-grabbing transition-all ring-1 ring-[hsl(var(--line)/.12)] ${getPlayerSlotBgColor()} ${catLetter ? 'cat-rail' : ''}`}
+                          className={`flex items-center gap-1.5 rounded-md px-2 py-2 h-[56px] w-full max-w-full box-border opacity-60 hover:opacity-100 hover:shadow-sm cursor-grab active:cursor-grabbing transition-all ring-1 ring-[hsl(var(--line)/.12)] overflow-hidden ${getPlayerSlotBgColor()} ${catLetter ? 'cat-rail' : ''}`}
                           data-cat={catLetter || undefined}
                         draggable
                         onDragStart={(event) => {
@@ -982,30 +982,30 @@ const MatchProgramPage = () => {
                           setTimeout(() => document.body.removeChild(dragElement), 0)
                         }}
                         >
-                          <div className="min-w-0 flex-1">
-                            <p className="text-xs font-semibold text-[hsl(var(--foreground))] truncate">{player.alias ?? player.name}</p>
-                            <div className="flex items-center gap-1.5 mt-1 flex-wrap">
+                          <div className="min-w-0 flex-1 overflow-hidden">
+                            <p className="text-xs font-semibold text-[hsl(var(--foreground))] truncate w-full">{player.alias ?? player.name}</p>
+                            <div className="flex items-center gap-1.5 mt-1 min-w-0">
                               {getCategoryBadge(player.primaryCategory)}
                               {isOneRoundOnly && !isUnavailable && (
-                                <span className="inline-flex items-center rounded-full bg-[hsl(var(--surface-2))] text-[hsl(var(--muted))] border-hair px-2 py-1 text-xs whitespace-nowrap">Kun 1 runde</span>
+                                <span className="inline-flex items-center rounded-full bg-[hsl(var(--surface-2))] text-[hsl(var(--muted))] border-hair px-1.5 py-0.5 text-[10px] whitespace-nowrap flex-shrink-0">Kun 1 runde</span>
                               )}
                               {isUnavailable && (
-                                <span className="text-[10px] font-normal text-[hsl(var(--destructive))] whitespace-nowrap">Inaktiv</span>
+                                <span className="text-[10px] font-normal text-[hsl(var(--destructive))] whitespace-nowrap flex-shrink-0">Inaktiv</span>
                               )}
                             </div>
                           </div>
-                          <div className="w-[70px] flex-shrink-0 flex items-center justify-end">
-                            {isUnavailable && (
+                          {isUnavailable && (
+                            <div className="flex-shrink-0 flex items-center justify-end ml-1">
                               <button
                                 type="button"
                                 onClick={() => handleMarkAvailable(player.id)}
-                                className="rounded px-2 py-0.5 text-[10px] font-medium text-[hsl(var(--success))] hover:bg-[hsl(var(--success)/.1)] ring-1 ring-[hsl(var(--success)/.2)] transition-all duration-200 ease-[cubic-bezier(.2,.8,.2,1)] motion-reduce:transition-none hover:shadow-sm"
+                                className="rounded px-2 py-0.5 text-[10px] font-medium text-[hsl(var(--success))] hover:bg-[hsl(var(--success)/.1)] ring-1 ring-[hsl(var(--success)/.2)] transition-all duration-200 ease-[cubic-bezier(.2,.8,.2,1)] motion-reduce:transition-none hover:shadow-sm whitespace-nowrap"
                                 title="Gendan til bænk"
                               >
                                 Aktiver
                               </button>
-                            )}
-                          </div>
+                            </div>
+                          )}
                         </div>
                       )
                     })}
