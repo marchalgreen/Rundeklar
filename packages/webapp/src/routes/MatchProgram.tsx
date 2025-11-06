@@ -853,28 +853,45 @@ const MatchProgramPage = () => {
       // Slot is occupied by a different player - swap them in memory
       const updatedMatches = currentMatches.map((court) => {
         if (court.courtIdx === courtIdx) {
-          // Target court - swap players
-          const updatedSlots = court.slots
-            .filter((s) => s.slot !== slot && s.player?.id !== playerId)
-            .map((s) => {
-              // If this is the source slot and we have source info, place occupying player here
-              if (sourceCourtIdx === courtIdx && sourceSlot !== undefined && s.slot === sourceSlot) {
+          // Target court - handle swap
+          if (sourceCourtIdx === courtIdx && sourceSlot !== undefined) {
+            // Same court swap - directly swap the two players
+            const updatedSlots = court.slots.map((s) => {
+              if (s.slot === slot) {
+                // Target slot - place dragged player here
+                return { slot: s.slot, player }
+              } else if (s.slot === sourceSlot) {
+                // Source slot - place occupying player here
                 return { slot: s.slot, player: occupyingPlayer }
               }
+              // Keep other slots unchanged
               return s
             })
-          
-          // Add dragged player to target slot
-          updatedSlots.push({ slot, player })
-          
-          // If source is different court, add occupying player to source
-          if (sourceCourtIdx !== undefined && sourceCourtIdx !== courtIdx && sourceSlot !== undefined) {
-            // We'll handle this in the source court mapping
+            return { ...court, slots: updatedSlots }
+          } else {
+            // Different court swap - remove dragged player, add occupying player to source
+            const updatedSlots = court.slots
+              .filter((s) => s.slot !== slot && s.player?.id !== playerId)
+              .map((s) => {
+                // If this is the source slot and we have source info, place occupying player here
+                if (sourceCourtIdx === courtIdx && sourceSlot !== undefined && s.slot === sourceSlot) {
+                  return { slot: s.slot, player: occupyingPlayer }
+                }
+                return s
+              })
+            
+            // Add dragged player to target slot
+            updatedSlots.push({ slot, player })
+            
+            // If source slot doesn't exist in the filtered list, add it
+            if (sourceCourtIdx === courtIdx && sourceSlot !== undefined && !updatedSlots.find((s) => s.slot === sourceSlot)) {
+              updatedSlots.push({ slot: sourceSlot, player: occupyingPlayer })
+            }
+            
+            return { ...court, slots: updatedSlots }
           }
-          
-          return { ...court, slots: updatedSlots }
         } else if (sourceCourtIdx !== undefined && court.courtIdx === sourceCourtIdx) {
-          // Source court - remove dragged player, add occupying player if swapping
+          // Source court (different from target) - remove dragged player, add occupying player if swapping
           const updatedSlots = court.slots
             .filter((s) => s.player?.id !== playerId)
             .map((s) => {
