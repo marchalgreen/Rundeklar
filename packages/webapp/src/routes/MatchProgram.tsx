@@ -651,27 +651,55 @@ const MatchProgramPage = () => {
       // Check if this is a re-shuffle (button says "Omfordel") BEFORE marking as run
       const isReshuffle = hasRunAutoMatch.has(selectedRound)
       
+      // For initial auto-match: auto-lock courts that already have players
+      let courtsToExclude: Set<number>
+      if (!isReshuffle) {
+        const currentMatchesForAutoLock = inMemoryMatches[selectedRound] || []
+        const courtsToAutoLock = new Set<number>()
+        
+        // Find courts with players (any players in any slots)
+        currentMatchesForAutoLock.forEach((court) => {
+          if (court.slots.some((slot) => slot.player)) {
+            courtsToAutoLock.add(court.courtIdx)
+          }
+        })
+        
+        // Auto-lock these courts for this round
+        if (courtsToAutoLock.size > 0) {
+          setLockedCourts((prev) => {
+            const roundLocks = prev[selectedRound] || new Set<number>()
+            const newSet = new Set(roundLocks)
+            courtsToAutoLock.forEach((courtIdx) => newSet.add(courtIdx))
+            return { ...prev, [selectedRound]: newSet }
+          })
+        }
+        
+        // For initial auto-match: exclude all occupied courts (they're now auto-locked)
+        // Combine manually locked courts with auto-locked courts
+        const allLockedCourts = new Set(currentRoundLockedCourts)
+        courtsToAutoLock.forEach((courtIdx) => allLockedCourts.add(courtIdx))
+        courtsToExclude = allLockedCourts
+      } else {
+        // For reshuffle: only exclude manually locked courts
+        courtsToExclude = currentRoundLockedCourts
+      }
+      
       // Mark that auto-match has been run for this round
       setHasRunAutoMatch((prev) => new Set(prev).add(selectedRound))
-      
-      // For initial auto-match: only fill empty courts (excludes occupied courts)
-      // For re-shuffle: reshuffle all players among non-locked courts (don't clear first)
-      const courtsToExclude = isReshuffle ? currentRoundLockedCourts : excludedCourts
       
       // Call auto-arrange - it now returns matches in memory (no DB writes)
       // Pass current in-memory matches so it can identify players on locked courts
       const currentMatchesForApi = inMemoryMatches[selectedRound] || []
       const { matches: newMatches, result } = await api.matches.autoArrange(selectedRound, unavailablePlayers, activatedOneRoundPlayers, courtsToExclude, isReshuffle, currentMatchesForApi)
       
-      // For reshuffle: merge new matches with existing locked courts
-      let finalMatches = newMatches
-      if (isReshuffle) {
-        const currentMatchesForMerge = inMemoryMatches[selectedRound] || []
-        const lockedCourtsMatches = currentMatchesForMerge.filter((court) => currentRoundLockedCourts.has(court.courtIdx))
-        // Merge: keep locked courts, add new matches (excluding locked court indices)
-        const newMatchesWithoutLocked = newMatches.filter((court) => !currentRoundLockedCourts.has(court.courtIdx))
-        finalMatches = [...lockedCourtsMatches, ...newMatchesWithoutLocked]
-      }
+      // Merge new matches with existing courts
+      // For initial auto-match: keep all occupied courts (they're auto-locked) and add new matches
+      // For reshuffle: keep manually locked courts and add new matches
+      const currentMatchesForMerge = inMemoryMatches[selectedRound] || []
+      const keptCourtsMatches = currentMatchesForMerge.filter((court) => courtsToExclude.has(court.courtIdx))
+      // Merge: keep existing courts, add new matches (excluding court indices that are being kept)
+      const newMatchesWithoutKept = newMatches.filter((court) => !courtsToExclude.has(court.courtIdx))
+      const finalMatches = [...keptCourtsMatches, ...newMatchesWithoutKept]
       
       // Update in-memory state with the final matches
       updateInMemoryMatches(selectedRound, finalMatches)

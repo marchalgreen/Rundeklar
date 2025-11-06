@@ -517,7 +517,7 @@ const autoArrangeMatches = async (round?: number, unavailablePlayerIds?: Set<str
   
   // Only exclude players who are already assigned in THIS round
   // BUT: exclude players on locked courts from being reassigned (they should stay on locked courts)
-  // For reshuffle: include players from non-locked courts in the pool to be reshuffled
+  // For both initial auto-match and reshuffle: include players from non-locked courts in the pool to be reshuffled
   // First, get players from locked courts from current in-memory matches (if provided)
   const playersOnLockedCourts = new Set<string>()
   if (currentMatches && lockedCourtIdxs) {
@@ -542,11 +542,12 @@ const autoArrangeMatches = async (round?: number, unavailablePlayerIds?: Set<str
         if (court && lockedCourtIdxs?.has(court.idx)) {
           return true // Exclude players on locked courts from being reassigned
         }
+        // For initial auto-match: exclude all players already on courts (they stay where they are)
         // For reshuffle: include players from non-locked courts in the reshuffle pool
         if (isReshuffle) {
           return false // Don't exclude - they'll be reshuffled
         }
-        // For initial match: exclude all players already assigned in this round
+        // For initial auto-match: exclude all players already assigned (keep them on their courts)
         return true
       })
       .map((mp) => mp.playerId)
