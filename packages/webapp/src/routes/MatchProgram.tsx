@@ -108,14 +108,6 @@ const MatchProgramPage = () => {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [session?.id, selectedRound])
 
-  // WHY: Check if round has matches when matches load - if so, consider auto-match as run
-  useEffect(() => {
-    // If switching to a round with matches, consider auto-match as run
-    if (matches.length > 0 && !hasRunAutoMatch.has(selectedRound)) {
-      setHasRunAutoMatch((prev) => new Set(prev).add(selectedRound))
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [matches, selectedRound])
 
   // WHY: Close dropdown when round changes to avoid stale state
   useEffect(() => {
@@ -476,16 +468,36 @@ const MatchProgramPage = () => {
     }
   }, [isDragging, dragOffset])
 
+  /** Gets courts with players (occupied courts) - these should be excluded from auto-match */
+  const occupiedCourts = useMemo(() => {
+    const occupied = new Set<number>()
+    matches.forEach((court) => {
+      if (court.slots.some((slot) => slot.player)) {
+        occupied.add(court.courtIdx)
+      }
+    })
+    return occupied
+  }, [matches])
+
+  /** Gets all courts that should be excluded from auto-match: manually locked + occupied */
+  const excludedCourts = useMemo(() => {
+    const excluded = new Set(lockedCourts)
+    // Also exclude occupied courts (courts with players)
+    occupiedCourts.forEach((courtIdx) => excluded.add(courtIdx))
+    return excluded
+  }, [lockedCourts, occupiedCourts])
+
   /** Triggers auto-matching algorithm for selected round. */
   const handleAutoMatch = async () => {
     if (!session) return
     try {
+      // Check if this is a re-shuffle (button says "Omfordel") BEFORE marking as run
+      const isReshuffle = hasRunAutoMatch.has(selectedRound)
+      
       // Mark that auto-match has been run for this round
       setHasRunAutoMatch((prev) => new Set(prev).add(selectedRound))
       
-      // Check if we should reset existing matches first (for re-shuffle)
-      const hasExistingMatches = matches.length > 0
-      if (hasExistingMatches) {
+      if (isReshuffle) {
         // For re-shuffle, first clear existing matches in this round (except locked courts)
         const matchesToReset = matches.filter((court) => !lockedCourts.has(court.courtIdx))
         for (const court of matchesToReset) {
@@ -498,12 +510,14 @@ const MatchProgramPage = () => {
         await loadMatches()
       }
       
-      const result: AutoArrangeResult = await api.matches.autoArrange(selectedRound, unavailablePlayers, activatedOneRoundPlayers, lockedCourts)
+      // Auto-match only fills empty courts - it doesn't clear existing matches
+      // Excludes manually locked courts and occupied courts (courts with players)
+      const result: AutoArrangeResult = await api.matches.autoArrange(selectedRound, unavailablePlayers, activatedOneRoundPlayers, excludedCourts)
       await loadMatches()
       await loadCheckIns()
       notify({ 
         variant: 'success', 
-        title: hasExistingMatches 
+        title: isReshuffle
           ? `Omfordelt spillere på ${result.filledCourts} baner (Runde ${selectedRound})`
           : `Fordelte spillere på ${result.filledCourts} baner (Runde ${selectedRound})` 
       })
@@ -525,12 +539,24 @@ const MatchProgramPage = () => {
     })
   }
 
-  /** Resets all court assignments for current session. */
+  /** Resets all court assignments for current session, respecting locked courts. */
   const handleResetMatches = async () => {
     if (!session) return
     try {
-      await api.matches.reset()
+      // Only clear matches from courts that are not manually locked
+      const matchesToReset = matches.filter((court) => !lockedCourts.has(court.courtIdx))
+      for (const court of matchesToReset) {
+        for (const slot of court.slots) {
+          if (slot.player) {
+            await handleMove(slot.player.id)
+          }
+        }
+      }
       await loadMatches()
+      notify({ 
+        variant: 'success', 
+        title: 'Kampe nulstillet (låste baner bevares)' 
+      })
     } catch (err: any) {
       setError(err.message ?? 'Kunne ikke nulstille kampe')
     }
