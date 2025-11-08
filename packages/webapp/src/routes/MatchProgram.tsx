@@ -1379,12 +1379,12 @@ const MatchProgramPage = () => {
             <select
               value={selectedRound}
               onChange={(e) => setSelectedRound(Number(e.target.value))}
-              className="rounded-xl px-6 py-3 pr-10 text-lg font-semibold bg-gradient-to-b from-[hsl(var(--surface-glass)/.95)] to-[hsl(var(--surface)/.98)] backdrop-blur-sm text-[hsl(var(--foreground))] ring-2 ring-[hsl(var(--primary)/.25)] shadow-[0_4px_12px_hsl(var(--primary)/.15)] hover:shadow-[0_6px_20px_hsl(var(--primary)/.2)] hover:ring-[hsl(var(--primary)/.35)] focus:ring-[hsl(var(--primary)/.45)] focus:ring-2 focus:shadow-[0_6px_20px_hsl(var(--primary)/.25)] outline-none transition-all duration-300 ease-[cubic-bezier(.2,.8,.2,1)] motion-reduce:transition-none cursor-pointer appearance-none"
+              className="relative rounded-lg px-5 py-3 pr-11 text-base font-semibold bg-[hsl(var(--primary))] text-[hsl(var(--primary-contrast))] shadow-[0_2px_8px_hsl(var(--primary)/.25)] hover:shadow-[0_4px_16px_hsl(var(--primary)/.35)] hover:bg-[hsl(var(--primary)/.95)] focus:ring-2 focus:ring-[hsl(var(--ring))] focus:ring-offset-2 focus:ring-offset-[hsl(var(--bg-canvas))] outline-none transition-all duration-200 ease-[cubic-bezier(.2,.8,.2,1)] motion-reduce:transition-none cursor-pointer appearance-none min-w-[140px]"
               style={{
-                backgroundImage: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 16 16'%3E%3Cpath fill='%23666' d='M8 11L3 6h10z'/%3E%3C/svg%3E")`,
+                backgroundImage: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='20' height='20' viewBox='0 0 24 24' fill='none' stroke='white' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='6 9 12 15 18 9'/%3E%3C/svg%3E")`,
                 backgroundRepeat: 'no-repeat',
                 backgroundPosition: 'right 12px center',
-                backgroundSize: '16px 16px'
+                backgroundSize: '18px 18px'
               }}
             >
               <option value={1}>Runde 1</option>
@@ -1610,13 +1610,13 @@ const MatchProgramPage = () => {
             <select
               value={selectedRound}
               onChange={(e) => setSelectedRound(Number(e.target.value))}
-              className="rounded-xl px-8 py-4 pr-12 text-lg font-semibold bg-gradient-to-b from-[hsl(var(--surface-glass)/.95)] to-[hsl(var(--surface)/.98)] backdrop-blur-sm text-[hsl(var(--foreground))] ring-2 ring-[hsl(var(--primary)/.25)] shadow-[0_4px_12px_hsl(var(--primary)/.15)] hover:shadow-[0_6px_20px_hsl(var(--primary)/.2)] hover:ring-[hsl(var(--primary)/.35)] focus:ring-[hsl(var(--primary)/.45)] focus:ring-2 focus:shadow-[0_6px_20px_hsl(var(--primary)/.25)] outline-none transition-all duration-300 ease-[cubic-bezier(.2,.8,.2,1)] motion-reduce:transition-none cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed appearance-none"
+              className="relative rounded-lg px-5 py-3 pr-11 text-base font-semibold bg-[hsl(var(--primary))] text-[hsl(var(--primary-contrast))] shadow-[0_2px_8px_hsl(var(--primary)/.25)] hover:shadow-[0_4px_16px_hsl(var(--primary)/.35)] hover:bg-[hsl(var(--primary)/.95)] focus:ring-2 focus:ring-[hsl(var(--ring))] focus:ring-offset-2 focus:ring-offset-[hsl(var(--bg-canvas))] outline-none transition-all duration-200 ease-[cubic-bezier(.2,.8,.2,1)] motion-reduce:transition-none cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:shadow-[0_2px_8px_hsl(var(--primary)/.25)] appearance-none min-w-[140px]"
               disabled={!session}
               style={{
-                backgroundImage: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 16 16'%3E%3Cpath fill='%23666' d='M8 11L3 6h10z'/%3E%3C/svg%3E")`,
+                backgroundImage: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='20' height='20' viewBox='0 0 24 24' fill='none' stroke='white' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='6 9 12 15 18 9'/%3E%3C/svg%3E")`,
                 backgroundRepeat: 'no-repeat',
-                backgroundPosition: 'right 16px center',
-                backgroundSize: '16px 16px'
+                backgroundPosition: 'right 12px center',
+                backgroundSize: '18px 18px'
               }}
             >
               <option value={1}>Runde 1</option>
