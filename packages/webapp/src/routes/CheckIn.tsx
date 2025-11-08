@@ -228,49 +228,6 @@ const CheckInPage = () => {
     [loadCheckIns, notify, session]
   )
 
-  /** Demo function — checks in 28 random players (4 with "kun 1 runde"). */
-  const handleDemoCheckIn = useCallback(async () => {
-    if (!session) return
-    setError(null)
-    
-    try {
-      // Get all available players (not already checked in)
-      const availablePlayers = players.filter((player) => !checkedInIds.has(player.id))
-      
-      if (availablePlayers.length < 28) {
-        setError(`Kun ${availablePlayers.length} spillere tilgængelige. Der skal være mindst 28 spillere.`)
-        return
-      }
-      
-      // Randomly shuffle and select 28 players
-      const shuffled = [...availablePlayers].sort(() => Math.random() - 0.5)
-      const selectedPlayers = shuffled.slice(0, 28)
-      
-      // Select 4 random players for "Kun 1 runde"
-      const oneRoundPlayers = selectedPlayers.slice(0, 4)
-      const regularPlayers = selectedPlayers.slice(4)
-      
-      // Check in all players
-      for (const player of oneRoundPlayers) {
-        await api.checkIns.add({ playerId: player.id, maxRounds: 1 })
-      }
-      
-      for (const player of regularPlayers) {
-        await api.checkIns.add({ playerId: player.id })
-      }
-      
-      // Reload check-ins
-      await loadCheckIns()
-      
-      notify({ 
-        variant: 'success', 
-        title: 'Demo indtjekning gennemført', 
-        description: `28 spillere tjekket ind (4 med "Kun 1 runde")` 
-      })
-    } catch (err: any) {
-      setError(err.message ?? 'Kunne ikke gennemføre demo indtjekning')
-    }
-  }, [session, players, checkedInIds, loadCheckIns, notify])
 
   /**
    * Handles player check-out with animation feedback.
@@ -397,18 +354,6 @@ const CheckInPage = () => {
             )}
           </p>
           {error && <span className="mt-2 inline-block text-sm text-[hsl(var(--destructive))]">{error}</span>}
-        </div>
-        <div className="flex gap-2">
-          {session && (
-            <Button
-              variant="secondary"
-              onClick={handleDemoCheckIn}
-              disabled={players.filter((p) => !checkedInIds.has(p.id)).length < 28}
-              className="border-2 border-dashed border-[hsl(var(--primary)/.4)] bg-[hsl(var(--primary)/.05)] text-[hsl(var(--primary))] hover:bg-[hsl(var(--primary)/.1)] hover:border-[hsl(var(--primary)/.6)] text-sm font-medium whitespace-nowrap"
-            >
-              🎭 DEMO: Tjek 28 tilfældige spillere ind (4 med &quot;Kun 1 runde&quot;)
-            </Button>
-          )}
         </div>
       </header>
 

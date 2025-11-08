@@ -13,6 +13,66 @@ import { useToast } from '../components/ui/Toast'
 /** Default number of slots per court (can be extended to 5-8). */
 const EMPTY_SLOTS = 4
 
+/** LocalStorage key for Match Program state persistence. */
+const MATCH_PROGRAM_STORAGE_KEY = 'herlev-hjorten-match-program-state'
+
+/** Type for persisted Match Program state. */
+type PersistedMatchProgramState = {
+  inMemoryMatches: Record<number, CourtWithPlayers[]>
+  lockedCourts: Record<number, number[]>
+  hasRunAutoMatch: number[]
+  extendedCapacityCourts: Array<[number, number]>
+  sessionId: string | null
+}
+
+/**
+ * Loads Match Program state from localStorage.
+ * @param sessionId - Current session ID to validate persisted state
+ * @returns Persisted state or null if not found/invalid
+ */
+const loadPersistedState = (sessionId: string | null): Partial<PersistedMatchProgramState> | null => {
+  if (typeof window === 'undefined') return null
+  try {
+    const raw = localStorage.getItem(MATCH_PROGRAM_STORAGE_KEY)
+    if (!raw) return null
+    const parsed = JSON.parse(raw) as PersistedMatchProgramState
+    // Only restore if it's for the same session
+    if (parsed.sessionId === sessionId) {
+      return parsed
+    }
+    // Clear stale state from different session
+    localStorage.removeItem(MATCH_PROGRAM_STORAGE_KEY)
+    return null
+  } catch {
+    return null
+  }
+}
+
+/**
+ * Saves Match Program state to localStorage.
+ * @param state - State to persist
+ */
+const savePersistedState = (state: PersistedMatchProgramState) => {
+  if (typeof window === 'undefined') return
+  try {
+    localStorage.setItem(MATCH_PROGRAM_STORAGE_KEY, JSON.stringify(state))
+  } catch {
+    // Ignore localStorage errors (quota exceeded, etc.)
+  }
+}
+
+/**
+ * Clears persisted Match Program state from localStorage.
+ */
+const clearPersistedState = () => {
+  if (typeof window === 'undefined') return
+  try {
+    localStorage.removeItem(MATCH_PROGRAM_STORAGE_KEY)
+  } catch {
+    // Ignore localStorage errors
+  }
+}
+
 /**
  * Match program page — manages court assignments and player matching for training sessions.
  * @remarks Renders court layout with drag-and-drop, handles auto-matching algorithm,
@@ -66,6 +126,9 @@ const MatchProgramPage = () => {
   
   // WHY: Track all match changes in memory (per round) - only save to DB on "Afslut træning"
   const [inMemoryMatches, setInMemoryMatches] = useState<Record<number, CourtWithPlayers[]>>({})
+  
+  // WHY: Track if we've restored persisted state to avoid overwriting it
+  const hasRestoredStateRef = useRef(false)
 
   /** Loads active training session from API. */
   const loadSession = useCallback(async () => {
@@ -103,31 +166,66 @@ const MatchProgramPage = () => {
       return
     }
     try {
-      // Load from database only on initial load
-      // After that, use in-memory state
-      let data: CourtWithPlayers[]
-      if (!inMemoryMatches[selectedRound]) {
-        data = await api.matches.list(selectedRound)
-        // Ensure all 8 courts are present
+      // ALWAYS check persisted state first (before checking in-memory state)
+      // This ensures we get the latest state even if React hasn't updated yet
+      const persisted = loadPersistedState(session.id)
+      if (persisted?.inMemoryMatches?.[selectedRound]) {
+        // Use persisted state - ensure all 8 courts are present
+        const persistedMatches = persisted.inMemoryMatches[selectedRound]
         const allCourts = Array.from({ length: 8 }, (_, i) => i + 1)
-        const matchesByCourt = new Map(data.map((court) => [court.courtIdx, court]))
-        data = allCourts.map((courtIdx) => {
+        const matchesByCourt = new Map(persistedMatches.map((court) => [court.courtIdx, court]))
+        const data = allCourts.map((courtIdx) => {
           const existing = matchesByCourt.get(courtIdx)
           return existing || { courtIdx, slots: [] }
         })
-        setInMemoryMatches((prev) => ({ ...prev, [selectedRound]: data }))
+        // ALWAYS restore to in-memory state (persisted state is the source of truth)
+        // Check if persisted state has actual matches (non-empty courts)
+        const hasMatches = persistedMatches.some((court) => 
+          court.slots.length > 0 && court.slots.some((slot) => slot.player)
+        )
+        // If persisted state has matches, always use it (even if we have something in memory)
+        // If persisted state is empty but we have matches in memory, keep memory state
+        setInMemoryMatches((prev) => {
+          const currentRound = prev[selectedRound]
+          const currentHasMatches = currentRound?.some((court) =>
+            court.slots.length > 0 && court.slots.some((slot) => slot.player)
+          )
+          // Use persisted state if it has matches, or if current state is empty
+          if (hasMatches || !currentHasMatches) {
+            return { ...prev, [selectedRound]: data }
+          }
+          // Keep current state if it has matches and persisted doesn't
+          return prev
+        })
         setMatches(data)
-      } else {
+        return
+      }
+      
+      // Check in-memory state second
+      if (inMemoryMatches[selectedRound]) {
         // Use in-memory state - ensure all 8 courts are present
         const currentMatches = inMemoryMatches[selectedRound]
         const allCourts = Array.from({ length: 8 }, (_, i) => i + 1)
         const matchesByCourt = new Map(currentMatches.map((court) => [court.courtIdx, court]))
-        data = allCourts.map((courtIdx) => {
+        const data = allCourts.map((courtIdx) => {
           const existing = matchesByCourt.get(courtIdx)
           return existing || { courtIdx, slots: [] }
         })
         setMatches(data)
+        return
       }
+      
+      // Fall back to database
+      const data = await api.matches.list(selectedRound)
+      // Ensure all 8 courts are present
+      const allCourts = Array.from({ length: 8 }, (_, i) => i + 1)
+      const matchesByCourt = new Map(data.map((court) => [court.courtIdx, court]))
+      const completeData = allCourts.map((courtIdx) => {
+        const existing = matchesByCourt.get(courtIdx)
+        return existing || { courtIdx, slots: [] }
+      })
+      setInMemoryMatches((prev) => ({ ...prev, [selectedRound]: completeData }))
+      setMatches(completeData)
     } catch (err: any) {
       setError(err.message ?? 'Kunne ikke hente baner')
     }
@@ -149,6 +247,7 @@ const MatchProgramPage = () => {
     if (round === selectedRound) {
       setMatches(completeMatches)
     }
+    // Note: State persistence happens automatically via useEffect
   }, [selectedRound])
 
   /** Initializes page state — loads session and players. */
@@ -162,17 +261,91 @@ const MatchProgramPage = () => {
   // WHY: Initialize page on mount; deps are stable callbacks
   useEffect(() => { void hydrate() }, [hydrate])
 
-  // WHY: Reload data when session or round changes; clear if no session
+  // WHY: Load persisted state when session is available, then load matches
   useEffect(() => {
     if (!session) {
+      // Clear persisted state if no session
+      clearPersistedState()
       setMatches([])
       setCheckedIn([])
+      hasRestoredStateRef.current = false
       return
     }
+    
+    // Only restore state once per session
+    if (!hasRestoredStateRef.current) {
+      // Load persisted state for this session
+      const persisted = loadPersistedState(session.id)
+      if (persisted) {
+        // Restore inMemoryMatches
+        if (persisted.inMemoryMatches && Object.keys(persisted.inMemoryMatches).length > 0) {
+          setInMemoryMatches(persisted.inMemoryMatches)
+        }
+        
+        // Restore lockedCourts (convert arrays back to Sets)
+        if (persisted.lockedCourts) {
+          const restored: Record<number, Set<number>> = {}
+          for (const [round, courtIndices] of Object.entries(persisted.lockedCourts)) {
+            restored[Number(round)] = new Set(courtIndices)
+          }
+          setLockedCourts(restored)
+        }
+        
+        // Restore hasRunAutoMatch (convert array back to Set)
+        if (persisted.hasRunAutoMatch) {
+          setHasRunAutoMatch(new Set(persisted.hasRunAutoMatch))
+        }
+        
+        // Restore extendedCapacityCourts (convert array of tuples back to Map)
+        if (persisted.extendedCapacityCourts) {
+          setExtendedCapacityCourts(new Map(persisted.extendedCapacityCourts))
+        }
+        
+        // Mark restoration as complete AFTER setting all state
+        // Use setTimeout to ensure state updates are applied before we allow persistence
+        setTimeout(() => {
+          hasRestoredStateRef.current = true
+        }, 0)
+      } else {
+        // No persisted state, mark as restored immediately
+        hasRestoredStateRef.current = true
+      }
+    }
+    
+    // Load check-ins and matches after restoring persisted state
     void loadCheckIns()
     void loadMatches()
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [session?.id, selectedRound])
+
+  // WHY: Persist state to localStorage whenever it changes
+  useEffect(() => {
+    if (!session) return
+    
+    // Don't persist if we're currently restoring state (to avoid overwriting with empty state)
+    if (!hasRestoredStateRef.current) {
+      // Still restoring, wait for restoration to complete
+      return
+    }
+    
+    // Convert Sets and Maps to serializable formats
+    const lockedCourtsSerializable: Record<number, number[]> = {}
+    for (const [round, courtSet] of Object.entries(lockedCourts)) {
+      lockedCourtsSerializable[Number(round)] = Array.from(courtSet)
+    }
+    
+    const extendedCapacityCourtsSerializable: Array<[number, number]> = Array.from(extendedCapacityCourts.entries())
+    
+    const stateToPersist: PersistedMatchProgramState = {
+      inMemoryMatches,
+      lockedCourts: lockedCourtsSerializable,
+      hasRunAutoMatch: Array.from(hasRunAutoMatch),
+      extendedCapacityCourts: extendedCapacityCourtsSerializable,
+      sessionId: session.id
+    }
+    
+    savePersistedState(stateToPersist)
+  }, [session, inMemoryMatches, lockedCourts, hasRunAutoMatch, extendedCapacityCourts])
 
 
   // WHY: Close dropdown when round changes to avoid stale state
@@ -571,6 +744,11 @@ const MatchProgramPage = () => {
       await api.session.endActive(allMatchesData)
       setSession(null)
       setInMemoryMatches({}) // Clear in-memory state
+      setLockedCourts({}) // Clear locked courts
+      setHasRunAutoMatch(new Set()) // Clear auto-match flags
+      setExtendedCapacityCourts(new Map()) // Clear extended capacity
+      hasRestoredStateRef.current = false // Reset restoration flag
+      clearPersistedState() // Clear persisted state from localStorage
       notify({ variant: 'success', title: 'Træning afsluttet' })
     } catch (err: any) {
       setError(err.message ?? 'Kunne ikke afslutte træning')
@@ -1545,8 +1723,8 @@ const MatchProgramPage = () => {
                         viewBox="0 0 24 24"
                         stroke="currentColor"
                         strokeWidth={2}
-                        title={currentRoundLockedCourts.has(court.courtIdx) ? 'Bane er låst - vil ikke blive ændret ved auto-match/omfordel' : 'Bane er ikke låst'}
                       >
+                        <title>{currentRoundLockedCourts.has(court.courtIdx) ? 'Bane er låst - vil ikke blive ændret ved auto-match/omfordel' : 'Bane er ikke låst'}</title>
                         {currentRoundLockedCourts.has(court.courtIdx) ? (
                           // Closed lock (locked state)
                           <path strokeLinecap="round" strokeLinejoin="round" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
