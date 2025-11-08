@@ -136,6 +136,7 @@ const MatchProgramPage = () => {
   
   // WHY: Track full-screen view mode for optimal readability when players gather
   const [isFullScreen, setIsFullScreen] = useState(false)
+  const [viewportSize, setViewportSize] = useState({ width: typeof window !== 'undefined' ? window.innerWidth : 1920, height: typeof window !== 'undefined' ? window.innerHeight : 1080 })
 
   // WHY: Handle ESC key to exit full-screen mode
   useEffect(() => {
@@ -148,6 +149,19 @@ const MatchProgramPage = () => {
       document.addEventListener('keydown', handleEscape)
       return () => document.removeEventListener('keydown', handleEscape)
     }
+  }, [isFullScreen])
+
+  // WHY: Track viewport size for responsive full-screen layout
+  useEffect(() => {
+    if (!isFullScreen) return
+
+    const updateViewportSize = () => {
+      setViewportSize({ width: window.innerWidth, height: window.innerHeight })
+    }
+
+    updateViewportSize()
+    window.addEventListener('resize', updateViewportSize)
+    return () => window.removeEventListener('resize', updateViewportSize)
   }, [isFullScreen])
 
   /** Loads active training session from API. */
@@ -1385,19 +1399,69 @@ const MatchProgramPage = () => {
             Luk (ESC)
           </button>
         </header>
-        <div className="flex-1 overflow-auto p-6">
-          <section className="grid grid-cols-2 gap-4 xl:grid-cols-4 max-w-[1920px] mx-auto">
+        <div className="flex-1 overflow-hidden p-6" style={{ height: 'calc(100vh - 80px)' }}>
+          {(() => {
+            // Calculate optimal grid layout based on viewport and number of courts
+            const headerHeight = 80
+            const padding = 48 // 24px on each side
+            const gap = 16 // gap-4 = 16px
+            const availableHeight = viewportSize.height - headerHeight - padding
+            const availableWidth = viewportSize.width - padding
+            
+            // Calculate optimal number of columns and rows
+            // Try different column counts to find the best fit
+            let optimalCols = 1
+            let optimalRows = matches.length
+            let bestFit = Infinity
+            
+            for (let cols = 1; cols <= Math.min(matches.length, 8); cols++) {
+              const rows = Math.ceil(matches.length / cols)
+              const cardHeight = availableHeight / rows - gap * (rows - 1) / rows
+              const cardWidth = (availableWidth - gap * (cols - 1)) / cols
+              
+              // Prefer layouts that fit well without being too cramped
+              if (cardHeight >= 300 && cardWidth >= 280) {
+                const fit = Math.abs(cardHeight - 450) + Math.abs(cardWidth - 320) // Prefer cards around 450x320
+                if (fit < bestFit) {
+                  bestFit = fit
+                  optimalCols = cols
+                  optimalRows = rows
+                }
+              }
+            }
+            
+            // Fallback: if no good fit found, use a reasonable default
+            if (optimalCols === 1 && matches.length > 1) {
+              optimalCols = Math.min(matches.length, Math.floor(availableWidth / 300))
+              optimalRows = Math.ceil(matches.length / optimalCols)
+            }
+            
+            // Calculate column width
+            const minColWidth = 280
+            const maxColWidth = Math.floor((availableWidth - (gap * (optimalCols - 1))) / optimalCols)
+            const colWidth = Math.max(minColWidth, Math.min(maxColWidth, 450))
+            
+            return (
+              <section 
+                className="grid gap-4 h-full w-full"
+                style={{
+                  gridTemplateColumns: `repeat(${optimalCols}, minmax(${colWidth}px, 1fr))`,
+                  gridAutoRows: 'minmax(0, 1fr)',
+                  justifyContent: 'center',
+                  alignContent: 'center'
+                }}
+              >
             {matches.map((court) => (
               <PageCard
                 key={court.courtIdx}
                 hover={false}
-                className={`space-y-3 hover:shadow-md p-5 transition-all duration-200 relative ${
+                className={`space-y-3 hover:shadow-md p-5 transition-all duration-200 relative h-full flex flex-col ${
                   courtsWithDuplicatesSet.has(court.courtIdx)
                     ? 'ring-2 ring-[hsl(var(--destructive)/.45)] border border-[hsl(var(--destructive)/.3)] bg-[hsl(var(--destructive)/.03)]'
                     : ''
                 }`}
               >
-                <header className="flex items-center justify-between mb-3">
+                <header className="flex items-center justify-between mb-3 flex-shrink-0">
                   <div className="flex items-center gap-2">
                     <h3 className="text-xl font-semibold text-[hsl(var(--foreground))]">Bane {court.courtIdx}</h3>
                     {courtsWithDuplicatesSet.has(court.courtIdx) && (
@@ -1413,7 +1477,7 @@ const MatchProgramPage = () => {
                   </div>
                   <span className="text-sm text-[hsl(var(--muted))]">{court.slots.length}/{extendedCapacityCourts.get(court.courtIdx) || EMPTY_SLOTS}</span>
                 </header>
-                <div className="flex flex-col gap-2">
+                <div className="flex flex-col gap-2 flex-1 overflow-y-auto min-h-0">
                   {(() => {
                     const maxCapacity = extendedCapacityCourts.get(court.courtIdx) || 4
                     const renderNetDivider = () => (
@@ -1482,7 +1546,9 @@ const MatchProgramPage = () => {
                 </div>
               </PageCard>
             ))}
-          </section>
+              </section>
+            )
+          })()}
         </div>
       </div>
     )
