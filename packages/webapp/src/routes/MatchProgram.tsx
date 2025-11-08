@@ -1369,6 +1369,9 @@ const MatchProgramPage = () => {
 
   // Full-screen view mode
   if (isFullScreen && session) {
+    // Filter to only show courts with players
+    const courtsWithPlayers = matches.filter(court => court.slots.length > 0)
+    
     return (
       <div className="fixed inset-0 z-50 bg-[hsl(var(--bg-canvas))] flex flex-col">
         <header className="flex items-center justify-between p-4 border-b border-[hsl(var(--line)/.12)]">
@@ -1407,33 +1410,62 @@ const MatchProgramPage = () => {
             const gap = 16 // gap-4 = 16px
             const availableHeight = viewportSize.height - headerHeight - padding
             const availableWidth = viewportSize.width - padding
+            const numCourts = courtsWithPlayers.length
+            
+            // Calculate required card height based on actual content
+            // Card header: ~60px, padding: 40px (20px top + 20px bottom)
+            // Each player slot: ~72px, gap between slots: 8px
+            // Dividers: ~20px each
+            // Estimate max capacity per court (usually 4, can be 6 or 8)
+            const maxCapacity = numCourts > 0 ? Math.max(...courtsWithPlayers.map(c => extendedCapacityCourts.get(c.courtIdx) || 4)) : 4
+            const cardHeaderHeight = 60
+            const cardPadding = 40
+            const slotHeight = 72
+            const slotGap = 8
+            const dividerHeight = 20
+            // Calculate slots needed: maxCapacity slots + dividers (1 divider for 4 slots, 2 for 6, 3 for 8)
+            const numDividers = maxCapacity === 8 ? 3 : maxCapacity === 6 ? 2 : 1
+            const requiredCardHeight = cardHeaderHeight + cardPadding + (maxCapacity * slotHeight) + ((maxCapacity - 1) * slotGap) + (numDividers * dividerHeight)
             
             // Calculate optimal number of columns and rows
-            // Try different column counts to find the best fit
+            // Explicit rules for balanced layouts
             let optimalCols = 1
-            let optimalRows = matches.length
-            let bestFit = Infinity
+            let optimalRows = numCourts
             
-            for (let cols = 1; cols <= Math.min(matches.length, 8); cols++) {
-              const rows = Math.ceil(matches.length / cols)
-              const cardHeight = availableHeight / rows - gap * (rows - 1) / rows
-              const cardWidth = (availableWidth - gap * (cols - 1)) / cols
+            if (numCourts === 0) {
+              optimalCols = 1
+              optimalRows = 1
+            } else {
+              // Calculate optimal columns based on number of courts
+              // Explicit rules for balanced layouts
+              let evenCols = 4
+              let evenRows = Math.ceil(numCourts / evenCols)
               
-              // Prefer layouts that fit well without being too cramped
-              if (cardHeight >= 300 && cardWidth >= 280) {
-                const fit = Math.abs(cardHeight - 450) + Math.abs(cardWidth - 320) // Prefer cards around 450x320
-                if (fit < bestFit) {
-                  bestFit = fit
-                  optimalCols = cols
-                  optimalRows = rows
-                }
+              // Explicit rules for specific court counts
+              if (numCourts <= 4) {
+                evenCols = 2
+                evenRows = Math.ceil(numCourts / evenCols)
+              } else if (numCourts === 5) {
+                evenCols = 3
+                evenRows = 2
+              } else if (numCourts === 6) {
+                evenCols = 3
+                evenRows = 2
+              } else if (numCourts === 7) {
+                evenCols = 4
+                evenRows = 2 // 4 top, 3 bottom
+              } else if (numCourts === 8) {
+                evenCols = 4
+                evenRows = 2 // 4x2
+              } else {
+                // For more than 8 courts, calculate based on balance
+                evenCols = 4
+                evenRows = Math.ceil(numCourts / evenCols)
               }
-            }
-            
-            // Fallback: if no good fit found, use a reasonable default
-            if (optimalCols === 1 && matches.length > 1) {
-              optimalCols = Math.min(matches.length, Math.floor(availableWidth / 300))
-              optimalRows = Math.ceil(matches.length / optimalCols)
+              
+              // Always use the explicit rules - they define the required layout
+              optimalCols = evenCols
+              optimalRows = evenRows
             }
             
             // Calculate column width
@@ -1451,7 +1483,7 @@ const MatchProgramPage = () => {
                   alignContent: 'center'
                 }}
               >
-            {matches.map((court) => (
+            {courtsWithPlayers.map((court) => (
               <PageCard
                 key={court.courtIdx}
                 hover={false}
@@ -1477,7 +1509,7 @@ const MatchProgramPage = () => {
                   </div>
                   <span className="text-sm text-[hsl(var(--muted))]">{court.slots.length}/{extendedCapacityCourts.get(court.courtIdx) || EMPTY_SLOTS}</span>
                 </header>
-                <div className="flex flex-col gap-2 flex-1 overflow-y-auto min-h-0">
+                <div className="flex flex-col gap-2 flex-1 min-h-0">
                   {(() => {
                     const maxCapacity = extendedCapacityCourts.get(court.courtIdx) || 4
                     const renderNetDivider = () => (
