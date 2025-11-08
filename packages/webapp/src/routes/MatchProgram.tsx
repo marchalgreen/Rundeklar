@@ -129,6 +129,25 @@ const MatchProgramPage = () => {
   
   // WHY: Track if we've restored persisted state to avoid overwriting it
   const hasRestoredStateRef = useRef(false)
+  
+  // WHY: Track bench collapse state for maximizing court space
+  const [benchCollapsed, setBenchCollapsed] = useState(false)
+  
+  // WHY: Track full-screen view mode for optimal readability when players gather
+  const [isFullScreen, setIsFullScreen] = useState(false)
+
+  // WHY: Handle ESC key to exit full-screen mode
+  useEffect(() => {
+    const handleEscape = (e: KeyboardEvent) => {
+      if (e.key === 'Escape' && isFullScreen) {
+        setIsFullScreen(false)
+      }
+    }
+    if (isFullScreen) {
+      document.addEventListener('keydown', handleEscape)
+      return () => document.removeEventListener('keydown', handleEscape)
+    }
+  }, [isFullScreen])
 
   /** Loads active training session from API. */
   const loadSession = useCallback(async () => {
@@ -1203,7 +1222,7 @@ const MatchProgramPage = () => {
     const catLetter = getCategoryLetter(category)
     return (
       <span 
-        className={`inline-flex items-center justify-center rounded-full text-[10px] font-bold w-5 h-5 bg-[hsl(var(--surface-2))] text-[hsl(var(--muted))] border-hair ${catLetter ? 'cat-ring' : ''}`}
+        className={`inline-flex items-center justify-center rounded-full text-xs font-bold w-6 h-6 bg-[hsl(var(--surface-2))] text-[hsl(var(--muted))] border-hair ${catLetter ? 'cat-ring' : ''}`}
         data-cat={catLetter || undefined}
         title={category}
       >
@@ -1216,9 +1235,10 @@ const MatchProgramPage = () => {
    * Renders a player slot with drag-and-drop support and swap detection.
    * @param court - Court data
    * @param slotIndex - Slot index to render
+   * @param fullScreen - Whether in full-screen mode (hides "Rangliste" text)
    * @returns Slot JSX
    */
-  const renderPlayerSlot = (court: CourtWithPlayers, slotIndex: number) => {
+  const renderPlayerSlot = (court: CourtWithPlayers, slotIndex: number, fullScreen: boolean = false) => {
     const entry = court.slots.find((slot: { slot: number; player: Player }) => slot.slot === slotIndex)
     const player = entry?.player
     const isDragOver = dragOverSlot?.courtIdx === court.courtIdx && dragOverSlot?.slot === slotIndex
@@ -1254,7 +1274,7 @@ const MatchProgramPage = () => {
           setDragOverSlot(null)
           setDragOverCourt(null)
         }}
-        className={`flex items-center gap-2 rounded-md px-2 py-2 h-[56px] w-full transition-all motion-reduce:transition-none ${
+        className={`flex items-center gap-2 rounded-md px-3 py-3 h-[72px] w-full transition-all motion-reduce:transition-none ${
           isRecentlySwapped
             ? `${getPlayerSlotBgColor()} ${catLetter ? 'cat-rail' : ''} animate-swap-in ring-2 ring-[hsl(var(--primary)/.5)] shadow-lg hover:shadow-sm cursor-grab active:cursor-grabbing ring-1 ring-[hsl(var(--line)/.12)]`
             : isDragOverOccupied && player
@@ -1294,31 +1314,20 @@ const MatchProgramPage = () => {
         {player ? (
           <>
             <div className="min-w-0 flex-1">
-              <p className="text-xs font-semibold text-[hsl(var(--foreground))] truncate">{player.alias ?? player.name}</p>
+              <p className={`${fullScreen ? 'text-lg' : 'text-base'} font-semibold text-[hsl(var(--foreground))] truncate`}>{player.alias ?? player.name}</p>
               <div className="flex items-center gap-1.5 mt-1">
                 {getCategoryBadge(player.primaryCategory)}
-                <span className="text-[10px] text-[hsl(var(--muted))] whitespace-nowrap">
-                  Rangliste: {player.level ?? '–'}
-                </span>
+                {!fullScreen && (
+                  <span className="text-xs text-[hsl(var(--muted))] whitespace-nowrap">
+                    Rangliste: {player.level ?? '–'}
+                  </span>
+                )}
                 {isDuplicatePlayer && (
                   <span className="inline-flex h-3 w-3 flex-shrink-0 items-center justify-center rounded-full bg-[hsl(var(--destructive)/.3)] text-[8px] font-bold text-[hsl(var(--destructive))] ring-1 ring-[hsl(var(--destructive)/.4)]">
                     !
                   </span>
                 )}
               </div>
-            </div>
-            <div className="flex items-center gap-1 flex-shrink-0">
-              <button
-                type="button"
-                onClick={(e) => {
-                  e.stopPropagation()
-                  handleMove(player.id)
-                }}
-                onMouseDown={(e) => e.stopPropagation()}
-                className="rounded px-2 py-1 text-xs font-medium text-[hsl(var(--muted))] hover:text-[hsl(var(--foreground))] hover:bg-[hsl(var(--surface-glass)/.85)] ring-1 ring-[hsl(var(--line)/.12)] transition-all duration-200 ease-[cubic-bezier(.2,.8,.2,1)] motion-reduce:transition-none"
-              >
-                BÆNK
-              </button>
             </div>
           </>
         ) : null}
@@ -1334,11 +1343,146 @@ const MatchProgramPage = () => {
     )
   }
 
+  // Full-screen view mode
+  if (isFullScreen && session) {
+    return (
+      <div className="fixed inset-0 z-50 bg-[hsl(var(--bg-canvas))] flex flex-col">
+        <header className="flex items-center justify-between p-4 border-b border-[hsl(var(--line)/.12)]">
+          <div className="flex items-center gap-4">
+            <select
+              value={selectedRound}
+              onChange={(e) => setSelectedRound(Number(e.target.value))}
+              className="rounded-xl px-6 py-3 pr-10 text-lg font-semibold bg-gradient-to-b from-[hsl(var(--surface-glass)/.95)] to-[hsl(var(--surface)/.98)] backdrop-blur-sm text-[hsl(var(--foreground))] ring-2 ring-[hsl(var(--primary)/.25)] shadow-[0_4px_12px_hsl(var(--primary)/.15)] hover:shadow-[0_6px_20px_hsl(var(--primary)/.2)] hover:ring-[hsl(var(--primary)/.35)] focus:ring-[hsl(var(--primary)/.45)] focus:ring-2 focus:shadow-[0_6px_20px_hsl(var(--primary)/.25)] outline-none transition-all duration-300 ease-[cubic-bezier(.2,.8,.2,1)] motion-reduce:transition-none cursor-pointer appearance-none"
+              style={{
+                backgroundImage: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 16 16'%3E%3Cpath fill='%23666' d='M8 11L3 6h10z'/%3E%3C/svg%3E")`,
+                backgroundRepeat: 'no-repeat',
+                backgroundPosition: 'right 12px center',
+                backgroundSize: '16px 16px'
+              }}
+            >
+              <option value={1}>Runde 1</option>
+              <option value={2}>Runde 2</option>
+              <option value={3}>Runde 3</option>
+              <option value={4}>Runde 4</option>
+            </select>
+            <h1 className="text-2xl font-semibold text-[hsl(var(--foreground))]">Kampprogram</h1>
+          </div>
+          <button
+            type="button"
+            onClick={() => setIsFullScreen(false)}
+            className="rounded-md bg-accent px-6 py-3 text-base font-semibold text-white hover:opacity-90 transition-all duration-200 ease-[cubic-bezier(.2,.8,.2,1)] motion-reduce:transition-none ring-focus hover:shadow-sm"
+          >
+            Luk (ESC)
+          </button>
+        </header>
+        <div className="flex-1 overflow-auto p-6">
+          <section className="grid grid-cols-2 gap-4 xl:grid-cols-4 max-w-[1920px] mx-auto">
+            {matches.map((court) => (
+              <PageCard
+                key={court.courtIdx}
+                hover={false}
+                className={`space-y-3 hover:shadow-md p-5 transition-all duration-200 relative ${
+                  courtsWithDuplicatesSet.has(court.courtIdx)
+                    ? 'ring-2 ring-[hsl(var(--destructive)/.45)] border border-[hsl(var(--destructive)/.3)] bg-[hsl(var(--destructive)/.03)]'
+                    : ''
+                }`}
+              >
+                <header className="flex items-center justify-between mb-3">
+                  <div className="flex items-center gap-2">
+                    <h3 className="text-xl font-semibold text-[hsl(var(--foreground))]">Bane {court.courtIdx}</h3>
+                    {courtsWithDuplicatesSet.has(court.courtIdx) && (
+                      <span className="group relative">
+                        <span className="inline-flex h-5 w-5 items-center justify-center rounded-full bg-[hsl(var(--destructive)/.2)] text-xs font-bold text-[hsl(var(--destructive))] ring-1 ring-[hsl(var(--destructive)/.3)]">
+                          !
+                        </span>
+                        <span className="absolute left-1/2 top-full z-10 mt-2 hidden -translate-x-1/2 whitespace-nowrap rounded-md bg-[hsl(var(--surface-2))] px-2 py-1 text-xs text-[hsl(var(--foreground))] shadow-lg ring-1 ring-[hsl(var(--line)/.12)] group-hover:block">
+                          3+ spillere har allerede spillet sammen i en tidligere runde
+                        </span>
+                      </span>
+                    )}
+                  </div>
+                  <span className="text-sm text-[hsl(var(--muted))]">{court.slots.length}/{extendedCapacityCourts.get(court.courtIdx) || EMPTY_SLOTS}</span>
+                </header>
+                <div className="flex flex-col gap-2">
+                  {(() => {
+                    const maxCapacity = extendedCapacityCourts.get(court.courtIdx) || 4
+                    const renderNetDivider = () => (
+                      <div className="relative flex items-center justify-center py-1">
+                        <div className="absolute inset-0 flex items-center">
+                          <div className="h-px w-full bg-[hsl(var(--line)/.3)]"></div>
+                        </div>
+                        <div className="relative bg-[hsl(var(--surface))] px-2">
+                          <div className="h-1 w-8 rounded-full bg-[hsl(var(--primary)/.2)] ring-1 ring-[hsl(var(--primary)/.3)]"></div>
+                        </div>
+                      </div>
+                    )
+                    const renderRegularDivider = () => (
+                      <div className="relative flex items-center justify-center py-0.5">
+                        <div className="h-px w-full bg-[hsl(var(--primary)/.3)]"></div>
+                      </div>
+                    )
+                    const renderSlotGroup = (startIndex: number, count: number) => (
+                      <div className="flex flex-col gap-2">
+                        {Array.from({ length: count }).map((_, idx) => {
+                          const slotIndex = startIndex + idx
+                          return (
+                            <React.Fragment key={slotIndex}>
+                              {renderPlayerSlot(court, slotIndex, true)}
+                            </React.Fragment>
+                          )
+                        })}
+                      </div>
+                    )
+                    if (maxCapacity === 8) {
+                      return (
+                        <>
+                          {renderSlotGroup(0, 2)}
+                          {renderNetDivider()}
+                          {renderSlotGroup(2, 2)}
+                          {renderRegularDivider()}
+                          {renderSlotGroup(4, 2)}
+                          {renderNetDivider()}
+                          {renderSlotGroup(6, 2)}
+                        </>
+                      )
+                    } else if (maxCapacity === 6) {
+                      return (
+                        <>
+                          {renderSlotGroup(0, 3)}
+                          {renderNetDivider()}
+                          {renderSlotGroup(3, 3)}
+                        </>
+                      )
+                    } else if (maxCapacity === 4) {
+                      return (
+                        <>
+                          {renderSlotGroup(0, 2)}
+                          {renderNetDivider()}
+                          {renderSlotGroup(2, 2)}
+                        </>
+                      )
+                    } else {
+                      return (
+                        <>
+                          {renderSlotGroup(0, maxCapacity)}
+                        </>
+                      )
+                    }
+                  })()}
+                </div>
+              </PageCard>
+            ))}
+          </section>
+        </div>
+      </div>
+    )
+  }
+
   return (
-    <section className="flex h-full flex-col gap-6 pt-6">
-      <header className="relative flex items-center justify-between mb-4">
+    <section className="flex h-full flex-col gap-6 pt-4">
+      <header className="relative flex items-center justify-between mb-2">
         <div className="flex-1">
-          <h1 className="text-2xl font-semibold text-[hsl(var(--foreground))]">Kampprogram</h1>
+          <h1 className="text-xl font-semibold text-[hsl(var(--foreground))]">Kampprogram</h1>
           <p className="text-base text-[hsl(var(--muted))] mt-1">
             {session ? (
               <>
@@ -1418,6 +1562,15 @@ const MatchProgramPage = () => {
             >
               Nulstil kampe
             </button>
+            {session && (
+              <button
+                type="button"
+                onClick={() => setIsFullScreen(true)}
+                className="rounded-md bg-accent px-4 py-2 text-sm font-semibold text-white hover:opacity-90 transition-all duration-200 ease-[cubic-bezier(.2,.8,.2,1)] motion-reduce:transition-none ring-focus hover:shadow-sm"
+              >
+                Vis kampprogram
+              </button>
+            )}
             {session ? (
               <button
                 type="button"
@@ -1445,17 +1598,25 @@ const MatchProgramPage = () => {
         </PageCard>
       )}
 
-      <div className="grid gap-4 lg:grid-cols-[minmax(200px,240px)_1fr] lg:items-start">
+      <div className={`grid gap-3 lg:items-start transition-all duration-200 ${
+        benchCollapsed 
+          ? 'lg:grid-cols-[40px_1fr]' 
+          : 'lg:grid-cols-[minmax(200px,240px)_1fr]'
+      }`}>
         {/* Bench */}
         <PageCard 
-          className={`space-y-2 transition-all duration-200 p-4 ${
+          className={`space-y-3 transition-all duration-200 p-4 ${
             dragOverBench 
               ? 'ring-2 ring-[hsl(var(--primary)/.4)] bg-[hsl(var(--primary)/.05)]' 
               : ''
-          }`}
+          } ${benchCollapsed ? 'overflow-hidden' : ''}`}
           onDragOver={(e) => {
             // Always allow drag over, even from inactive section (treat all inactive players the same)
             e.preventDefault()
+            if (benchCollapsed) {
+              // Auto-expand when dragging over collapsed bench
+              setBenchCollapsed(false)
+            }
             setDragOverBench(true)
           }}
           onDragLeave={() => {
@@ -1468,12 +1629,48 @@ const MatchProgramPage = () => {
           }}
         >
           <header className="flex items-center justify-between">
-            <h3 className="text-sm font-semibold">BÆNK</h3>
-            <span className="rounded-full bg-[hsl(var(--surface-2))] px-2 py-0.5 text-xs font-medium">
-              {bench.length}
-            </span>
+            {benchCollapsed ? (
+              <button
+                type="button"
+                onClick={() => setBenchCollapsed(false)}
+                className="flex items-center justify-center w-full h-8 rounded hover:bg-[hsl(var(--surface-2))] transition-colors"
+                title="Udvid bænk"
+              >
+                <svg className="w-5 h-5 text-[hsl(var(--muted))]" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                </svg>
+              </button>
+            ) : (
+              <>
+                <h3 className="text-sm font-semibold">BÆNK</h3>
+                <div className="flex items-center gap-2">
+                  <span className="rounded-full bg-[hsl(var(--surface-2))] px-2 py-0.5 text-xs font-medium">
+                    {bench.length}
+                  </span>
+                  <button
+                    type="button"
+                    onClick={() => setBenchCollapsed(true)}
+                    className="flex items-center justify-center w-6 h-6 rounded hover:bg-[hsl(var(--surface-2))] transition-colors"
+                    title="Skjul bænk"
+                  >
+                    <svg className="w-4 h-4 text-[hsl(var(--muted))]" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
+                    </svg>
+                  </button>
+                </div>
+              </>
+            )}
           </header>
-          <div className="flex flex-col space-y-2 max-h-[calc(100vh-380px)] overflow-y-auto scrollbar-thin min-w-0">
+          {benchCollapsed ? (
+            bench.length > 0 && (
+              <div className="flex items-center justify-center mt-2">
+                <span className="rounded-full bg-[hsl(var(--primary)/.1)] text-[hsl(var(--primary))] px-2 py-1 text-xs font-semibold border border-[hsl(var(--primary)/.2)]">
+                  {bench.length}
+                </span>
+              </div>
+            )
+          ) : (
+            <div className="flex flex-col space-y-3 max-h-[calc(100vh-380px)] overflow-y-auto scrollbar-thin min-w-0">
             {bench.length === 0 && (
               <p className="rounded-md bg-[hsl(var(--surface-2))] px-2 py-4 text-center text-xs text-[hsl(var(--muted))] border-hair">
                 Træk spillere her for at aktivere dem
@@ -1484,7 +1681,7 @@ const MatchProgramPage = () => {
               return (
               <div
                 key={player.id}
-                className={`flex items-center gap-2 rounded-md px-2 py-2 h-[56px] w-full hover:shadow-sm cursor-grab active:cursor-grabbing transition-all ring-1 ring-[hsl(var(--line)/.12)] ${getPlayerSlotBgColor()} ${catLetter ? 'cat-rail' : ''}`}
+                className={`flex items-center gap-3 rounded-md px-3 py-3 h-[72px] w-full hover:shadow-sm cursor-grab active:cursor-grabbing transition-all ring-1 ring-[hsl(var(--line)/.12)] ${getPlayerSlotBgColor()} ${catLetter ? 'cat-rail' : ''}`}
                 data-cat={catLetter || undefined}
                 draggable
                 onDragStart={(event) => {
@@ -1499,10 +1696,10 @@ const MatchProgramPage = () => {
                 }}
               >
                 <div className="min-w-0 flex-1">
-                  <p className="text-xs font-semibold text-[hsl(var(--foreground))] truncate">{player.alias ?? player.name}</p>
+                  <p className="text-base font-semibold text-[hsl(var(--foreground))] truncate">{player.alias ?? player.name}</p>
                   <div className="flex items-center gap-1.5 mt-1">
                     {getCategoryBadge(player.primaryCategory)}
-                    <span className="text-[10px] text-[hsl(var(--muted))] whitespace-nowrap">
+                    <span className="text-xs text-[hsl(var(--muted))] whitespace-nowrap">
                       Rangliste: {player.level ?? '–'}
                     </span>
                   </div>
@@ -1555,7 +1752,7 @@ const MatchProgramPage = () => {
                       {inactivePlayers.length}
                     </span>
                   </header>
-                  <div className="flex flex-col space-y-2 min-w-0">
+                  <div className="flex flex-col space-y-3 min-w-0">
                     {inactivePlayers.map((player) => {
                       const isOneRoundOnly = selectedRound > 1 && player.maxRounds === 1
                       const isUnavailable = unavailablePlayers.has(player.id)
@@ -1563,7 +1760,7 @@ const MatchProgramPage = () => {
                       return (
                         <div
                           key={player.id}
-                          className={`flex items-center gap-1.5 rounded-md px-2 py-2 h-[56px] w-full max-w-full box-border opacity-60 hover:opacity-100 hover:shadow-sm cursor-grab active:cursor-grabbing transition-all ring-1 ring-[hsl(var(--line)/.12)] overflow-hidden ${getPlayerSlotBgColor()} ${catLetter ? 'cat-rail' : ''}`}
+                          className={`flex items-center gap-2 rounded-md px-3 py-3 h-[72px] w-full max-w-full box-border opacity-60 hover:opacity-100 hover:shadow-sm cursor-grab active:cursor-grabbing transition-all ring-1 ring-[hsl(var(--line)/.12)] overflow-hidden ${getPlayerSlotBgColor()} ${catLetter ? 'cat-rail' : ''}`}
                           data-cat={catLetter || undefined}
                         draggable
                         onDragStart={(event) => {
@@ -1587,7 +1784,7 @@ const MatchProgramPage = () => {
                         }}
                         >
                           <div className="min-w-0 flex-1 overflow-hidden">
-                            <p className="text-xs font-semibold text-[hsl(var(--foreground))] truncate w-full">{player.alias ?? player.name}</p>
+                            <p className="text-base font-semibold text-[hsl(var(--foreground))] truncate w-full">{player.alias ?? player.name}</p>
                             <div className="flex items-center gap-1.5 mt-1 min-w-0">
                               {getCategoryBadge(player.primaryCategory)}
                               {isOneRoundOnly && !isUnavailable && (
@@ -1638,10 +1835,11 @@ const MatchProgramPage = () => {
               )}
             </div>
           </div>
+          )}
         </PageCard>
 
         {/* Courts */}
-        <section className="grid grid-cols-2 gap-2 xl:grid-cols-4">
+        <section className="grid grid-cols-2 gap-3 xl:grid-cols-4">
           {matches.map((court) => (
             <PageCard
               key={court.courtIdx}
@@ -1670,7 +1868,7 @@ const MatchProgramPage = () => {
             >
               <header className="flex items-center justify-between mb-2">
                 <div className="flex items-center gap-2">
-                  <h3 className="text-base font-semibold text-[hsl(var(--foreground))]">Bane {court.courtIdx}</h3>
+                  <h3 className="text-lg font-semibold text-[hsl(var(--foreground))]">Bane {court.courtIdx}</h3>
                   {courtsWithDuplicatesSet.has(court.courtIdx) && (
                     <span className="group relative">
                       <span className="inline-flex h-4 w-4 items-center justify-center rounded-full bg-[hsl(var(--destructive)/.2)] text-[10px] font-bold text-[hsl(var(--destructive))] ring-1 ring-[hsl(var(--destructive)/.3)]">
@@ -1849,7 +2047,7 @@ const MatchProgramPage = () => {
                         const slotIndex = startIndex + idx
                         return (
                           <React.Fragment key={slotIndex}>
-                            {renderPlayerSlot(court, slotIndex)}
+                            {renderPlayerSlot(court, slotIndex, isFullScreen)}
                           </React.Fragment>
                         )
                       })}

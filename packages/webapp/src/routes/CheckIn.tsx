@@ -47,7 +47,7 @@ const getCategoryBadge = (category: 'Single' | 'Double' | 'Begge' | null | undef
   const catLetter = getCategoryLetter(category)
   return (
     <span 
-      className={`inline-flex items-center justify-center rounded-full text-[10px] font-bold w-5 h-5 bg-[hsl(var(--surface-2))] text-[hsl(var(--muted))] border-hair ${catLetter ? 'cat-ring' : ''}`}
+      className={`inline-flex items-center justify-center rounded-full text-xs font-bold w-6 h-6 bg-[hsl(var(--surface-2))] text-[hsl(var(--muted))] border-hair ${catLetter ? 'cat-ring' : ''}`}
       data-cat={catLetter || undefined}
       title={category}
     >
@@ -337,10 +337,10 @@ const CheckInPage = () => {
   }
 
   return (
-    <section className="flex flex-col gap-6 pt-6">
-      <header className="flex items-center justify-between mb-4">
+    <section className="flex flex-col gap-6 pt-4">
+      <header className="flex items-center justify-between mb-2">
         <div className="flex-1">
-          <h1 className="text-2xl font-semibold text-[hsl(var(--foreground))]">Indtjekning</h1>
+          <h1 className="text-xl font-semibold text-[hsl(var(--foreground))]">Indtjekning</h1>
           <p className="text-base text-[hsl(var(--muted))] mt-1">
             {session ? (
               <>
@@ -383,7 +383,7 @@ const CheckInPage = () => {
                   <div
                     key={player.id}
                     className={clsx(
-                      'flex items-center justify-between gap-2 rounded-md border-hair px-2 py-2 min-h-[48px] hover:shadow-sm transition-all duration-300 ease-[cubic-bezier(.2,.8,.2,1)] motion-reduce:transition-none',
+                      'flex items-center justify-between gap-3 rounded-md border-hair px-3 py-3 min-h-[64px] hover:shadow-sm transition-all duration-300 ease-[cubic-bezier(.2,.8,.2,1)] motion-reduce:transition-none',
                       'bg-[hsl(var(--success)/.06)]',
                       catLetter && 'cat-rail',
                       isAnimatingOut && 'opacity-0 scale-95 translate-x-4 pointer-events-none',
@@ -398,10 +398,10 @@ const CheckInPage = () => {
                       {getCategoryBadge(player.primaryCategory)}
                       <div className="min-w-0 flex-1">
                         <div className="flex items-center gap-1.5 flex-wrap">
-                          <p className="text-xs font-semibold text-[hsl(var(--foreground))] truncate">
+                          <p className="text-base font-semibold text-[hsl(var(--foreground))] truncate">
                             {player.name}
                             {player.alias && (
-                              <span className="text-[10px] font-normal text-[hsl(var(--muted))]"> ({player.alias})</span>
+                              <span className="text-xs font-normal text-[hsl(var(--muted))]"> ({player.alias})</span>
                             )}
                           </p>
                           {isOneRoundOnly && (
@@ -495,7 +495,7 @@ const CheckInPage = () => {
                     setOneRoundOnlyPlayers(newSet)
                   }}
                   className={clsx(
-                    'border-hair flex min-h-[56px] items-center justify-between gap-3 rounded-lg px-3 py-2.5',
+                    'border-hair flex min-h-[64px] items-center justify-between gap-3 rounded-lg px-3 py-3',
                     'transition-all duration-300 ease-[cubic-bezier(.2,.8,.2,1)] motion-reduce:transition-none',
                     'cursor-pointer hover:shadow-sm ring-0 hover:ring-2 hover:ring-[hsl(var(--accent)/.15)]',
                     getPlayerBgColor(),
@@ -512,7 +512,7 @@ const CheckInPage = () => {
                   <div className="flex items-center gap-2 min-w-0 flex-1">
                     {getCategoryBadge(player.primaryCategory)}
                     <div className="min-w-0 flex-1">
-                      <p className="text-sm font-semibold text-[hsl(var(--foreground))] truncate">
+                      <p className="text-base font-semibold text-[hsl(var(--foreground))] truncate">
                         {player.name}
                         {player.alias && (
                           <span className="text-xs font-normal text-[hsl(var(--muted))]"> ({player.alias})</span>
