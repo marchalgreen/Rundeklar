@@ -31,7 +31,7 @@ const CheckInPage = () => {
 
   // UI state
   const [search, setSearch] = useState('')
-  const [filterLetter, setFilterLetter] = useState(LETTER_FILTERS.ALL)
+  const [filterLetter, setFilterLetter] = useState<string>(LETTER_FILTERS.ALL)
   const [oneRoundOnlyPlayers, setOneRoundOnlyPlayers] = useState<Set<string>>(new Set())
   const [justCheckedIn, setJustCheckedIn] = useState<Set<string>>(new Set())
   const [animatingOut, setAnimatingOut] = useState<Set<string>>(new Set())
@@ -182,7 +182,7 @@ const CheckInPage = () => {
       // Exclude checked-in players from the main list
       if (checkedInIds.has(player.id)) return false
       const matchesLetter =
-        filterLetter === LETTER_FILTERS.ALL || player.name.toLowerCase().startsWith(filterLetter.toLowerCase())
+        filterLetter === LETTER_FILTERS.ALL || (typeof filterLetter === 'string' && player.name.toLowerCase().startsWith(filterLetter.toLowerCase()))
       const nameLower = player.name.toLowerCase()
       const aliasLower = (player.alias ?? '').toLowerCase()
       const matchesSearch = !term || nameLower.includes(term) || aliasLower.includes(term)

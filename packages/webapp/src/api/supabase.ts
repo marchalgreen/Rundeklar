@@ -1,5 +1,6 @@
 import type {
   Player,
+  PlayerUpdateInput,
   TrainingSession,
   TrainingSessionStatus,
   CheckIn,
@@ -55,7 +56,7 @@ const rowToPlayer = (row: any): Player => ({
   preferredDoublesPartners: row.preferred_doubles_partners ?? null,
   preferredMixedPartners: row.preferred_mixed_partners ?? null,
   createdAt: row.created_at
-})
+} as Player)
 
 /**
  * Converts a Supabase row to a TrainingSession.
@@ -271,19 +272,20 @@ export const getPlayers = async (): Promise<Player[]> => {
  */
 export const createPlayer = async (player: Omit<Player, 'id' | 'createdAt'>): Promise<Player> => {
   const supabase = getSupabase()
+  const playerAny = player as any
   const { data, error } = await supabase
     .from('players')
     .insert({
       name: player.name,
       alias: player.alias,
-      level_single: player.levelSingle ?? null,
-      level_double: player.levelDouble ?? null,
-      level_mix: player.levelMix ?? null,
+      level_single: playerAny.levelSingle ?? null,
+      level_double: playerAny.levelDouble ?? null,
+      level_mix: playerAny.levelMix ?? null,
       gender: player.gender,
       primary_category: player.primaryCategory,
       active: player.active,
-      preferred_doubles_partners: player.preferredDoublesPartners ?? [],
-      preferred_mixed_partners: player.preferredMixedPartners ?? []
+      preferred_doubles_partners: playerAny.preferredDoublesPartners ?? [],
+      preferred_mixed_partners: playerAny.preferredMixedPartners ?? []
     })
     .select()
     .single()
@@ -295,20 +297,21 @@ export const createPlayer = async (player: Omit<Player, 'id' | 'createdAt'>): Pr
 /**
  * Updates a player in Supabase.
  */
-export const updatePlayer = async (id: string, updates: Partial<Omit<Player, 'id' | 'createdAt'>>): Promise<Player> => {
+export const updatePlayer = async (id: string, updates: PlayerUpdateInput['patch']): Promise<Player> => {
   const updateData: any = {}
+  const updatesAny = updates as any
   if (updates.name !== undefined) updateData.name = updates.name
   if (updates.alias !== undefined) updateData.alias = updates.alias
-  if (updates.levelSingle !== undefined) updateData.level_single = updates.levelSingle
-  if (updates.levelDouble !== undefined) updateData.level_double = updates.levelDouble
-  if (updates.levelMix !== undefined) updateData.level_mix = updates.levelMix
+  if (updatesAny.levelSingle !== undefined) updateData.level_single = updatesAny.levelSingle
+  if (updatesAny.levelDouble !== undefined) updateData.level_double = updatesAny.levelDouble
+  if (updatesAny.levelMix !== undefined) updateData.level_mix = updatesAny.levelMix
   // Backward compatibility: if old 'level' is provided, update level_single
   if (updates.level !== undefined) updateData.level_single = updates.level
   if (updates.gender !== undefined) updateData.gender = updates.gender
   if (updates.primaryCategory !== undefined) updateData.primary_category = updates.primaryCategory
   if (updates.active !== undefined) updateData.active = updates.active
-  if (updates.preferredDoublesPartners !== undefined) updateData.preferred_doubles_partners = updates.preferredDoublesPartners ?? []
-  if (updates.preferredMixedPartners !== undefined) updateData.preferred_mixed_partners = updates.preferredMixedPartners ?? []
+  if (updatesAny.preferredDoublesPartners !== undefined) updateData.preferred_doubles_partners = updatesAny.preferredDoublesPartners ?? []
+  if (updatesAny.preferredMixedPartners !== undefined) updateData.preferred_mixed_partners = updatesAny.preferredMixedPartners ?? []
 
   const supabase = getSupabase()
   const { data, error } = await supabase.from('players').update(updateData).eq('id', id).select().single()

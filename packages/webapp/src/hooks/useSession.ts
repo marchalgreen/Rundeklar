@@ -73,9 +73,9 @@ export const useSession = (): UseSessionReturn => {
       // Don't show toast for "no active session" - it's a normal state
       if (normalizedError.code !== 'SESSION_NOT_FOUND') {
         notify({
-          variant: 'error',
+          variant: 'danger',
           title: 'Kunne ikke hente træning',
-          message: normalizedError.message
+          description: normalizedError.message
         })
       }
     } finally {
@@ -97,16 +97,16 @@ export const useSession = (): UseSessionReturn => {
       notify({
         variant: 'success',
         title: 'Træning startet',
-        message: 'Træningen er nu aktiv'
+        description: 'Træningen er nu aktiv'
       })
       return active
     } catch (err) {
       const normalizedError = normalizeError(err)
       setError(normalizedError.message)
       notify({
-        variant: 'error',
+        variant: 'danger',
         title: 'Kunne ikke starte træning',
-        message: normalizedError.message
+        description: normalizedError.message
       })
       return null
     }
@@ -128,15 +128,15 @@ export const useSession = (): UseSessionReturn => {
       notify({
         variant: 'success',
         title: 'Træning afsluttet',
-        message: 'Træningen er nu afsluttet'
+        description: 'Træningen er nu afsluttet'
       })
     } catch (err) {
       const normalizedError = normalizeError(err)
       setError(normalizedError.message)
       notify({
-        variant: 'error',
+        variant: 'danger',
         title: 'Kunne ikke afslutte træning',
-        message: normalizedError.message
+        description: normalizedError.message
       })
     }
   }, [notify])
@@ -151,7 +151,8 @@ export const useSession = (): UseSessionReturn => {
   // Load session on mount
   useEffect(() => {
     void loadSession()
-  }, [loadSession])
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
 
   return {
     session,

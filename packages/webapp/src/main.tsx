@@ -3,8 +3,9 @@ import React from 'react'
 import ReactDOM from 'react-dom/client'
 import App from './App'
 import { ToastProvider } from './components/ui/Toast'
+import { ErrorBoundary } from './components/ui'
 
-/** App entry point — mounts React root with ToastProvider. */
+/** App entry point — mounts React root with ToastProvider and ErrorBoundary. */
 const rootElement = document.getElementById('root')
 if (!rootElement) {
   throw new Error('Root element mangler')
@@ -12,8 +13,10 @@ if (!rootElement) {
 
 ReactDOM.createRoot(rootElement).render(
   <React.StrictMode>
+    <ErrorBoundary>
       <ToastProvider>
         <App />
       </ToastProvider>
+    </ErrorBoundary>
   </React.StrictMode>
 )

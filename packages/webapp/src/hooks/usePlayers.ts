@@ -71,14 +71,14 @@ export const usePlayers = (filters?: PlayerListFilters): UsePlayersReturn => {
       const normalizedError = normalizeError(err)
       setError(normalizedError.message)
       notify({
-        variant: 'error',
+        variant: 'danger',
         title: 'Kunne ikke hente spillere',
-        message: normalizedError.message
+        description: normalizedError.message
       })
     } finally {
       setLoading(false)
     }
-  }, [filters, notify])
+  }, [filters?.q, filters?.active, notify])
 
   /**
    * Creates a new player.
@@ -95,16 +95,16 @@ export const usePlayers = (filters?: PlayerListFilters): UsePlayersReturn => {
       notify({
         variant: 'success',
         title: 'Spiller oprettet',
-        message: `${created.name} er nu tilføjet`
+        description: `${created.name} er nu tilføjet`
       })
       return created
     } catch (err) {
       const normalizedError = normalizeError(err)
       setError(normalizedError.message)
       notify({
-        variant: 'error',
+        variant: 'danger',
         title: 'Kunne ikke oprette spiller',
-        message: normalizedError.message
+        description: normalizedError.message
       })
       return null
     }
@@ -125,16 +125,16 @@ export const usePlayers = (filters?: PlayerListFilters): UsePlayersReturn => {
       notify({
         variant: 'success',
         title: 'Spiller opdateret',
-        message: `${updated.name} er nu opdateret`
+        description: `${updated.name} er nu opdateret`
       })
       return updated
     } catch (err) {
       const normalizedError = normalizeError(err)
       setError(normalizedError.message)
       notify({
-        variant: 'error',
+        variant: 'danger',
         title: 'Kunne ikke opdatere spiller',
-        message: normalizedError.message
+        description: normalizedError.message
       })
       return null
     }
@@ -150,7 +150,8 @@ export const usePlayers = (filters?: PlayerListFilters): UsePlayersReturn => {
   // Load players on mount and when filters change
   useEffect(() => {
     void loadPlayers()
-  }, [loadPlayers])
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [filters?.q, filters?.active])
 
   return {
     players,

@@ -46,6 +46,27 @@ const PlayersPage = () => {
   })
   const scrollPositionRef = useRef<number>(0)
   const shouldRestoreScrollRef = useRef(false)
+  const [scrollRestoreKey, setScrollRestoreKey] = useState(0)
+
+  /**
+   * Saves current scroll position and marks it for restoration.
+   * Stores it in both a ref (for parent restoration) and data attribute (for DataTable).
+   */
+  const saveScrollPosition = useCallback(() => {
+    const tableContainer = document.querySelector('[data-table-container]') as HTMLElement
+    if (tableContainer) {
+      const currentScroll = tableContainer.scrollTop
+      if (currentScroll > 0) {
+        scrollPositionRef.current = currentScroll
+        shouldRestoreScrollRef.current = true
+        // Store scroll position in data attribute for DataTable to read
+        // Use a timestamp to ensure it's fresh
+        tableContainer.setAttribute('data-saved-scroll', currentScroll.toString())
+        tableContainer.setAttribute('data-saved-scroll-time', Date.now().toString())
+        setScrollRestoreKey((prev) => prev + 1)
+      }
+    }
+  }, [])
 
   // Form state
   const [formName, setFormName] = useState('')
@@ -92,16 +113,17 @@ const PlayersPage = () => {
     (player: Player) => {
       setDialogMode('edit')
       setCurrentPlayer(player)
+      const playerAny = player as any
       setFormName(player.name)
       setFormAlias(player.alias ?? '')
-      setFormLevelSingle((player.levelSingle ?? null)?.toString() ?? '')
-      setFormLevelDouble((player.levelDouble ?? null)?.toString() ?? '')
-      setFormLevelMix((player.levelMix ?? null)?.toString() ?? '')
+      setFormLevelSingle((playerAny.levelSingle ?? null)?.toString() ?? '')
+      setFormLevelDouble((playerAny.levelDouble ?? null)?.toString() ?? '')
+      setFormLevelMix((playerAny.levelMix ?? null)?.toString() ?? '')
       setFormGender(player.gender ?? '')
       setFormPrimaryCategory(player.primaryCategory ?? '')
       setFormActive(player.active)
-      setFormPreferredDoublesPartners((player.preferredDoublesPartners ?? null) ?? [])
-      setFormPreferredMixedPartners((player.preferredMixedPartners ?? null) ?? [])
+      setFormPreferredDoublesPartners((playerAny.preferredDoublesPartners ?? null) ?? [])
+      setFormPreferredMixedPartners((playerAny.preferredMixedPartners ?? null) ?? [])
       setIsSheetOpen(true)
     },
     []
@@ -115,9 +137,14 @@ const PlayersPage = () => {
       event.preventDefault()
       if (!formName.trim()) return
 
+      // Save scroll position before update (for edit mode)
+      if (dialogMode === 'edit') {
+        saveScrollPosition()
+      }
+
       try {
         if (dialogMode === 'create') {
-          const createInput: Parameters<typeof createPlayer>[0] = {
+          const createInput: any = {
             name: formName.trim(),
             alias: formAlias.trim() || undefined,
             levelSingle: formLevelSingle ? Number(formLevelSingle) : undefined,
@@ -131,7 +158,7 @@ const PlayersPage = () => {
           }
           await createPlayer(createInput)
         } else if (currentPlayer) {
-          const patch: Parameters<typeof updatePlayer>[0]['patch'] = {
+          const patch: any = {
             name: formName.trim(),
             alias: formAlias || null,
             levelSingle: formLevelSingle ? Number(formLevelSingle) : null,
@@ -167,7 +194,8 @@ const PlayersPage = () => {
       dialogMode,
       currentPlayer,
       createPlayer,
-      updatePlayer
+      updatePlayer,
+      saveScrollPosition
     ]
   )
 
@@ -177,18 +205,14 @@ const PlayersPage = () => {
   const toggleActive = useCallback(
     async (player: Player) => {
       // Save scroll position before update
-      const tableContainer = document.querySelector('[data-table-container]') as HTMLElement
-      if (tableContainer) {
-        scrollPositionRef.current = tableContainer.scrollTop
-        shouldRestoreScrollRef.current = true
-      }
+      saveScrollPosition()
 
       await updatePlayer({
         id: player.id,
         patch: { active: !player.active }
       })
     },
-    [updatePlayer]
+    [updatePlayer, saveScrollPosition]
   )
 
   /**
@@ -197,36 +221,45 @@ const PlayersPage = () => {
   const updatePrimaryCategory = useCallback(
     async (player: Player, category: PlayerCategory | null) => {
       // Save scroll position before update
-      const tableContainer = document.querySelector('[data-table-container]') as HTMLElement
-      if (tableContainer) {
-        scrollPositionRef.current = tableContainer.scrollTop
-        shouldRestoreScrollRef.current = true
-      }
+      saveScrollPosition()
 
       await updatePlayer({
         id: player.id,
         patch: { primaryCategory: category }
       })
     },
-    [updatePlayer]
+    [updatePlayer, saveScrollPosition]
   )
 
   /**
    * Restores scroll position after data changes.
+   * This effect runs when loading changes from true to false (update complete)
+   * and when players array changes. We use useLayoutEffect to restore before paint.
    */
   useLayoutEffect(() => {
-    if (shouldRestoreScrollRef.current) {
+    // Only restore when loading is false (data has finished loading) and we have a saved position
+    if (!loading && shouldRestoreScrollRef.current && scrollPositionRef.current > 0) {
+      // Use multiple RAFs to ensure we restore after DataTable's effects have run
+      // This ensures the table has fully rendered before we restore scroll
+      const restoreScroll = () => {
+        const tableContainer = document.querySelector('[data-table-container]') as HTMLElement
+        if (tableContainer) {
+          const savedScroll = scrollPositionRef.current
+          if (savedScroll > 0) {
+            tableContainer.scrollTop = savedScroll
+            shouldRestoreScrollRef.current = false
+          }
+        }
+      }
+      
+      // Use multiple RAFs to ensure restoration happens after DataTable's layout effects
       requestAnimationFrame(() => {
         requestAnimationFrame(() => {
-          const tableContainer = document.querySelector('[data-table-container]') as HTMLElement
-          if (tableContainer && scrollPositionRef.current > 0) {
-            tableContainer.scrollTop = scrollPositionRef.current
-          }
-          shouldRestoreScrollRef.current = false
+          requestAnimationFrame(restoreScroll)
         })
       })
     }
-  }, [players.length])
+  }, [loading, players, scrollRestoreKey])
 
   /**
    * Memoized filtered players list — applies search term to name/alias.
@@ -264,24 +297,24 @@ const PlayersPage = () => {
         header: 'Rangliste Single',
         align: 'center',
         sortable: true,
-        sortValue: (row) => (row.levelSingle ?? null) ?? 0,
-        accessor: (row: Player) => (row.levelSingle ?? null) ?? '–'
+        sortValue: (row) => ((row as any).levelSingle ?? null) ?? 0,
+        accessor: (row: Player) => ((row as any).levelSingle ?? null) ?? '–'
       },
       {
         id: 'levelDouble',
         header: 'Rangliste Double',
         align: 'center',
         sortable: true,
-        sortValue: (row) => (row.levelDouble ?? null) ?? 0,
-        accessor: (row: Player) => (row.levelDouble ?? null) ?? '–'
+        sortValue: (row) => ((row as any).levelDouble ?? null) ?? 0,
+        accessor: (row: Player) => ((row as any).levelDouble ?? null) ?? '–'
       },
       {
         id: 'levelMix',
         header: 'Rangliste Mix',
         align: 'center',
         sortable: true,
-        sortValue: (row) => (row.levelMix ?? null) ?? 0,
-        accessor: (row: Player) => (row.levelMix ?? null) ?? '–'
+        sortValue: (row) => ((row as any).levelMix ?? null) ?? 0,
+        accessor: (row: Player) => ((row as any).levelMix ?? null) ?? '–'
       },
       {
         id: 'gender',
@@ -341,6 +374,7 @@ const PlayersPage = () => {
               partnerType="doubles"
               allPlayers={allPlayersForDropdown}
               onUpdate={refetch}
+              onBeforeUpdate={saveScrollPosition}
             />
           </div>
         )
@@ -357,6 +391,7 @@ const PlayersPage = () => {
               partnerType="mixed"
               allPlayers={allPlayersForDropdown}
               onUpdate={refetch}
+              onBeforeUpdate={saveScrollPosition}
             />
           </div>
         )

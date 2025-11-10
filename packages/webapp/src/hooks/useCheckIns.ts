@@ -77,9 +77,9 @@ export const useCheckIns = (sessionId: string | null): UseCheckInsReturn => {
       const normalizedError = normalizeError(err)
       setError(normalizedError.message)
       notify({
-        variant: 'error',
+        variant: 'danger',
         title: 'Kunne ikke hente fremmøde',
-        message: normalizedError.message
+        description: normalizedError.message
       })
     } finally {
       setLoading(false)
@@ -107,9 +107,9 @@ export const useCheckIns = (sessionId: string | null): UseCheckInsReturn => {
       const normalizedError = normalizeError(err)
       setError(normalizedError.message)
       notify({
-        variant: 'error',
+        variant: 'danger',
         title: 'Kunne ikke tjekke ind',
-        message: normalizedError.message
+        description: normalizedError.message
       })
       return false
     }
@@ -132,9 +132,9 @@ export const useCheckIns = (sessionId: string | null): UseCheckInsReturn => {
       const normalizedError = normalizeError(err)
       setError(normalizedError.message)
       notify({
-        variant: 'error',
+        variant: 'danger',
         title: 'Kunne ikke tjekke ud',
-        message: normalizedError.message
+        description: normalizedError.message
       })
       return false
     }
@@ -150,7 +150,8 @@ export const useCheckIns = (sessionId: string | null): UseCheckInsReturn => {
   // Load check-ins when session ID changes
   useEffect(() => {
     void loadCheckIns()
-  }, [loadCheckIns])
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [sessionId])
 
   return {
     checkedIn,

@@ -59,8 +59,9 @@ export const LetterFilters: React.FC<LetterFiltersProps> = ({
   selectedLetter,
   onLetterSelect
 }) => {
-  const row1 = [LETTER_FILTERS.ALL, ...LETTER_FILTERS.ALL_LETTERS.slice(0, LETTER_FILTERS.ROW_SPLIT_INDEX)]
-  const row2 = LETTER_FILTERS.ALL_LETTERS.slice(LETTER_FILTERS.ROW_SPLIT_INDEX)
+  const allLettersArray = Array.from(LETTER_FILTERS.ALL_LETTERS)
+  const row1 = [LETTER_FILTERS.ALL, ...allLettersArray.slice(0, LETTER_FILTERS.ROW_SPLIT_INDEX)]
+  const row2 = allLettersArray.slice(LETTER_FILTERS.ROW_SPLIT_INDEX)
   
   return (
     <div className="flex flex-col gap-2">

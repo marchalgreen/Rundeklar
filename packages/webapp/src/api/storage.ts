@@ -221,8 +221,8 @@ export const loadState = (): DatabaseState => {
           parsed.players = parsed.players.map((player) => {
             // Only restore if field is explicitly null/undefined (not if user has set it)
             // Check if value exists and is a valid string (not empty string) - if so, user has set it
-            const hasUserSetGender = player.gender !== null && player.gender !== undefined && player.gender !== ''
-            const hasUserSetCategory = player.primaryCategory !== null && player.primaryCategory !== undefined && player.primaryCategory !== ''
+            const hasUserSetGender = player.gender !== null && player.gender !== undefined
+            const hasUserSetCategory = player.primaryCategory !== null && player.primaryCategory !== undefined
             
             // Only restore from seed if user has NOT set the value
             const needsGender = !hasUserSetGender

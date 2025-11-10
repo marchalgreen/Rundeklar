@@ -28,6 +28,9 @@ interface EditablePartnerCellProps {
   
   /** Callback when partner is updated. */
   onUpdate: () => void
+  
+  /** Optional callback to call before update (e.g., to save scroll position). */
+  onBeforeUpdate?: () => void
 }
 
 /**
@@ -102,7 +105,8 @@ export const EditablePartnerCell: React.FC<EditablePartnerCellProps> = ({
   player,
   partnerType,
   allPlayers,
-  onUpdate
+  onUpdate,
+  onBeforeUpdate
 }) => {
   const { notify } = useToast()
   const [isEditing, setIsEditing] = useState(false)
@@ -208,6 +212,11 @@ export const EditablePartnerCell: React.FC<EditablePartnerCellProps> = ({
   const performPartnerUpdate = useCallback(
     async (selectedId: string | null) => {
       try {
+        // Step 0: Save scroll position if callback provided (before any updates)
+        if (onBeforeUpdate) {
+          onBeforeUpdate()
+        }
+
         // Step 1: Fetch fresh data directly from API to ensure we have the latest state
         // Note: We don't call onUpdate() here to avoid triggering a re-render before updates are complete
         const freshPlayers = await api.players.list({})
@@ -312,7 +321,7 @@ export const EditablePartnerCell: React.FC<EditablePartnerCellProps> = ({
         setExistingPartnerName('')
       }
     },
-    [player.id, partnerType, onUpdate, notify]
+    [player.id, partnerType, onUpdate, notify, onBeforeUpdate]
   )
 
   /**

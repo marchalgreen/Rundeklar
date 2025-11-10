@@ -40,6 +40,8 @@ export function DataTable<T>({ data, columns, initialSort, sort: controlledSort,
   const scrollContainerRef = useRef<HTMLDivElement>(null)
   const previousDataLengthRef = useRef<number>(data.length)
   const scrollPositionRef = useRef<number>(0)
+  const savedScrollPositionRef = useRef<number | null>(null)
+  const shouldPreserveScrollRef = useRef<boolean>(false)
   const tableBodyRef = useRef<HTMLTableSectionElement>(null)
 
   const sortedData = useMemo(() => {
@@ -73,9 +75,11 @@ export function DataTable<T>({ data, columns, initialSort, sort: controlledSort,
   }, [])
 
   // PERF: Save scroll position right before data changes to prevent jump
+  // Only save if scroll position is greater than 0 AND we're not preserving scroll from parent
+  // This prevents overwriting scroll positions that parent components explicitly saved
   useEffect(() => {
     const container = scrollContainerRef.current
-    if (container) {
+    if (container && !shouldPreserveScrollRef.current && container.scrollTop > 0) {
       scrollPositionRef.current = container.scrollTop
     }
   })
@@ -88,13 +92,51 @@ export function DataTable<T>({ data, columns, initialSort, sort: controlledSort,
     const dataLengthChanged = previousDataLengthRef.current !== data.length
     const isDeletion = data.length < previousDataLengthRef.current
 
+    // Check if parent component saved scroll position in data attribute
+    // Only use it if it's recent (within last 2 seconds) to avoid stale values
+    const savedScrollAttr = container.getAttribute('data-saved-scroll')
+    const savedScrollTimeAttr = container.getAttribute('data-saved-scroll-time')
+    if (savedScrollAttr && savedScrollTimeAttr) {
+      const savedScroll = parseFloat(savedScrollAttr)
+      const savedTime = parseFloat(savedScrollTimeAttr)
+      const timeSinceSave = Date.now() - savedTime
+      // Only use saved scroll if it's recent (within 2 seconds)
+      if (savedScroll > 0 && timeSinceSave < 2000) {
+        savedScrollPositionRef.current = savedScroll
+        shouldPreserveScrollRef.current = true
+        container.removeAttribute('data-saved-scroll')
+        container.removeAttribute('data-saved-scroll-time')
+      }
+    }
+
+    // Restore scroll position for deletions (when length decreases)
     if (dataLengthChanged && isDeletion && scrollPositionRef.current > 0) {
       // Restore scroll position synchronously before browser paint
       container.scrollTop = scrollPositionRef.current
+      shouldPreserveScrollRef.current = false
+    }
+    
+    // For updates (same length, data changed), restore if we have a saved position
+    // This handles cases where parent component saved scroll position before update
+    // Also check if we have a saved position from data attribute (for immediate restoration)
+    if (!dataLengthChanged) {
+      if (savedScrollPositionRef.current !== null && savedScrollPositionRef.current > 0) {
+        // Use layout effect to restore synchronously before paint
+        container.scrollTop = savedScrollPositionRef.current
+        savedScrollPositionRef.current = null
+        // Reset preserve flag after a short delay to allow restoration to complete
+        setTimeout(() => {
+          shouldPreserveScrollRef.current = false
+        }, 100)
+      } else if (scrollPositionRef.current > 0) {
+        // Fallback: restore from scrollPositionRef if we have a saved position
+        // This handles cases where scroll was saved but not via data attribute
+        container.scrollTop = scrollPositionRef.current
+      }
     }
 
     previousDataLengthRef.current = data.length
-  }, [data.length, sortedData.length])
+  }, [data.length, sortedData.length, data])
 
   const requestSort = (column: Column<T>) => {
     if (!column.sortable) return

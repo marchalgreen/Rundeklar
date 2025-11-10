@@ -12,14 +12,14 @@ export const createTenantSupabaseClient = (config: TenantConfig): SupabaseClient
       tenantId: config.id,
       url: config.supabaseUrl ? '✓ Set' : '✗ Missing',
       key: config.supabaseKey ? '✓ Set' : '✗ Missing'
-    })
-    throw new Error(
+  })
+  throw new Error(
       `Missing Supabase credentials for tenant "${config.id}". Please configure supabaseUrl and supabaseKey in the tenant config file.`
-    )
-  }
+  )
+}
 
-  // Log connection info in development
-  if (import.meta.env.DEV) {
+// Log connection info in development
+if (import.meta.env.DEV) {
     console.log(`Supabase client initialized for tenant "${config.id}":`, {
       url: config.supabaseUrl,
       keyPrefix: config.supabaseKey?.substring(0, 20) + '...'
@@ -98,10 +98,10 @@ if (supabaseUrl && supabaseAnonKey) {
   
   if (import.meta.env.DEV) {
     console.log('Legacy Supabase client initialized (from env vars):', {
-      url: supabaseUrl,
-      keyPrefix: supabaseAnonKey?.substring(0, 20) + '...'
-    })
-  }
+    url: supabaseUrl,
+    keyPrefix: supabaseAnonKey?.substring(0, 20) + '...'
+  })
+}
 }
 
 /**
