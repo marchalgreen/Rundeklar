@@ -1,6 +1,6 @@
 /**
  * Previous rounds popup component for match program.
- * 
+ *
  * Displays a draggable popup window showing previous rounds' match data.
  */
 
@@ -10,7 +10,7 @@ import { PageCard } from '../ui'
 import { MATCH_CONSTANTS } from '../../constants'
 import { getCategoryLetter, getPlayerSlotBgColor } from '../../lib/matchProgramUtils'
 
-interface PreviousRoundsPopupProps {
+export interface PreviousRoundsPopupProps {
   /** Selected round number */
   selectedRound: number
   /** Set of visible previous rounds */
