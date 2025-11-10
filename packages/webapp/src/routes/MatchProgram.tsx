@@ -9,6 +9,7 @@ import type {
 import api from '../api'
 import { PageCard } from '../components/ui'
 import { useToast } from '../components/ui/Toast'
+import { useTenant } from '../contexts/TenantContext'
 
 /** Default number of slots per court (can be extended to 5-8). */
 const EMPTY_SLOTS = 4
@@ -110,6 +111,8 @@ const clearPersistedState = () => {
  * and tracks duplicate matchups across rounds. Delegates data operations to api.matches.
  */
 const MatchProgramPage = () => {
+  const { config } = useTenant()
+  const maxCourts = config.maxCourts
   const [session, setSession] = useState<TrainingSession | null>(null)
   const [checkedIn, setCheckedIn] = useState<CheckedInPlayer[]>([])
   const [matches, setMatches] = useState<CourtWithPlayers[]>([])
@@ -247,11 +250,11 @@ const MatchProgramPage = () => {
     }
   }
 
-  /** Loads court assignments for selected round. Ensures all 8 courts are always present. */
+  /** Loads court assignments for selected round. Ensures all courts are always present. */
   const loadMatches = async () => {
     if (!session) {
-      // Even without session, show all 8 empty courts
-      const allCourts: CourtWithPlayers[] = Array.from({ length: 8 }, (_, i) => ({
+      // Even without session, show all empty courts
+      const allCourts: CourtWithPlayers[] = Array.from({ length: maxCourts }, (_, i) => ({
         courtIdx: i + 1,
         slots: []
       }))
@@ -263,9 +266,9 @@ const MatchProgramPage = () => {
       // Use ref to get the latest value in case React state hasn't updated yet
       const currentInMemoryMatches = inMemoryMatchesRef.current
       if (currentInMemoryMatches[selectedRound]) {
-        // Use in-memory state - ensure all 8 courts are present
+        // Use in-memory state - ensure all courts are present
         const currentMatches = currentInMemoryMatches[selectedRound]
-        const allCourts = Array.from({ length: 8 }, (_, i) => i + 1)
+        const allCourts = Array.from({ length: maxCourts }, (_, i) => i + 1)
         const matchesByCourt = new Map(currentMatches.map((court) => [court.courtIdx, court]))
         const data = allCourts.map((courtIdx) => {
           const existing = matchesByCourt.get(courtIdx)
@@ -279,9 +282,9 @@ const MatchProgramPage = () => {
       // This can happen if restoration hasn't completed yet or if data was lost
       const persisted = loadPersistedState(session.id)
       if (persisted?.inMemoryMatches?.[selectedRound]) {
-        // Use persisted state - ensure all 8 courts are present
+        // Use persisted state - ensure all courts are present
         const persistedMatches = persisted.inMemoryMatches[selectedRound]
-        const allCourts = Array.from({ length: 8 }, (_, i) => i + 1)
+        const allCourts = Array.from({ length: maxCourts }, (_, i) => i + 1)
         const matchesByCourt = new Map(persistedMatches.map((court) => [court.courtIdx, court]))
         const data = allCourts.map((courtIdx) => {
           const existing = matchesByCourt.get(courtIdx)
@@ -295,8 +298,8 @@ const MatchProgramPage = () => {
       
       // Fall back to database
       const data = await api.matches.list(selectedRound)
-      // Ensure all 8 courts are present
-      const allCourts = Array.from({ length: 8 }, (_, i) => i + 1)
+      // Ensure all courts are present
+      const allCourts = Array.from({ length: maxCourts }, (_, i) => i + 1)
       const matchesByCourt = new Map(data.map((court) => [court.courtIdx, court]))
       const completeData = allCourts.map((courtIdx) => {
         const existing = matchesByCourt.get(courtIdx)
@@ -352,10 +355,10 @@ const MatchProgramPage = () => {
     savePersistedState(stateToPersist)
   }, [])
 
-  /** Updates in-memory matches for a specific round. Ensures all 8 courts are always present. */
+  /** Updates in-memory matches for a specific round. Ensures all courts are always present. */
   const updateInMemoryMatches = useCallback((round: number, newMatches: CourtWithPlayers[]) => {
-    // Ensure all 8 courts are always present (1-8)
-    const allCourts = Array.from({ length: 8 }, (_, i) => i + 1)
+    // Ensure all courts are always present (1-maxCourts)
+    const allCourts = Array.from({ length: maxCourts }, (_, i) => i + 1)
     const matchesByCourt = new Map(newMatches.map((court) => [court.courtIdx, court]))
     
     // Build complete matches array with all 8 courts
@@ -685,7 +688,7 @@ const MatchProgramPage = () => {
         // Fall back to database (for rounds from previous sessions or if not in memory)
         data = await api.matches.list(round)
         // Ensure all 8 courts are present
-        const allCourts = Array.from({ length: 8 }, (_, i) => i + 1)
+        const allCourts = Array.from({ length: maxCourts }, (_, i) => i + 1)
         const matchesByCourt = new Map(data.map((court) => [court.courtIdx, court]))
         data = allCourts.map((courtIdx) => {
           const existing = matchesByCourt.get(courtIdx)
@@ -758,7 +761,7 @@ const MatchProgramPage = () => {
             // Fall back to database
             const data = await api.matches.list(round)
             // Ensure all 8 courts are present
-            const allCourts = Array.from({ length: 8 }, (_, i) => i + 1)
+            const allCourts = Array.from({ length: maxCourts }, (_, i) => i + 1)
             const matchesByCourt = new Map(data.map((court) => [court.courtIdx, court]))
             previousMatches = allCourts.map((courtIdx) => {
               const existing = matchesByCourt.get(courtIdx)
@@ -823,7 +826,7 @@ const MatchProgramPage = () => {
               // Fall back to database (for rounds from previous sessions or if not in memory)
               data = await api.matches.list(round)
               // Ensure all 8 courts are present
-              const allCourts = Array.from({ length: 8 }, (_, i) => i + 1)
+              const allCourts = Array.from({ length: maxCourts }, (_, i) => i + 1)
               const matchesByCourt = new Map(data.map((court) => [court.courtIdx, court]))
               data = allCourts.map((courtIdx) => {
                 const existing = matchesByCourt.get(courtIdx)
@@ -858,7 +861,7 @@ const MatchProgramPage = () => {
             try {
               const data = await api.matches.list(round)
               // Ensure all 8 courts are present
-              const allCourts = Array.from({ length: 8 }, (_, i) => i + 1)
+              const allCourts = Array.from({ length: maxCourts }, (_, i) => i + 1)
               const matchesByCourt = new Map(data.map((court) => [court.courtIdx, court]))
               previousMatches = allCourts.map((courtIdx) => {
                 const existing = matchesByCourt.get(courtIdx)
@@ -1105,7 +1108,7 @@ const MatchProgramPage = () => {
       // Reset in-memory state only - no database write
       const currentMatches = inMemoryMatches[selectedRound] || []
       // Ensure all 8 courts are present
-      const allCourts = Array.from({ length: 8 }, (_, i) => i + 1)
+      const allCourts = Array.from({ length: maxCourts }, (_, i) => i + 1)
       const matchesByCourt = new Map(currentMatches.map((court) => [court.courtIdx, court]))
       
       const updatedMatches: CourtWithPlayers[] = allCourts.map((courtIdx) => {
@@ -1168,7 +1171,7 @@ const MatchProgramPage = () => {
       })
 
       // Ensure all 8 courts are present (fill in missing courts)
-      const allCourts = Array.from({ length: 8 }, (_, i) => i + 1)
+      const allCourts = Array.from({ length: maxCourts }, (_, i) => i + 1)
       const matchesByCourt = new Map(updatedMatches.map((court) => [court.courtIdx, court]))
       
       // If adding to a new court that doesn't exist yet, create it
@@ -1310,7 +1313,7 @@ const MatchProgramPage = () => {
       })
 
       // Ensure all 8 courts are present
-      const allCourts = Array.from({ length: 8 }, (_, i) => i + 1)
+      const allCourts = Array.from({ length: maxCourts }, (_, i) => i + 1)
       const matchesByCourt = new Map(updatedMatches.map((court) => [court.courtIdx, court]))
       const completeMatches: CourtWithPlayers[] = allCourts.map((idx) => {
         const existing = matchesByCourt.get(idx)

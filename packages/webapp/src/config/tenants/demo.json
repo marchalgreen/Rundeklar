@@ -1,0 +1,11 @@
+{
+  "id": "demo",
+  "name": "FORBUNDSTRÆNINGEN",
+  "logo": "logo.jpeg",
+  "maxCourts": 5,
+  "supabaseUrl": "",
+  "supabaseKey": "",
+  "features": {}
+}
+
+

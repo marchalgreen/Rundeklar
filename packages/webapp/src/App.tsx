@@ -1,27 +1,33 @@
-import { HashRouter, Routes, Route, Navigate } from 'react-router-dom'
+import { HashRouter, Routes, Route, Navigate, useLocation } from 'react-router-dom'
 import PlayersPage from './routes/PlayersDB'
 import CheckInPage from './routes/CheckIn'
 import MatchProgramPage from './routes/MatchProgram'
 import StatisticsPage from './routes/Statistics'
 import { SidebarItem } from './components/navigation/SidebarItem'
 import { UserCheck, UsersRound, Grid2x2, BarChart3 } from 'lucide-react'
+import { TenantProvider, useTenant } from './contexts/TenantContext'
+import { extractTenantId, buildTenantPath } from './lib/tenant'
 
 /**
  * Header component — app branding and primary navigation.
  * @remarks Renders logo and centered nav; uses absolute positioning for layout.
+ * Uses tenant context for dynamic branding.
  */
 const Header = () => {
+  const { config, buildPath } = useTenant()
+  const logoPath = `${import.meta.env.BASE_URL}${config.logo}`
+
   return (
     <header className="relative flex items-center ring-1 ring-[hsl(var(--line)/.12)] bg-[hsl(var(--surface)/.7)] px-6 py-4 backdrop-blur shadow-[inset_0_-1px_0_hsl(var(--line)/.08)]">
       {/* Left section: Logo and text */}
       <div className="flex items-center gap-3 flex-shrink-0">
         <img 
-          src={`${import.meta.env.BASE_URL}logo.jpeg`} 
-          alt="Herlev/Hjorten" 
+          src={logoPath} 
+          alt={config.name} 
           className="h-12 w-12 rounded-full ring-1 ring-[hsl(var(--line)/.2)] object-cover flex-shrink-0" 
         />
         <p className="text-lg font-semibold uppercase tracking-wide text-[hsl(var(--foreground))] whitespace-nowrap">
-          HERLEV/HJORTEN
+          {config.name}
         </p>
       </div>
 
@@ -32,10 +38,10 @@ const Header = () => {
         className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 flex items-center gap-2"
         style={{ width: '620px' }}
       >
-        <SidebarItem to="/check-in" icon={<UserCheck />} label="Indtjekning" />
-        <SidebarItem to="/match-program" icon={<Grid2x2 />} label="Kampprogram" />
-        <SidebarItem to="/players" icon={<UsersRound />} label="Spillere" />
-        <SidebarItem to="/statistics" icon={<BarChart3 />} label="Statistik" />
+        <SidebarItem to={buildPath('/check-in')} icon={<UserCheck />} label="Indtjekning" />
+        <SidebarItem to={buildPath('/match-program')} icon={<Grid2x2 />} label="Kampprogram" />
+        <SidebarItem to={buildPath('/players')} icon={<UsersRound />} label="Spillere" />
+        <SidebarItem to={buildPath('/statistics')} icon={<BarChart3 />} label="Statistik" />
       </nav>
 
       {/* Right section: Spacer for balance */}
@@ -47,12 +53,20 @@ const Header = () => {
 }
 
 /**
- * Main app component — router and layout wrapper.
- * @remarks Sets up HashRouter and renders header + main content area.
+ * Inner app component that uses tenant context.
+ * @remarks Extracts tenant ID from URL and provides tenant context to routes.
  */
-const App = () => {
+const AppInner = () => {
+  const location = useLocation()
+  
+  // Extract tenant ID from hash (HashRouter) or pathname (BrowserRouter)
+  const hash = location.hash || ''
+  const pathname = location.pathname || ''
+  const actualPath = hash ? hash.replace(/^#/, '') : pathname
+  const tenantId = extractTenantId(actualPath)
+
   return (
-    <HashRouter>
+    <TenantProvider tenantId={tenantId}>
       <div className="flex min-h-screen flex-col text-[hsl(var(--foreground))]">
         <Header />
         <main className="flex-1 overflow-y-auto">
@@ -62,11 +76,28 @@ const App = () => {
               <Route path="/check-in" element={<CheckInPage />} />
               <Route path="/match-program" element={<MatchProgramPage />} />
               <Route path="/statistics" element={<StatisticsPage />} />
+              {/* Support tenant-prefixed routes */}
+              <Route path="/:tenantId/players" element={<PlayersPage />} />
+              <Route path="/:tenantId/check-in" element={<CheckInPage />} />
+              <Route path="/:tenantId/match-program" element={<MatchProgramPage />} />
+              <Route path="/:tenantId/statistics" element={<StatisticsPage />} />
               <Route path="*" element={<Navigate to="/check-in" replace />} />
             </Routes>
           </div>
         </main>
       </div>
+    </TenantProvider>
+  )
+}
+
+/**
+ * Main app component — router and layout wrapper.
+ * @remarks Sets up HashRouter and renders header + main content area with tenant support.
+ */
+const App = () => {
+  return (
+    <HashRouter>
+      <AppInner />
     </HashRouter>
   )
 }
