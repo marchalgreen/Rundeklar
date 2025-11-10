@@ -86,7 +86,7 @@ export const MatchProgramHeader: React.FC<MatchProgramHeaderProps> = ({
   onEndTraining
 }) => {
   return (
-    <header className="flex flex-col gap-4 mb-2 sm:flex-row sm:items-start sm:justify-between">
+    <header className="flex flex-col gap-4 xl:gap-3 mb-2 xl:mb-1.5 sm:flex-row sm:items-start sm:justify-between">
       {/* Left section: Title and info */}
       <div className="flex-1 min-w-0">
         <h1 className="text-lg sm:text-xl font-semibold text-[hsl(var(--foreground))]">Kampprogram</h1>

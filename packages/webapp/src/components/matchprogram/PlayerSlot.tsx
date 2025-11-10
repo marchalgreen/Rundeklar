@@ -88,7 +88,7 @@ export const PlayerSlot: React.FC<PlayerSlotProps> = ({
         }
       }}
       onDragEnd={onDragEnd}
-      className={`flex items-center gap-2 rounded-md px-2.5 py-2.5 sm:px-3 sm:py-3 h-[64px] sm:h-[72px] w-full transition-all motion-reduce:transition-none ${
+      className={`flex items-center gap-2 rounded-md px-2.5 py-2.5 sm:px-3 sm:py-3 xl:px-2.5 xl:py-2 h-[64px] sm:h-[72px] xl:h-[68px] w-full transition-all motion-reduce:transition-none ${
         isRecentlySwapped
           ? `${getPlayerSlotBgColor()} ${catLetter ? 'cat-rail' : ''} animate-swap-in ring-2 ring-[hsl(var(--primary)/.5)] shadow-lg hover:shadow-sm cursor-grab active:cursor-grabbing ring-1 ring-[hsl(var(--line)/.12)]`
           : isDragOverOccupied && player

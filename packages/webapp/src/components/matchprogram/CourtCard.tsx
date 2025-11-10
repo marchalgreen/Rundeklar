@@ -104,7 +104,7 @@ export const CourtCard: React.FC<CourtCardProps> = ({
   const hasPlayers = court.slots.some((slot) => slot.player)
 
   const renderNetDivider = () => (
-    <div className="relative flex items-center justify-center py-1">
+    <div className="relative flex items-center justify-center py-1 xl:py-0.5">
       <div className="absolute inset-0 flex items-center">
         <div className="h-px w-full bg-[hsl(var(--line)/.3)]"></div>
       </div>
@@ -115,13 +115,13 @@ export const CourtCard: React.FC<CourtCardProps> = ({
   )
 
   const renderRegularDivider = () => (
-    <div className="relative flex items-center justify-center py-0.5">
+    <div className="relative flex items-center justify-center py-0.5 xl:py-0">
       <div className="h-px w-full bg-[hsl(var(--primary)/.3)]"></div>
     </div>
   )
 
   const renderSlotGroup = (startIndex: number, count: number) => (
-    <div className="flex flex-col gap-1.5">
+    <div className="flex flex-col gap-1.5 xl:gap-1">
       {Array.from({ length: count }).map((_, idx) => {
         const slotIndex = startIndex + idx
         const entry = court.slots.find((slot) => slot.slot === slotIndex)
@@ -189,7 +189,7 @@ export const CourtCard: React.FC<CourtCardProps> = ({
     <PageCard
       key={court.courtIdx}
       hover={false}
-      className={`space-y-2 hover:shadow-md p-3 sm:p-4 transition-all duration-200 relative ${
+      className={`space-y-2 xl:space-y-1.5 p-3 sm:p-4 xl:p-3 transition-colors duration-200 relative bg-transparent shadow-none ${
         hasDuplicates
           ? 'ring-2 ring-[hsl(var(--destructive)/.45)] border border-[hsl(var(--destructive)/.3)] bg-[hsl(var(--destructive)/.03)]'
           : dragOverCourt === court.courtIdx
@@ -200,7 +200,7 @@ export const CourtCard: React.FC<CourtCardProps> = ({
       onDragLeave={onCourtDragLeave}
       onDrop={(event) => onCourtDrop(event, court.courtIdx)}
     >
-      <header className="flex items-center justify-between mb-2">
+      <header className="flex items-center justify-between mb-2 xl:mb-1.5">
         <div className="flex items-center gap-2">
           <h3 className="text-base sm:text-lg font-semibold text-[hsl(var(--foreground))]">Bane {court.courtIdx}</h3>
           {hasDuplicates && (
@@ -334,7 +334,7 @@ export const CourtCard: React.FC<CourtCardProps> = ({
       </header>
       
       {/* Court visualization: two halves with net divider */}
-      <div className="flex flex-col gap-2">
+      <div className="flex flex-col gap-2 xl:gap-1.5">
         {renderCourtSlots()}
       </div>
     </PageCard>

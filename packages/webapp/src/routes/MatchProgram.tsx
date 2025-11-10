@@ -147,7 +147,7 @@ const MatchProgramPage = () => {
 
 
   return (
-    <section className="flex h-full flex-col gap-4 sm:gap-6 pt-2 sm:pt-4 overflow-x-hidden max-w-full">
+    <section className="flex h-full flex-col gap-4 sm:gap-6 xl:gap-3 pt-2 sm:pt-4 xl:pt-2 overflow-x-hidden max-w-full">
       <MatchProgramHeader
         session={session}
         checkedInCount={checkedIn.length}
@@ -178,7 +178,7 @@ const MatchProgramPage = () => {
           ? 'md:grid-cols-[48px_1fr]' 
           : ''
       }`}>
-        {/* Bench */}
+        {/* Bench - matches height of courts section */}
         <BenchSection
           bench={bench}
           inactivePlayers={inactivePlayers}
@@ -205,7 +205,7 @@ const MatchProgramPage = () => {
         />
 
         {/* Courts */}
-        <section className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3">
+        <section className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3 xl:gap-2.5 pb-2">
           {matches.map((court) => (
             <CourtCard
               key={court.courtIdx}

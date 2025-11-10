@@ -113,7 +113,7 @@ export const BenchSection: React.FC<BenchSectionProps> = ({
 }) => {
   return (
     <PageCard 
-      className={`space-y-3 transition-all duration-300 ease-in-out p-3 sm:p-4 ${
+      className={`space-y-3 transition-all duration-300 ease-in-out p-3 sm:p-4 md:self-stretch flex flex-col ${
         dragOverBench 
           ? 'ring-2 ring-[hsl(var(--primary)/.4)] bg-[hsl(var(--primary)/.05)]' 
           : ''
@@ -169,7 +169,7 @@ export const BenchSection: React.FC<BenchSectionProps> = ({
               </button>
             </div>
           </header>
-          <div className="flex flex-col space-y-3 max-h-[calc(100vh-420px)] sm:max-h-[calc(100vh-380px)] overflow-y-auto scrollbar-thin min-w-0">
+          <div className="flex flex-col space-y-3 max-h-[calc(100vh-440px)] sm:max-h-[calc(100vh-400px)] xl:max-h-[calc(100vh-360px)] overflow-y-auto scrollbar-thin min-w-0">
             {bench.length === 0 && (
               <p className="rounded-md bg-[hsl(var(--surface-2))] px-2 py-3 sm:py-4 text-center text-xs sm:text-sm text-[hsl(var(--muted))] border-hair">
                 Træk spillere her for at aktivere dem
@@ -180,7 +180,7 @@ export const BenchSection: React.FC<BenchSectionProps> = ({
               return (
                 <div
                   key={player.id}
-                  className={`flex items-center gap-2 sm:gap-3 rounded-md px-2.5 py-2.5 sm:px-3 sm:py-3 h-[64px] sm:h-[72px] w-full hover:shadow-sm cursor-grab active:cursor-grabbing transition-all ring-1 ring-[hsl(var(--line)/.12)] ${getPlayerSlotBgColor()} ${catLetter ? 'cat-rail' : ''}`}
+                  className={`flex items-center gap-2 rounded-md px-2.5 py-2.5 sm:px-3 sm:py-3 xl:px-2.5 xl:py-2 h-[64px] sm:h-[72px] xl:h-[68px] w-full hover:shadow-sm cursor-grab active:cursor-grabbing transition-all ring-1 ring-[hsl(var(--line)/.12)] ${getPlayerSlotBgColor()} ${catLetter ? 'cat-rail' : ''}`}
                   data-cat={catLetter || undefined}
                   draggable
                   onDragStart={(event) => onBenchDragStart(event, player.id)}
@@ -243,7 +243,7 @@ export const BenchSection: React.FC<BenchSectionProps> = ({
                       return (
                         <div
                           key={player.id}
-                          className={`flex items-center gap-2 rounded-md px-2.5 py-2.5 sm:px-3 sm:py-3 h-[64px] sm:h-[72px] w-full max-w-full box-border opacity-60 hover:opacity-100 hover:shadow-sm cursor-grab active:cursor-grabbing transition-all ring-1 ring-[hsl(var(--line)/.12)] overflow-hidden ${getPlayerSlotBgColor()} ${catLetter ? 'cat-rail' : ''}`}
+                          className={`flex items-center gap-2 rounded-md px-2.5 py-2.5 sm:px-3 sm:py-3 xl:px-2.5 xl:py-2 h-[64px] sm:h-[72px] xl:h-[68px] w-full max-w-full box-border opacity-60 hover:opacity-100 hover:shadow-sm cursor-grab active:cursor-grabbing transition-all ring-1 ring-[hsl(var(--line)/.12)] overflow-hidden ${getPlayerSlotBgColor()} ${catLetter ? 'cat-rail' : ''}`}
                           data-cat={catLetter || undefined}
                           draggable
                           onDragStart={(event) => onInactiveDragStart(event, player.id)}
