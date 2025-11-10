@@ -1,3 +1,11 @@
+/**
+ * Match program page — manages court assignments and player matching for training sessions.
+ * 
+ * @remarks Renders court layout with drag-and-drop, handles auto-matching algorithm,
+ * and tracks duplicate matchups across rounds. Uses hooks for data management and
+ * utilities for state persistence.
+ */
+
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import type {
   AutoArrangeResult,
@@ -10,114 +18,31 @@ import api from '../api'
 import { PageCard } from '../components/ui'
 import { useToast } from '../components/ui/Toast'
 import { useTenant } from '../contexts/TenantContext'
+import { useSession, useCheckIns } from '../hooks'
+import { loadPersistedState, savePersistedState, clearPersistedState, type PersistedMatchProgramState } from '../lib/matchProgramPersistence'
+import { MATCH_CONSTANTS } from '../constants'
 
 /** Default number of slots per court (can be extended to 5-8). */
-const EMPTY_SLOTS = 4
-
-/** LocalStorage key for Match Program state persistence. */
-const MATCH_PROGRAM_STORAGE_KEY = 'herlev-hjorten-match-program-state'
-
-/** Type for persisted Match Program state. */
-type PersistedMatchProgramState = {
-  inMemoryMatches: Record<number, CourtWithPlayers[]>
-  lockedCourts: Record<number, number[]>
-  hasRunAutoMatch: number[]
-  extendedCapacityCourts: Array<[number, number]>
-  sessionId: string | null
-}
-
+const EMPTY_SLOTS = MATCH_CONSTANTS.DEFAULT_SLOTS_PER_COURT
 /**
- * Loads Match Program state from localStorage.
- * @param sessionId - Current session ID to validate persisted state
- * @returns Persisted state or null if not found/invalid
- */
-const loadPersistedState = (sessionId: string | null): Partial<PersistedMatchProgramState> | null => {
-  if (typeof window === 'undefined') return null
-  try {
-    const raw = localStorage.getItem(MATCH_PROGRAM_STORAGE_KEY)
-    if (!raw) {
-      console.log('[MatchProgram] No persisted state found in localStorage')
-      return null
-    }
-    const parsed = JSON.parse(raw) as PersistedMatchProgramState
-    
-    // If sessionId is null, don't clear - just return null (session might not be loaded yet)
-    if (sessionId === null) {
-      console.log('[MatchProgram] Session not loaded yet, keeping persisted state:', {
-        persistedSessionId: parsed.sessionId,
-        rounds: Object.keys(parsed.inMemoryMatches)
-      })
-      return null
-    }
-    
-    // Only restore if it's for the same session
-    if (parsed.sessionId === sessionId) {
-      console.log('[MatchProgram] Loaded persisted state:', {
-        sessionId: parsed.sessionId,
-        rounds: Object.keys(parsed.inMemoryMatches),
-        totalMatches: Object.values(parsed.inMemoryMatches).flat().length
-      })
-      return parsed
-    }
-    
-    // Clear stale state from different session
-    console.log('[MatchProgram] Stale state found (different session), clearing:', {
-      persistedSessionId: parsed.sessionId,
-      currentSessionId: sessionId
-    })
-    localStorage.removeItem(MATCH_PROGRAM_STORAGE_KEY)
-    return null
-  } catch (err) {
-    console.error('[MatchProgram] Failed to load persisted state:', err)
-    return null
-  }
-}
-
-/**
- * Saves Match Program state to localStorage.
- * @param state - State to persist
- */
-const savePersistedState = (state: PersistedMatchProgramState) => {
-  if (typeof window === 'undefined') return
-  try {
-    const serialized = JSON.stringify(state)
-    localStorage.setItem(MATCH_PROGRAM_STORAGE_KEY, serialized)
-    // Debug: Log what we're saving
-    console.log('[MatchProgram] Saved state to localStorage:', {
-      sessionId: state.sessionId,
-      rounds: Object.keys(state.inMemoryMatches),
-      totalMatches: Object.values(state.inMemoryMatches).flat().length
-    })
-  } catch (err) {
-    console.error('[MatchProgram] Failed to save state:', err)
-  }
-}
-
-/**
- * Clears persisted Match Program state from localStorage.
- */
-const clearPersistedState = () => {
-  if (typeof window === 'undefined') return
-  try {
-    localStorage.removeItem(MATCH_PROGRAM_STORAGE_KEY)
-  } catch {
-    // Ignore localStorage errors
-  }
-}
-
-/**
- * Match program page — manages court assignments and player matching for training sessions.
- * @remarks Renders court layout with drag-and-drop, handles auto-matching algorithm,
- * and tracks duplicate matchups across rounds. Delegates data operations to api.matches.
+ * Match program page component.
+ * 
+ * @example
+ * ```tsx
+ * <MatchProgramPage />
+ * ```
  */
 const MatchProgramPage = () => {
   const { config } = useTenant()
   const maxCourts = config.maxCourts
-  const [session, setSession] = useState<TrainingSession | null>(null)
-  const [checkedIn, setCheckedIn] = useState<CheckedInPlayer[]>([])
+  
+  // Data hooks
+  const { session, loading: sessionLoading, startSession, endSession } = useSession()
+  const { checkedIn, loading: checkInsLoading, refetch: refetchCheckIns } = useCheckIns(session?.id ?? null)
   const [matches, setMatches] = useState<CourtWithPlayers[]>([])
-  const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
+  
+  const loading = sessionLoading || checkInsLoading
   const [moveMenuPlayer, setMoveMenuPlayer] = useState<string | null>(null)
   const { notify } = useToast()
   const [selectedRound, setSelectedRound] = useState<number>(1)
@@ -226,29 +151,18 @@ const MatchProgramPage = () => {
     return () => window.removeEventListener('resize', updateViewportSize)
   }, [isFullScreen])
 
-  /** Loads active training session from API. */
-  const loadSession = useCallback(async () => {
-    try {
-      const active = await api.session.getActive()
-      setSession(active)
-    } catch (err: any) {
-      setError(err.message ?? 'Kunne ikke hente træning')
-    }
-  }, [])
-
   /** Loads checked-in players for current session. */
-  const loadCheckIns = async () => {
+  const loadCheckIns = useCallback(async () => {
     if (!session) {
-      setCheckedIn([])
       return
     }
     try {
-      const data = await api.checkIns.listActive()
-      setCheckedIn(data)
-    } catch (err: any) {
-      setError(err.message ?? 'Kunne ikke hente fremmøde')
+      await refetchCheckIns()
+    } catch (err: unknown) {
+      const errorMessage = err instanceof Error ? err.message : 'Kunne ikke hente fremmøde'
+      setError(errorMessage)
     }
-  }
+  }, [session, refetchCheckIns])
 
   /** Loads court assignments for selected round. Ensures all courts are always present. */
   const loadMatches = async () => {
@@ -322,11 +236,9 @@ const MatchProgramPage = () => {
   ) => {
     const currentSession = sessionRef.current
     if (!currentSession) {
-      console.log('[MatchProgram] saveCurrentState: No session, skipping save')
       return
     }
     if (!hasRestoredStateRef.current) {
-      console.log('[MatchProgram] saveCurrentState: Restoration not complete, skipping save')
       return
     }
     
@@ -345,12 +257,6 @@ const MatchProgramPage = () => {
       extendedCapacityCourts: extendedCapacityCourtsSerializable,
       sessionId: currentSession.id
     }
-    
-    console.log('[MatchProgram] saveCurrentState called:', {
-      sessionId: currentSession.id,
-      rounds: Object.keys(matches),
-      hasMatches: Object.values(matches).some(round => round.some(court => court.slots.length > 0))
-    })
     
     savePersistedState(stateToPersist)
   }, [])
@@ -389,16 +295,7 @@ const MatchProgramPage = () => {
     }
   }, [selectedRound, session, saveCurrentState])
 
-  /** Initializes page state — loads session and players. */
-  const hydrate = useCallback(async () => {
-    setLoading(true)
-    setError(null)
-    await loadSession()
-    setLoading(false)
-  }, [loadSession])
-
-  // WHY: Initialize page on mount; deps are stable callbacks
-  useEffect(() => { void hydrate() }, [hydrate])
+  // Session is loaded by useSession hook, no need for separate hydration
 
   // WHY: Load persisted state when session is available, then load matches
   useEffect(() => {
@@ -407,7 +304,6 @@ const MatchProgramPage = () => {
       // Only clear if we're sure there's no active session (e.g., after ending training)
       // For now, just reset local state but keep persisted state in localStorage
       setMatches([])
-      setCheckedIn([])
       hasRestoredStateRef.current = false
       return
     }
@@ -902,18 +798,18 @@ const MatchProgramPage = () => {
   }, [matches, selectedRound, previousRoundsMatches])
 
   /** Starts a new training session or gets existing active session. */
-  const handleStartTraining = async () => {
+  const handleStartTraining = useCallback(async () => {
     try {
-      const active = await api.session.startOrGetActive()
-      setSession(active)
+      await startSession()
       notify({ variant: 'success', title: 'Træning startet' })
-    } catch (err: any) {
-      setError(err.message ?? 'Kunne ikke starte træning')
+    } catch (err: unknown) {
+      const errorMessage = err instanceof Error ? err.message : 'Kunne ikke starte træning'
+      setError(errorMessage)
     }
-  }
+  }, [startSession, notify])
 
   /** Ends active training session and saves only the final match state to database. */
-  const handleEndTraining = async () => {
+  const handleEndTraining = useCallback(async () => {
     if (!session) return
     try {
       // Collect only the final match state from in-memory matches (no database fallback)
@@ -934,8 +830,7 @@ const MatchProgramPage = () => {
       }
       
       // Save only the final match state to database and end session
-      await api.session.endActive(allMatchesData)
-      setSession(null)
+      await endSession(allMatchesData)
       setInMemoryMatches({}) // Clear in-memory state
       setLockedCourts({}) // Clear locked courts
       setHasRunAutoMatch(new Set()) // Clear auto-match flags
@@ -943,10 +838,11 @@ const MatchProgramPage = () => {
       hasRestoredStateRef.current = false // Reset restoration flag
       clearPersistedState() // Clear persisted state from localStorage
       notify({ variant: 'success', title: 'Træning afsluttet' })
-    } catch (err: any) {
-      setError(err.message ?? 'Kunne ikke afslutte træning')
+    } catch (err: unknown) {
+      const errorMessage = err instanceof Error ? err.message : 'Kunne ikke afslutte træning'
+      setError(errorMessage)
     }
-  }
+  }, [session, inMemoryMatches, endSession, notify])
 
   /** Handles mouse down on popup header for dragging. */
   const handleMouseDown = (e: React.MouseEvent<HTMLDivElement>) => {

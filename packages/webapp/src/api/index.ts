@@ -39,6 +39,19 @@ import {
 } from './supabase'
 import { getCurrentTenantConfig } from '../lib/supabase'
 import statsApi from './stats'
+import {
+  createPlayerNotFoundError,
+  createPlayerInactiveError,
+  createSessionNotFoundError,
+  createCheckInExistsError,
+  createCheckInNotFoundError,
+  createCourtNotFoundError,
+  createCourtFullError,
+  createSlotOccupiedError,
+  normalizeError,
+  ValidationError,
+  DatabaseError
+} from '../lib/errors'
 
 /**
  * Normalizes player data — ensures nullable fields are null (not undefined).
@@ -107,45 +120,73 @@ const listPlayers = async (filters?: PlayerListFilters): Promise<Player[]> => {
 
 /**
  * Creates a new player.
+ * 
  * @param input - Player creation input
  * @returns Created and normalized player
+ * @throws {ValidationError} If input validation fails
+ * @throws {DatabaseError} If database operation fails
  */
 const createPlayer = async (input: PlayerCreateInput): Promise<Player> => {
-  const parsed = playerCreateSchema.parse(input)
-  const created = await createPlayerInDb({
-    name: parsed.name.trim(),
-    alias: parsed.alias ? parsed.alias.trim() : null,
-    level: parsed.level ?? null,
-    gender: parsed.gender ?? null,
-    primaryCategory: parsed.primaryCategory ?? null,
-    active: parsed.active ?? true
-  })
-  return normalisePlayer(created)
+  try {
+    const parsed = playerCreateSchema.parse(input)
+    const created = await createPlayerInDb({
+      name: parsed.name.trim(),
+      alias: parsed.alias ? parsed.alias.trim() : null,
+      level: parsed.level ?? null,
+      gender: parsed.gender ?? null,
+      primaryCategory: parsed.primaryCategory ?? null,
+      active: parsed.active ?? true
+    })
+    return normalisePlayer(created)
+  } catch (error) {
+    if (error instanceof z.ZodError) {
+      throw new ValidationError(
+        error.errors.map((e) => e.message).join(', '),
+        undefined,
+        error
+      )
+    }
+    throw normalizeError(error)
+  }
 }
 
 /**
  * Updates an existing player.
+ * 
  * @param input - Player update input (id + patch)
  * @returns Updated and normalized player
- * @throws Error if player not found
+ * @throws {ValidationError} If input validation fails
+ * @throws {PlayerError} If player not found
+ * @throws {DatabaseError} If database operation fails
  */
 const updatePlayer = async (input: PlayerUpdateInput): Promise<Player> => {
-  const parsed = playerUpdateSchema.parse(input)
-  const updateData: Partial<Omit<Player, 'id' | 'createdAt'>> = {}
-  if (parsed.patch.name !== undefined) updateData.name = parsed.patch.name.trim()
-  if (parsed.patch.alias !== undefined) updateData.alias = parsed.patch.alias
-  if (parsed.patch.level !== undefined) updateData.level = parsed.patch.level
-  if (parsed.patch.levelSingle !== undefined) updateData.levelSingle = parsed.patch.levelSingle
-  if (parsed.patch.levelDouble !== undefined) updateData.levelDouble = parsed.patch.levelDouble
-  if (parsed.patch.levelMix !== undefined) updateData.levelMix = parsed.patch.levelMix
-  if (parsed.patch.gender !== undefined) updateData.gender = parsed.patch.gender
-  if (parsed.patch.primaryCategory !== undefined) updateData.primaryCategory = parsed.patch.primaryCategory
-  if (parsed.patch.active !== undefined) updateData.active = parsed.patch.active
-  if (parsed.patch.preferredDoublesPartners !== undefined) updateData.preferredDoublesPartners = parsed.patch.preferredDoublesPartners
-  if (parsed.patch.preferredMixedPartners !== undefined) updateData.preferredMixedPartners = parsed.patch.preferredMixedPartners
+  try {
+    const parsed = playerUpdateSchema.parse(input)
+    const updateData: Partial<Omit<Player, 'id' | 'createdAt'>> = {}
+    if (parsed.patch.name !== undefined) updateData.name = parsed.patch.name.trim()
+    if (parsed.patch.alias !== undefined) updateData.alias = parsed.patch.alias
+    if (parsed.patch.level !== undefined) updateData.level = parsed.patch.level
+    if (parsed.patch.levelSingle !== undefined) updateData.levelSingle = parsed.patch.levelSingle
+    if (parsed.patch.levelDouble !== undefined) updateData.levelDouble = parsed.patch.levelDouble
+    if (parsed.patch.levelMix !== undefined) updateData.levelMix = parsed.patch.levelMix
+    if (parsed.patch.gender !== undefined) updateData.gender = parsed.patch.gender
+    if (parsed.patch.primaryCategory !== undefined) updateData.primaryCategory = parsed.patch.primaryCategory
+    if (parsed.patch.active !== undefined) updateData.active = parsed.patch.active
+    if (parsed.patch.preferredDoublesPartners !== undefined) updateData.preferredDoublesPartners = parsed.patch.preferredDoublesPartners
+    if (parsed.patch.preferredMixedPartners !== undefined) updateData.preferredMixedPartners = parsed.patch.preferredMixedPartners
 
-  const updated = await updatePlayerInDb(parsed.id, updateData)
-  return normalisePlayer(updated)
+    const updated = await updatePlayerInDb(parsed.id, updateData)
+    return normalisePlayer(updated)
+  } catch (error) {
+    if (error instanceof z.ZodError) {
+      throw new ValidationError(
+        error.errors.map((e) => e.message).join(', '),
+        undefined,
+        error
+      )
+    }
+    throw normalizeError(error)
+  }
 }
 
 /** Players API — CRUD operations for players. */
@@ -169,13 +210,14 @@ const getActiveSession = async (): Promise<TrainingSession | null> => {
 
 /**
  * Ensures an active session exists (throws if none).
+ * 
  * @returns Active session
- * @throws Error if no active session
+ * @throws {SessionError} If no active session exists
  */
 const ensureActiveSession = async (): Promise<TrainingSession> => {
   const active = await getActiveSession()
   if (!active) {
-    throw new Error('Ingen aktiv træning')
+    throw createSessionNotFoundError()
   }
   return active
 }
@@ -296,33 +338,51 @@ const sessionApi = {
 
 /**
  * Adds a player check-in for the active session.
+ * 
  * @param input - Check-in input (playerId, optional maxRounds)
  * @returns Created check-in
- * @throws Error if player not found, inactive, or already checked in
+ * @throws {SessionError} If no active session exists
+ * @throws {PlayerError} If player not found or inactive
+ * @throws {SessionError} If player already checked in
+ * @throws {DatabaseError} If database operation fails
  */
 const addCheckIn = async (input: { playerId: string; maxRounds?: number }) => {
-  const session = await ensureActiveSession()
-  const players = await getPlayers()
-  const player = players.find((item) => item.id === input.playerId)
-  if (!player) {
-    throw new Error('Spiller ikke fundet')
+  try {
+    const session = await ensureActiveSession()
+    const players = await getPlayers()
+    const player = players.find((item) => item.id === input.playerId)
+    
+    if (!player) {
+      throw createPlayerNotFoundError(input.playerId)
+    }
+    
+    if (!player.active) {
+      throw createPlayerInactiveError(player.name)
+    }
+    
+    const checkIns = await getCheckIns()
+    const existing = checkIns.find(
+      (checkIn) => checkIn.sessionId === session.id && checkIn.playerId === input.playerId
+    )
+    
+    if (existing) {
+      throw createCheckInExistsError(player.name)
+    }
+    
+    const checkIn = await createCheckInInDb({
+      sessionId: session.id,
+      playerId: input.playerId,
+      maxRounds: input.maxRounds ?? null
+    })
+    
+    return checkIn
+  } catch (error) {
+    // Re-throw AppError instances as-is
+    if (error instanceof Error && 'code' in error) {
+      throw error
+    }
+    throw normalizeError(error)
   }
-  if (!player.active) {
-    throw new Error('Spiller er inaktiv')
-  }
-  const checkIns = await getCheckIns()
-  const existing = checkIns.find(
-    (checkIn) => checkIn.sessionId === session.id && checkIn.playerId === input.playerId
-  )
-  if (existing) {
-    throw new Error('Spilleren er allerede tjekket ind')
-  }
-  const checkIn = await createCheckInInDb({
-    sessionId: session.id,
-    playerId: input.playerId,
-    maxRounds: input.maxRounds ?? null
-  })
-  return checkIn
 }
 
 /**
@@ -349,19 +409,36 @@ const listActiveCheckIns = async (): Promise<CheckedInPlayer[]> => {
 
 /**
  * Removes a player check-in for the active session.
+ * 
  * @param input - Check-in input (playerId)
- * @throws Error if player not checked in or no active session
+ * @throws {SessionError} If no active session exists
+ * @throws {SessionError} If player not checked in
+ * @throws {DatabaseError} If database operation fails
  */
 const removeCheckIn = async (input: { playerId: string }) => {
-  const session = await ensureActiveSession()
-  const checkIns = await getCheckIns()
-  const checkIn = checkIns.find(
-    (checkIn: CheckIn) => checkIn.sessionId === session.id && checkIn.playerId === input.playerId
-  )
-  if (!checkIn) {
-    throw new Error('Spilleren er ikke tjekket ind')
+  try {
+    const session = await ensureActiveSession()
+    const checkIns = await getCheckIns()
+    const checkIn = checkIns.find(
+      (checkIn: CheckIn) => checkIn.sessionId === session.id && checkIn.playerId === input.playerId
+    )
+    
+    if (!checkIn) {
+      // Try to get player name for better error message
+      const players = await getPlayers()
+      const player = players.find((p) => p.id === input.playerId)
+      const playerName = player?.name || 'Spilleren'
+      throw createCheckInNotFoundError(playerName)
+    }
+    
+    await deleteCheckInInDb(checkIn.id)
+  } catch (error) {
+    // Re-throw AppError instances as-is
+    if (error instanceof Error && 'code' in error) {
+      throw error
+    }
+    throw normalizeError(error)
   }
-  await deleteCheckInInDb(checkIn.id)
 }
 
 /** Check-ins API — manages player check-ins for training sessions. */

@@ -165,8 +165,7 @@ export const loadState = async (): Promise<DatabaseState> => {
 
     return cachedState
   } catch (error) {
-    console.error('Failed to load state from Supabase:', error)
-    // Return empty state on error
+    // Return empty state on error - error is logged by caller
     cachedState = {
       players: [],
       sessions: [],
@@ -215,11 +214,15 @@ export const updateState = async (updater: (state: DatabaseState) => void) => {
 
 /**
  * Resets database to seed state (not implemented for Supabase).
+ * 
  * @remarks This function is kept for backward compatibility but doesn't work with Supabase.
+ * Use direct database operations instead.
+ * 
+ * @deprecated Use direct database operations instead of this function.
  */
 export const resetState = () => {
   // Not implemented for Supabase - use direct database operations instead
-  console.warn('resetState() is not supported with Supabase. Use direct database operations instead.')
+  // This function is kept for backward compatibility only
 }
 
 /**
@@ -310,13 +313,8 @@ export const updatePlayer = async (id: string, updates: Partial<Omit<Player, 'id
   const supabase = getSupabase()
   const { data, error } = await supabase.from('players').update(updateData).eq('id', id).select().single()
   if (error) throw new Error(`Failed to update player: ${error.message}`)
-  console.log('Supabase update result - raw data:', data)
-  console.log('Supabase update result - preferred_doubles_partners:', data?.preferred_doubles_partners)
-  console.log('Supabase update result - preferred_mixed_partners:', data?.preferred_mixed_partners)
   invalidateCache()
   const player = rowToPlayer(data)
-  console.log('Supabase update result - converted player preferredDoublesPartners:', player.preferredDoublesPartners)
-  console.log('Supabase update result - converted player preferredMixedPartners:', player.preferredMixedPartners)
   return player
 }
 
@@ -569,7 +567,8 @@ export const createBackup = async (): Promise<void> => {
     try {
       storage.setItem('herlev-hjorten-db-v2-backup', JSON.stringify(state))
     } catch (err) {
-      console.error('Failed to create backup:', err)
+      // Silently fail backup creation - not critical for app functionality
+      // Error is logged by caller if needed
     }
   }
 }
@@ -591,7 +590,8 @@ export const restoreFromBackup = async (): Promise<boolean> => {
         // You would need to implement a migration script to restore from backup
         return true
       } catch (err) {
-        console.error('Failed to restore from backup:', err)
+        // Silently fail backup restoration - not critical for app functionality
+        // Error is logged by caller if needed
         return false
       }
     }

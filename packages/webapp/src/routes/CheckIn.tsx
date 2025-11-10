@@ -1,191 +1,72 @@
-import React, { useCallback, useEffect, useMemo, useState } from 'react'
-import type { CheckedInPlayer, Player, TrainingSession } from '@herlev-hjorten/common'
-import { clsx } from 'clsx'
-import { UsersRound } from 'lucide-react'
-import api from '../api'
-import { Button, PageCard, EmptyState } from '../components/ui'
-import { TableSearch } from '../components/ui/Table'
-import { useToast } from '../components/ui/Toast'
-
-// WHY: Split letters into two balanced rows (15 items each) for better layout
-const LETTER_FILTERS_ROW1 = ['Alle', ...'ABCDEFGHIJKLMNOPQRSTUVWXYZÆØÅ'.split('').slice(0, 14)]
-const LETTER_FILTERS_ROW2 = 'ABCDEFGHIJKLMNOPQRSTUVWXYZÆØÅ'.split('').slice(14)
-
-/**
- * Returns neutral background color for all players.
- */
-const getPlayerBgColor = () => {
-  return 'bg-[hsl(var(--surface-2))]'
-}
-
-/**
- * Gets category letter (S/D/B) for data-cat attribute.
- * @param category - Player primary category ('Single', 'Double', 'Begge', or null)
- * @returns 'S', 'D', 'B', or null
- */
-const getCategoryLetter = (category: 'Single' | 'Double' | 'Begge' | null | undefined): 'S' | 'D' | 'B' | null => {
-  if (!category) return null
-  if (category === 'Single') return 'S'
-  if (category === 'Double') return 'D'
-  if (category === 'Begge') return 'B'
-  return null
-}
-
-/**
- * Renders category badge (S/D/B) for player primary category.
- * Neutral style with optional category ring for visual cue.
- * @param category - Player primary category ('Single', 'Double', 'Begge', or null)
- * @returns Badge JSX or null
- */
-const getCategoryBadge = (category: 'Single' | 'Double' | 'Begge' | null | undefined) => {
-  if (!category) return null
-  const labels: Record<'Single' | 'Double' | 'Begge', string> = {
-    Single: 'S',
-    Double: 'D',
-    Begge: 'B'
-  }
-  const catLetter = getCategoryLetter(category)
-  return (
-    <span 
-      className={`inline-flex items-center justify-center rounded-full text-xs font-bold w-6 h-6 bg-[hsl(var(--surface-2))] text-[hsl(var(--muted))] border-hair ${catLetter ? 'cat-ring' : ''}`}
-      data-cat={catLetter || undefined}
-      title={category}
-    >
-      {labels[category]}
-    </span>
-  )
-}
-
 /**
  * Check-in page — manages player check-in/out for active training session.
+ * 
  * @remarks Renders active session UI, filters players, and handles check-in/out
- * with animations. Delegates data operations to api.checkIns.
+ * with animations. Uses custom hooks for data management and sub-components for UI.
+ */
+
+import React, { useCallback, useMemo, useState } from 'react'
+import type { Player } from '@herlev-hjorten/common'
+import { UsersRound } from 'lucide-react'
+import { PageCard, EmptyState } from '../components/ui'
+import { TableSearch } from '../components/ui/Table'
+import { PlayerCard, CheckedInPlayerCard, LetterFilters } from '../components/checkin'
+import { useSession, useCheckIns, usePlayers } from '../hooks'
+import { formatDate } from '../lib/formatting'
+import { LETTER_FILTERS, UI_CONSTANTS } from '../constants'
+
+/**
+ * Check-in page component.
+ * 
+ * @example
+ * ```tsx
+ * <CheckInPage />
+ * ```
  */
 const CheckInPage = () => {
-  const [players, setPlayers] = useState<Player[]>([])
-  const [checkedIn, setCheckedIn] = useState<CheckedInPlayer[]>([])
-  const [session, setSession] = useState<TrainingSession | null>(null)
-  const [loading, setLoading] = useState(true)
+  // Data hooks
+  const { session, loading: sessionLoading, startSession } = useSession()
+  const { players, loading: playersLoading } = usePlayers({ active: true })
+  const { checkedIn, checkIn, checkOut } = useCheckIns(session?.id ?? null)
+
+  // UI state
   const [search, setSearch] = useState('')
-  const [filterLetter, setFilterLetter] = useState('Alle')
-  const [error, setError] = useState<string | null>(null)
+  const [filterLetter, setFilterLetter] = useState(LETTER_FILTERS.ALL)
   const [oneRoundOnlyPlayers, setOneRoundOnlyPlayers] = useState<Set<string>>(new Set())
   const [justCheckedIn, setJustCheckedIn] = useState<Set<string>>(new Set())
   const [animatingOut, setAnimatingOut] = useState<Set<string>>(new Set())
   const [animatingIn, setAnimatingIn] = useState<Set<string>>(new Set())
-  const { notify } = useToast()
 
-  /** Reloads active training session from API. */
-  const refreshSession = useCallback(async () => {
-    try {
-      const active = await api.session.getActive()
-      setSession(active)
-    } catch (err: any) {
-      setError(err.message ?? 'Kunne ikke hente træning')
-    }
-  }, [])
+  const loading = sessionLoading || playersLoading
 
-  /** Starts a new training session or gets existing active session. */
+  /**
+   * Handles starting a training session.
+   */
   const handleStartTraining = useCallback(async () => {
-    try {
-      setError(null)
-      const active = await api.session.startOrGetActive()
-      setSession(active)
-      // loadCheckIns will be called automatically by useEffect when session changes
-      notify({ variant: 'success', title: 'Træning startet' })
-    } catch (err: any) {
-      setError(err.message ?? 'Kunne ikke starte træning')
-    }
-  }, [notify])
-
-  /** Loads all active players from API. */
-  const loadPlayers = useCallback(async () => {
-    try {
-      const result = await api.players.list({ active: true })
-      setPlayers(result)
-    } catch (err: any) {
-      setError(err.message ?? 'Kunne ikke hente spillere')
-    }
-  }, [])
-
-  /** Loads checked-in players for current session. */
-  const loadCheckIns = useCallback(async () => {
-    if (!session) return
-    try {
-      const result = await api.checkIns.listActive()
-      setCheckedIn(result)
-    } catch (err: any) {
-      setError(err.message ?? 'Kunne ikke hente fremmøde')
-    }
-  }, [session])
-
-  // WHY: Initialize session and players on mount; deps are stable callbacks
-  useEffect(() => {
-    const init = async () => {
-      setLoading(true)
-      setError(null)
-      await refreshSession()
-      await loadPlayers()
-      setLoading(false)
-    }
-    void init()
-  }, [refreshSession, loadPlayers])
-
-  // WHY: Reload check-ins when session changes; clear if no session
-  useEffect(() => {
-    if (!session) {
-      setCheckedIn([])
-      return
-    }
-    void loadCheckIns()
-  }, [session, loadCheckIns])
-
-  /** Memoized Set of checked-in player IDs for fast lookup. */
-  const checkedInIds = useMemo(() => new Set(checkedIn.map((player) => player.id)), [checkedIn])
-
-  const genderBreakdown = useMemo(() => {
-    const male = checkedIn.filter((player) => player.gender === 'Herre').length
-    const female = checkedIn.filter((player) => player.gender === 'Dame').length
-    return { male, female }
-  }, [checkedIn])
-
-  /** Memoized filtered players list — excludes checked-in players, applies search/letter filters. */
-  const filteredPlayers = useMemo(() => {
-    const term = search.trim().toLowerCase()
-    return players.filter((player) => {
-      // Exclude checked-in players from the main list
-      if (checkedInIds.has(player.id)) return false
-      const matchesLetter =
-        filterLetter === 'Alle' || player.name.toLowerCase().startsWith(filterLetter.toLowerCase())
-      const nameLower = player.name.toLowerCase()
-      const aliasLower = (player.alias ?? '').toLowerCase()
-      const matchesSearch =
-        !term || nameLower.includes(term) || aliasLower.includes(term)
-      return matchesLetter && matchesSearch
-    })
-  }, [players, search, filterLetter, checkedInIds])
+    await startSession()
+  }, [startSession])
 
   /**
    * Handles player check-in with animation feedback.
+   * 
    * @param player - Player to check in
    * @param maxRounds - Optional max rounds (1 for "kun 1 runde")
    */
   const handleCheckIn = useCallback(
     async (player: Player, maxRounds?: number) => {
       if (!session) return
-      setError(null)
-      try {
-        // PERF: Add animation state for moving out of main list
-        setAnimatingOut((prev) => new Set(prev).add(player.id))
-        // Add visual feedback immediately
-        setJustCheckedIn((prev) => new Set(prev).add(player.id))
-        
-        // WHY: Wait for exit animation to complete before API call
-        await new Promise(resolve => setTimeout(resolve, 300))
-        
-        await api.checkIns.add({ playerId: player.id, maxRounds })
-        await loadCheckIns()
-        
+
+      // Add animation state for moving out of main list
+      setAnimatingOut((prev) => new Set(prev).add(player.id))
+      // Add visual feedback immediately
+      setJustCheckedIn((prev) => new Set(prev).add(player.id))
+
+      // Wait for exit animation to complete before API call
+      await new Promise((resolve) => setTimeout(resolve, UI_CONSTANTS.CHECK_IN_ANIMATION_DURATION_MS))
+
+      const success = await checkIn(player.id, maxRounds)
+
+      if (success) {
         // Add animation state for moving into checked-in section
         setAnimatingIn((prev) => new Set(prev).add(player.id))
         setAnimatingOut((prev) => {
@@ -193,10 +74,7 @@ const CheckInPage = () => {
           newSet.delete(player.id)
           return newSet
         })
-        
-        const roundsText = maxRounds === 1 ? ' (kun 1 runde)' : ''
-        notify({ variant: 'success', title: 'Spiller tjekket ind', description: `${player.name}${roundsText}` })
-        
+
         // Remove visual feedback after animation
         setTimeout(() => {
           setJustCheckedIn((prev) => {
@@ -209,9 +87,8 @@ const CheckInPage = () => {
             newSet.delete(player.id)
             return newSet
           })
-        }, 400)
-      } catch (err: any) {
-        setError(err.message ?? 'Kunne ikke tjekke ind')
+        }, UI_CONSTANTS.ANIMATION_CLEANUP_DELAY_MS)
+      } else {
         // Remove visual feedback on error
         setJustCheckedIn((prev) => {
           const newSet = new Set(prev)
@@ -225,28 +102,27 @@ const CheckInPage = () => {
         })
       }
     },
-    [loadCheckIns, notify, session]
+    [checkIn, session]
   )
-
 
   /**
    * Handles player check-out with animation feedback.
-   * @param player - Player to check out
+   * 
+   * @param player - Checked-in player to check out
    */
   const handleCheckOut = useCallback(
-    async (player: Player) => {
+    async (player: { id: string }) => {
       if (!session) return
-      setError(null)
-      try {
-        // PERF: Add animation state for moving out of checked-in section
-        setAnimatingOut((prev) => new Set(prev).add(player.id))
-        
-        // WHY: Wait for exit animation to complete before API call
-        await new Promise(resolve => setTimeout(resolve, 300))
-        
-        await api.checkIns.remove({ playerId: player.id })
-        await loadCheckIns()
-        
+
+      // Add animation state for moving out of checked-in section
+      setAnimatingOut((prev) => new Set(prev).add(player.id))
+
+      // Wait for exit animation to complete before API call
+      await new Promise((resolve) => setTimeout(resolve, UI_CONSTANTS.CHECK_IN_ANIMATION_DURATION_MS))
+
+      const success = await checkOut(player.id)
+
+      if (success) {
         // Add animation state for moving back into main list
         setAnimatingIn((prev) => new Set(prev).add(player.id))
         setAnimatingOut((prev) => {
@@ -254,9 +130,7 @@ const CheckInPage = () => {
           newSet.delete(player.id)
           return newSet
         })
-        
-        notify({ variant: 'success', title: 'Spiller tjekket ud', description: player.name })
-        
+
         // Remove animation state after animation
         setTimeout(() => {
           setAnimatingIn((prev) => {
@@ -264,9 +138,8 @@ const CheckInPage = () => {
             newSet.delete(player.id)
             return newSet
           })
-        }, 400)
-      } catch (err: any) {
-        setError(err.message ?? 'Kunne ikke tjekke ud')
+        }, UI_CONSTANTS.ANIMATION_CLEANUP_DELAY_MS)
+      } else {
         setAnimatingOut((prev) => {
           const newSet = new Set(prev)
           newSet.delete(player.id)
@@ -274,8 +147,57 @@ const CheckInPage = () => {
         })
       }
     },
-    [loadCheckIns, notify, session]
+    [checkOut, session]
   )
+
+  /**
+   * Handles "one round only" checkbox change.
+   */
+  const handleOneRoundOnlyChange = useCallback((playerId: string, checked: boolean) => {
+    setOneRoundOnlyPlayers((prev) => {
+      const newSet = new Set(prev)
+      if (checked) {
+        newSet.add(playerId)
+      } else {
+        newSet.delete(playerId)
+      }
+      return newSet
+    })
+  }, [])
+
+  /** Memoized Set of checked-in player IDs for fast lookup. */
+  const checkedInIds = useMemo(() => new Set(checkedIn.map((player) => player.id)), [checkedIn])
+
+  /** Gender breakdown of checked-in players. */
+  const genderBreakdown = useMemo(() => {
+    const male = checkedIn.filter((player) => player.gender === 'Herre').length
+    const female = checkedIn.filter((player) => player.gender === 'Dame').length
+    return { male, female }
+  }, [checkedIn])
+
+  /** Memoized filtered players list — excludes checked-in players, applies search/letter filters. */
+  const filteredPlayers = useMemo(() => {
+    const term = search.trim().toLowerCase()
+    return players.filter((player) => {
+      // Exclude checked-in players from the main list
+      if (checkedInIds.has(player.id)) return false
+      const matchesLetter =
+        filterLetter === LETTER_FILTERS.ALL || player.name.toLowerCase().startsWith(filterLetter.toLowerCase())
+      const nameLower = player.name.toLowerCase()
+      const aliasLower = (player.alias ?? '').toLowerCase()
+      const matchesSearch = !term || nameLower.includes(term) || aliasLower.includes(term)
+      return matchesLetter && matchesSearch
+    })
+  }, [players, search, filterLetter, checkedInIds])
+
+  /** Sorted checked-in players by first name. */
+  const sortedCheckedIn = useMemo(() => {
+    return [...checkedIn].sort((a, b) => {
+      const firstNameA = a.name.split(' ')[0] || ''
+      const firstNameB = b.name.split(' ')[0] || ''
+      return firstNameA.localeCompare(firstNameB, 'da')
+    })
+  }, [checkedIn])
 
   if (loading) {
     return (
@@ -293,7 +215,7 @@ const CheckInPage = () => {
             {/* Decorative background elements */}
             <div className="absolute -right-12 -top-12 h-48 w-48 rounded-full bg-[hsl(var(--primary)/.06)] blur-3xl" />
             <div className="absolute -bottom-12 -left-12 h-48 w-48 rounded-full bg-[hsl(var(--accent)/.06)] blur-3xl" />
-            
+
             <div className="relative z-10 flex flex-col items-center gap-6 text-center">
               {/* Icon */}
               <div className="relative">
@@ -309,26 +231,21 @@ const CheckInPage = () => {
                   Velkommen til dagens træning
                 </h1>
                 <p className="mx-auto max-w-md text-base leading-relaxed text-[hsl(var(--muted))]">
-                  Start en ny træning for at begynde at tjekke spillere ind og arrangere kampe. 
-                  Når træningen er startet, kan du se alle tilmeldte spillere og oprette kampprogrammer.
+                  Start en ny træning for at begynde at tjekke spillere ind og arrangere kampe. Når træningen er
+                  startet, kan du se alle tilmeldte spillere og oprette kampprogrammer.
                 </p>
               </div>
 
               {/* CTA Button */}
               <div className="pt-2">
-                <Button
-                  variant="primary"
+                <button
+                  type="button"
                   onClick={handleStartTraining}
-                  className="min-w-[200px] h-14 px-8 text-lg font-semibold shadow-[0_4px_16px_hsl(var(--primary)/.25)] hover:shadow-[0_6px_24px_hsl(var(--primary)/.35)] transition-all duration-300"
+                  className="min-w-[200px] h-14 px-8 text-lg font-semibold rounded-lg bg-[hsl(var(--primary))] text-white shadow-[0_4px_16px_hsl(var(--primary)/.25)] hover:shadow-[0_6px_24px_hsl(var(--primary)/.35)] transition-all duration-300"
                 >
                   Start træning
-                </Button>
+                </button>
               </div>
-
-              {/* Error message */}
-              {error && (
-                <p className="mt-2 text-sm text-[hsl(var(--destructive))]">{error}</p>
-              )}
             </div>
           </div>
         </div>
@@ -342,18 +259,17 @@ const CheckInPage = () => {
         <div className="flex-1">
           <h1 className="text-xl font-semibold text-[hsl(var(--foreground))]">Indtjekning</h1>
           <p className="text-base text-[hsl(var(--muted))] mt-1">
-            {session ? (
+            Aktiv træning: {formatDate(session.date, false)}
+            {checkedIn.length > 0 && (
               <>
-                Aktiv træning: {new Date(session.date).toLocaleDateString('da-DK')}
-                {checkedIn.length > 0 && (
-                  <> <span className="font-bold text-[hsl(var(--foreground))]">•</span> Indtjekkede spillere: {checkedIn.length} <span className="font-bold text-[hsl(var(--foreground))]">•</span> {genderBreakdown.male} Herrer & {genderBreakdown.female} Damer</>
-                )}
+                {' '}
+                <span className="font-bold text-[hsl(var(--foreground))]">•</span> Indtjekkede spillere:{' '}
+                {checkedIn.length}{' '}
+                <span className="font-bold text-[hsl(var(--foreground))]">•</span> {genderBreakdown.male} Herrer &{' '}
+                {genderBreakdown.female} Damer
               </>
-            ) : (
-              'Start en træning for at begynde indtjekning'
             )}
           </p>
-          {error && <span className="mt-2 inline-block text-sm text-[hsl(var(--destructive))]">{error}</span>}
         </div>
       </header>
 
@@ -370,201 +286,49 @@ const CheckInPage = () => {
             {checkedIn.length === 0 ? (
               <p className="text-xs text-[hsl(var(--muted))] text-center py-4">Ingen spillere tjekket ind</p>
             ) : (
-              [...checkedIn].sort((a, b) => {
-                const firstNameA = a.name.split(' ')[0] || ''
-                const firstNameB = b.name.split(' ')[0] || ''
-                return firstNameA.localeCompare(firstNameB, 'da')
-              }).map((player) => {
-                const isOneRoundOnly = player.maxRounds === 1
-                const isAnimatingOut = animatingOut.has(player.id)
-                const isAnimatingIn = animatingIn.has(player.id)
-                const catLetter = getCategoryLetter(player.primaryCategory)
-                return (
-                  <div
-                    key={player.id}
-                    className={clsx(
-                      'flex items-center justify-between gap-3 rounded-md border-hair px-3 py-3 min-h-[64px] hover:shadow-sm transition-all duration-300 ease-[cubic-bezier(.2,.8,.2,1)] motion-reduce:transition-none',
-                      'bg-[hsl(var(--success)/.06)]',
-                      catLetter && 'cat-rail',
-                      isAnimatingOut && 'opacity-0 scale-95 translate-x-4 pointer-events-none',
-                      isAnimatingIn && 'opacity-0 scale-95 -translate-x-4'
-                    )}
-                    data-cat={catLetter || undefined}
-                    style={{
-                      animation: isAnimatingIn ? 'slideInFromLeft 0.3s ease-out forwards' : undefined
-                    }}
-                  >
-                    <div className="flex items-center gap-2 min-w-0 flex-1">
-                      {getCategoryBadge(player.primaryCategory)}
-                      <div className="min-w-0 flex-1">
-                        <div className="flex items-center gap-1.5 flex-wrap">
-                          <p className="text-base font-semibold text-[hsl(var(--foreground))] truncate">
-                            {player.name}
-                            {player.alias && (
-                              <span className="text-xs font-normal text-[hsl(var(--muted))]"> ({player.alias})</span>
-                            )}
-                          </p>
-                          {isOneRoundOnly && (
-                            <span className="inline-flex items-center rounded-full bg-[hsl(var(--surface-2))] text-[hsl(var(--muted))] border-hair px-2 py-1 text-xs whitespace-nowrap">
-                              Kun 1 runde
-                            </span>
-                          )}
-                        </div>
-                      </div>
-                    </div>
-                    <Button
-                      variant="secondary"
-                      size="sm"
-                      onClick={() => handleCheckOut(player)}
-                      className="text-xs px-3 py-1.5 flex-shrink-0"
-                    >
-                      Tjek ud
-                    </Button>
-                  </div>
-                )
-              })
+              sortedCheckedIn.map((player) => (
+                <CheckedInPlayerCard
+                  key={player.id}
+                  player={player}
+                  isAnimatingOut={animatingOut.has(player.id)}
+                  isAnimatingIn={animatingIn.has(player.id)}
+                  onCheckOut={handleCheckOut}
+                />
+              ))
             )}
-      </div>
+          </div>
         </PageCard>
 
         {/* Players overview */}
-      <PageCard className="space-y-6">
+        <PageCard className="space-y-6">
           <div className="flex flex-col gap-4">
-          <TableSearch value={search} onChange={setSearch} placeholder="Søg efter spiller" />
-            <div className="flex flex-col gap-2">
-              <div className="flex gap-2 flex-wrap">
-                {LETTER_FILTERS_ROW1.map((letter) => (
-                  <button
-                    key={letter}
-                    type="button"
-                    onClick={() => setFilterLetter(letter)}
-                    className={clsx(
-                      'rounded-full px-3 py-1 text-sm transition-all duration-200 ease-[cubic-bezier(.2,.8,.2,1)] motion-reduce:transition-none',
-                      filterLetter === letter
-                        ? 'bg-accent text-white shadow-[0_2px_8px_hsl(var(--line)/.12)]'
-                        : 'bg-[hsl(var(--surface-2))] text-[hsl(var(--muted))] hover:text-foreground border-hair'
-                    )}
-                  >
-                    {letter}
-                  </button>
-                ))}
-              </div>
-              <div className="flex gap-2 flex-wrap">
-                {LETTER_FILTERS_ROW2.map((letter) => (
-              <button
-                key={letter}
-                type="button"
-                onClick={() => setFilterLetter(letter)}
-                className={clsx(
-                      'rounded-full px-3 py-1 text-sm transition-all duration-200 ease-[cubic-bezier(.2,.8,.2,1)] motion-reduce:transition-none',
-                  filterLetter === letter
-                        ? 'bg-accent text-white shadow-[0_2px_8px_hsl(var(--line)/.12)]'
-                        : 'bg-[hsl(var(--surface-2))] text-[hsl(var(--muted))] hover:text-foreground border-hair'
-                )}
-              >
-                {letter}
-              </button>
-            ))}
-              </div>
+            <TableSearch value={search} onChange={setSearch} placeholder="Søg efter spiller" />
+            <LetterFilters selectedLetter={filterLetter} onLetterSelect={setFilterLetter} />
           </div>
-        </div>
 
           <div className="flex flex-col space-y-2">
-          {filteredPlayers.length === 0 ? (
-            <EmptyState
-              icon={<UsersRound />}
-              title="Ingen spillere matcher"
-              helper="Prøv en anden søgning eller vælg et andet bogstav."
-            />
-          ) : (
-            filteredPlayers.map((player) => {
-              const oneRoundOnly = oneRoundOnlyPlayers.has(player.id)
-              const isJustCheckedIn = justCheckedIn.has(player.id)
-              const isAnimatingOut = animatingOut.has(player.id)
-              const isAnimatingIn = animatingIn.has(player.id)
-              const catLetter = getCategoryLetter(player.primaryCategory)
-              
-              return (
-                <div
+            {filteredPlayers.length === 0 ? (
+              <EmptyState
+                icon={<UsersRound />}
+                title="Ingen spillere matcher"
+                helper="Prøv en anden søgning eller vælg et andet bogstav."
+              />
+            ) : (
+              filteredPlayers.map((player) => (
+                <PlayerCard
                   key={player.id}
-                  onClick={() => {
-                    handleCheckIn(player, oneRoundOnly ? 1 : undefined)
-                    // Clear the checkbox after check-in
-                    const newSet = new Set(oneRoundOnlyPlayers)
-                    newSet.delete(player.id)
-                    setOneRoundOnlyPlayers(newSet)
-                  }}
-                  className={clsx(
-                    'border-hair flex min-h-[64px] items-center justify-between gap-3 rounded-lg px-3 py-3',
-                    'transition-all duration-300 ease-[cubic-bezier(.2,.8,.2,1)] motion-reduce:transition-none',
-                    'cursor-pointer hover:shadow-sm ring-0 hover:ring-2 hover:ring-[hsl(var(--accent)/.15)]',
-                    getPlayerBgColor(),
-                    catLetter && 'cat-rail',
-                    isJustCheckedIn && 'ring-2 ring-[hsl(206_88%_60%)] scale-[1.02] shadow-lg',
-                    isAnimatingOut && 'opacity-0 scale-95 -translate-x-4 pointer-events-none',
-                    isAnimatingIn && 'opacity-0 scale-95 translate-x-4'
-                  )}
-                  data-cat={catLetter || undefined}
-                  style={{
-                    animation: isAnimatingIn ? 'slideInFromRight 0.3s ease-out forwards' : undefined
-                  }}
-                >
-                  <div className="flex items-center gap-2 min-w-0 flex-1">
-                    {getCategoryBadge(player.primaryCategory)}
-                    <div className="min-w-0 flex-1">
-                      <p className="text-base font-semibold text-[hsl(var(--foreground))] truncate">
-                        {player.name}
-                        {player.alias && (
-                          <span className="text-xs font-normal text-[hsl(var(--muted))]"> ({player.alias})</span>
-                        )}
-                      </p>
-                    </div>
-                  </div>
-                  <div className="flex items-center gap-2 flex-shrink-0">
-                    <label 
-                        className="flex items-center gap-2 cursor-pointer px-2 py-1.5 rounded hover:bg-[hsl(var(--surface-2)/.5)] transition-colors"
-                        onClick={(e) => e.stopPropagation()} // Prevent row click from triggering
-                      >
-                        <input
-                          type="checkbox"
-                          checked={oneRoundOnly}
-                          onChange={(e) => {
-                            const newSet = new Set(oneRoundOnlyPlayers)
-                            if (e.target.checked) {
-                              newSet.add(player.id)
-                            } else {
-                              newSet.delete(player.id)
-                            }
-                            setOneRoundOnlyPlayers(newSet)
-                          }}
-                          className="w-4 h-4 rounded ring-1 ring-[hsl(var(--line)/.12)] focus:ring-2 focus:ring-[hsl(var(--ring))] outline-none transition-all duration-200 motion-reduce:transition-none cursor-pointer flex-shrink-0"
-                        />
-                        <span className="inline-flex items-center rounded-full bg-[hsl(var(--surface-2))] text-[hsl(var(--muted))] border-hair px-2 py-1 text-xs whitespace-nowrap">
-                          Kun 1 runde
-                        </span>
-                      </label>
-                    <Button
-                      variant="primary"
-                      size="sm"
-                      onClick={(e) => {
-                        e.stopPropagation() // Prevent row click from triggering
-                        handleCheckIn(player, oneRoundOnly ? 1 : undefined)
-                        // Clear the checkbox after check-in
-                        const newSet = new Set(oneRoundOnlyPlayers)
-                        newSet.delete(player.id)
-                        setOneRoundOnlyPlayers(newSet)
-                      }}
-                      className={clsx('ring-2 ring-[hsl(var(--accent)/.2)]', 'text-xs px-3 py-1.5')}
-                    >
-                      Tjek ind
-                    </Button>
-                  </div>
-                </div>
-              )
-            })
-          )}
-        </div>
-      </PageCard>
+                  player={player}
+                  oneRoundOnly={oneRoundOnlyPlayers.has(player.id)}
+                  isJustCheckedIn={justCheckedIn.has(player.id)}
+                  isAnimatingOut={animatingOut.has(player.id)}
+                  isAnimatingIn={animatingIn.has(player.id)}
+                  onCheckIn={handleCheckIn}
+                  onOneRoundOnlyChange={handleOneRoundOnlyChange}
+                />
+              ))
+            )}
+          </div>
+        </PageCard>
       </div>
     </section>
   )
