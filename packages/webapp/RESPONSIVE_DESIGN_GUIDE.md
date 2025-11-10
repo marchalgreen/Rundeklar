@@ -360,6 +360,66 @@ className="h-auto sm:h-64"
 
 ---
 
+## 🖥️ Testing at Specific Resolutions
+
+### Using Browser DevTools (Recommended)
+
+**Chrome/Edge:**
+1. Open DevTools (F12 or `Cmd+Option+I` / `Ctrl+Shift+I`)
+2. Toggle Device Toolbar (`Cmd+Shift+M` / `Ctrl+Shift+M`)
+3. Click the dimensions dropdown (e.g., "Responsive")
+4. Select "Edit..." → "Add custom device"
+5. Set width: `1920`, height: `1280`, name: "1920x1280"
+6. Select your custom device from the dropdown
+
+**Firefox:**
+1. Open DevTools (F12)
+2. Click Responsive Design Mode icon (`Cmd+Shift+M` / `Ctrl+Shift+M`)
+3. Click the size dropdown → "Edit List..."
+4. Add custom size: `1920x1280`
+5. Select it from the dropdown
+
+### Using Browser Window Resizer Extension (Easiest)
+
+**Chrome/Edge:**
+1. Install "Window Resizer" extension from Chrome Web Store
+2. Click the extension icon in your toolbar
+3. Select "1920x1080" from the preset list, or enter custom dimensions
+
+**Firefox:**
+1. Install "Resize Window" extension from Firefox Add-ons
+2. Click the extension icon
+3. Enter `1920` x `1080` and click "Resize"
+
+### Using macOS Window Management
+
+**macOS (using built-in tools):**
+1. Install a window manager like "Rectangle" (free, open-source)
+2. Use keyboard shortcuts to resize windows to specific dimensions
+3. Or use "Magnet" or "BetterSnapTool" for window management
+
+**Manual method on macOS:**
+1. Click and hold the green maximize button (top-left of window)
+2. Select "Tile Window to Left/Right of Screen" to get half-screen
+3. Then manually drag to approximate size (not exact, but close)
+
+### Using Command Line (Chrome/Edge)
+
+```bash
+# Launch Chrome with specific window size
+google-chrome --window-size=1920,1080
+
+# Or for Chromium/Edge
+chromium --window-size=1920,1080
+
+# On macOS, you might need the full path:
+/Applications/Google\ Chrome.app/Contents/MacOS/Google\ Chrome --window-size=1920,1080
+```
+
+**Note:** 1920x1280 is a 3:2 aspect ratio (common for tablets/2-in-1s). For standard desktop monitors, test at 1920x1080 (16:9) as well.
+
+---
+
 ## 🔗 Related Documentation
 
 - [Design Tokens Guide](./prompts/agentPrompts/design-tokens.md) - Color and styling tokens

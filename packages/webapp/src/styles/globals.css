@@ -1,13 +1,19 @@
 @layer base {
   :root { color-scheme: light; }
 
-  html, body, #root, #__next { height: 100%; }
+  html, body, #root, #__next { 
+    height: 100%;
+    overflow-x: hidden;
+    max-width: 100vw;
+  }
 
   body {
     margin: 0;
     font-family: var(--font-sans);
     color: hsl(var(--foreground));
     background: hsl(var(--bg-canvas)); /* flat */
+    width: 100%;
+    overflow-x: hidden;
   }
 
   ::selection {

@@ -147,7 +147,7 @@ const MatchProgramPage = () => {
 
 
   return (
-    <section className="flex h-full flex-col gap-4 sm:gap-6 pt-2 sm:pt-4">
+    <section className="flex h-full flex-col gap-4 sm:gap-6 pt-2 sm:pt-4 overflow-x-hidden max-w-full">
       <MatchProgramHeader
         session={session}
         checkedInCount={checkedIn.length}

@@ -67,10 +67,10 @@ const AppInner = () => {
 
   return (
     <TenantProvider tenantId={tenantId}>
-      <div className="flex min-h-screen flex-col text-[hsl(var(--foreground))]">
+      <div className="flex min-h-screen flex-col text-[hsl(var(--foreground))] overflow-x-hidden max-w-full">
         <Header />
-        <main className="flex-1 overflow-y-auto">
-          <div className="flex w-full flex-col gap-4 sm:gap-6 px-4 sm:px-6 pb-6 sm:pb-10 pt-4 sm:pt-6 md:px-8 lg:px-12">
+        <main className="flex-1 overflow-y-auto overflow-x-hidden max-w-full">
+          <div className="flex w-full flex-col gap-4 sm:gap-6 px-4 sm:px-6 pb-6 sm:pb-10 pt-4 sm:pt-6 md:px-8 lg:px-12 max-w-full overflow-x-hidden">
             <Routes>
               <Route path="/players" element={<PlayersPage />} />
               <Route path="/check-in" element={<CheckInPage />} />
