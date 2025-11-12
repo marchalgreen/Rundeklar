@@ -9,7 +9,7 @@ import type {
   TrainingSession,
   CheckIn
 } from '@herlev-hjorten/common'
-import { createId, getStateCopy, getStatisticsSnapshots, createStatisticsSnapshot, createSession, createCheckIn } from './supabase'
+import { createId, getStateCopy, getStatisticsSnapshots, createStatisticsSnapshot, createSession, createCheckIn, getMatches, getMatchPlayers, invalidateCache } from './supabase'
 
 /**
  * Determines season from a date string (August to July).
@@ -65,39 +65,108 @@ const getTeamStructure = (matchPlayers: MatchPlayer[]): { team1: string[]; team2
  * @throws Error if session not found or not ended
  */
 const snapshotSession = async (sessionId: string): Promise<StatisticsSnapshot> => {
-  const state = await getStateCopy()
-  const session = state.sessions.find((s) => s.id === sessionId)
-  if (!session) {
-    throw new Error('Session ikke fundet')
+  try {
+    console.log('[snapshotSession] Starting snapshot creation for session', sessionId)
+    
+    // Invalidate cache to ensure we get fresh data from Supabase
+    invalidateCache()
+    
+    const state = await getStateCopy()
+    console.log('[snapshotSession] State loaded, sessions:', state.sessions.length)
+    
+    const session = state.sessions.find((s) => s.id === sessionId)
+    if (!session) {
+      console.error('[snapshotSession] Session not found:', sessionId)
+      throw new Error('Session ikke fundet')
+    }
+    console.log('[snapshotSession] Session found:', { id: session.id, status: session.status, date: session.date })
+    
+    if (session.status !== 'ended') {
+      console.error('[snapshotSession] Session not ended:', session.status)
+      throw new Error('Session er ikke afsluttet')
+    }
+
+    // Check if snapshot already exists
+    const existingSnapshot = state.statistics?.find((s) => s.sessionId === sessionId)
+    if (existingSnapshot) {
+      console.log('[snapshotSession] Snapshot already exists for session', sessionId)
+      return existingSnapshot
+    }
+
+    const season = getSeasonFromDate(session.date)
+    console.log('[snapshotSession] Season calculated:', season)
+
+    // Directly query Supabase for fresh matches and matchPlayers to avoid stale cache
+    // Also get checkIns from fresh state
+    console.log('[snapshotSession] Querying Supabase for matches and matchPlayers...')
+    const [allMatches, allMatchPlayers] = await Promise.all([
+      getMatches(),
+      getMatchPlayers()
+    ])
+    
+    console.log('[snapshotSession] Retrieved from Supabase:', {
+      totalMatches: allMatches.length,
+      totalMatchPlayers: allMatchPlayers.length
+    })
+    
+    // Get checkIns from fresh state (already loaded above)
+    const allCheckIns = state.checkIns
+    
+    const sessionMatches = allMatches.filter((m) => m.sessionId === sessionId)
+    const sessionMatchPlayers = allMatchPlayers.filter((mp) =>
+      sessionMatches.some((m) => m.id === mp.matchId)
+    )
+    const sessionCheckIns = allCheckIns.filter((c) => c.sessionId === sessionId)
+
+    console.log('[snapshotSession] Filtered session data:', {
+      sessionId,
+      matches: sessionMatches.length,
+      matchPlayers: sessionMatchPlayers.length,
+      checkIns: sessionCheckIns.length,
+      matchIds: sessionMatches.map(m => m.id),
+      matchPlayerDetails: sessionMatchPlayers.map(mp => ({ matchId: mp.matchId, playerId: mp.playerId, slot: mp.slot }))
+    })
+
+    if (sessionMatches.length === 0) {
+      console.warn('[snapshotSession] WARNING: No matches found for session', sessionId)
+      console.warn('[snapshotSession] All matches in database:', allMatches.map(m => ({ id: m.id, sessionId: m.sessionId })))
+    }
+    if (sessionMatchPlayers.length === 0) {
+      console.warn('[snapshotSession] WARNING: No matchPlayers found for session', sessionId)
+      console.warn('[snapshotSession] All matchPlayers in database:', allMatchPlayers.map(mp => ({ matchId: mp.matchId, playerId: mp.playerId })))
+    }
+
+    console.log('[snapshotSession] Creating snapshot with data:', {
+      sessionId: session.id,
+      sessionDate: session.date,
+      season,
+      matchesCount: sessionMatches.length,
+      matchPlayersCount: sessionMatchPlayers.length,
+      checkInsCount: sessionCheckIns.length
+    })
+
+    const snapshot = await createStatisticsSnapshot({
+      sessionId: session.id,
+      sessionDate: session.date,
+      season,
+      matches: sessionMatches.map((m) => ({ ...m })),
+      matchPlayers: sessionMatchPlayers.map((mp) => ({ ...mp })),
+      checkIns: sessionCheckIns.map((c) => ({ ...c }))
+    })
+
+    console.log('[snapshotSession] Snapshot created successfully', snapshot.id)
+    console.log('[snapshotSession] Snapshot data:', {
+      id: snapshot.id,
+      matches: snapshot.matches.length,
+      matchPlayers: snapshot.matchPlayers.length,
+      checkIns: snapshot.checkIns.length
+    })
+    
+    return snapshot
+  } catch (error) {
+    console.error('[snapshotSession] Error creating snapshot:', error)
+    throw error
   }
-  if (session.status !== 'ended') {
-    throw new Error('Session er ikke afsluttet')
-  }
-
-  // Check if snapshot already exists
-  const existingSnapshot = state.statistics?.find((s) => s.sessionId === sessionId)
-  if (existingSnapshot) {
-    return existingSnapshot
-  }
-
-  const season = getSeasonFromDate(session.date)
-
-  const sessionMatches = state.matches.filter((m) => m.sessionId === sessionId)
-  const sessionMatchPlayers = state.matchPlayers.filter((mp) =>
-    sessionMatches.some((m) => m.id === mp.matchId)
-  )
-  const sessionCheckIns = state.checkIns.filter((c) => c.sessionId === sessionId)
-
-  const snapshot = await createStatisticsSnapshot({
-    sessionId: session.id,
-    sessionDate: session.date,
-    season,
-    matches: sessionMatches.map((m) => ({ ...m })),
-    matchPlayers: sessionMatchPlayers.map((mp) => ({ ...mp })),
-    checkIns: sessionCheckIns.map((c) => ({ ...c }))
-  })
-
-  return snapshot
 }
 
 /**
@@ -332,6 +401,9 @@ const getPlayerStatistics = async (
   playerId: string,
   filters?: StatisticsFilters
 ): Promise<PlayerStatistics> => {
+  // Invalidate cache to ensure fresh statistics snapshots
+  invalidateCache()
+  
   const state = await getStateCopy()
   const player = state.players.find((p) => p.id === playerId)
   if (!player) {

@@ -1,5 +1,6 @@
 import api from '../api'
 import type { Group, PlayerLite, ActiveSession, StartSessionPayload } from '../routes/landing/types'
+import type { CourtWithPlayers } from '@herlev-hjorten/common'
 
 /**
  * Thin adapter matching the landing page contract.
@@ -130,8 +131,8 @@ export const startSession = async (payload: StartSessionPayload): Promise<Active
 }
 
 /** Ends the current active session. */
-export const endActiveSession = async (): Promise<void> => {
-  await api.session.endActive()
+export const endActiveSession = async (matchesData?: Array<{ round: number; matches: CourtWithPlayers[] }>): Promise<void> => {
+  await api.session.endActive(matchesData)
 }
 
 export default {

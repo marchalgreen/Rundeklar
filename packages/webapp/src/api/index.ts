@@ -339,12 +339,21 @@ const endActiveSession = async (matchesData?: Array<{ round: number; matches: Co
   const endedAt = new Date().toISOString()
   await Promise.all(sessionMatches.map((match) => updateMatchInDb(match.id, { endedAt })))
 
+  // Invalidate cache before creating snapshot to ensure fresh data
+  const { invalidateCache } = await import('./supabase')
+  invalidateCache()
+
   // Create statistics snapshot after session is marked as ended
+  // Add a small delay to ensure all database writes are committed
+  await new Promise(resolve => setTimeout(resolve, 200))
+  
   try {
+    console.log('[endActiveSession] Creating statistics snapshot for session', active.id)
     await statsApi.snapshotSession(active.id)
+    console.log('[endActiveSession] Statistics snapshot created successfully')
   } catch (err) {
     // Log error but don't fail the session ending
-    console.error('Failed to create statistics snapshot:', err)
+    console.error('[endActiveSession] Failed to create statistics snapshot:', err)
   }
 }
 

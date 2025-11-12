@@ -3,6 +3,8 @@ import { resolveCoachId } from '../lib/coachAdapter'
 import api from '../services/coachLandingApi'
 import type { Group, PlayerLite } from '../routes/landing/types'
 import { useToast } from '../components/ui/Toast'
+import { loadPersistedState } from '../lib/matchProgramPersistence'
+import type { CourtWithPlayers } from '@herlev-hjorten/common'
 
 export type UseLandingStateOptions = {
   coach?: { id: string; displayName?: string } | null
@@ -177,7 +179,24 @@ export const useLandingState = (opts?: UseLandingStateOptions): UseLandingState 
     if (ending) return
     setEnding(true)
     try {
-      await api.endActiveSession()
+      // Load persisted match data from localStorage if available
+      let matchesData: Array<{ round: number; matches: CourtWithPlayers[] }> | undefined
+      if (activeSession) {
+        const persisted = loadPersistedState(activeSession.sessionId)
+        if (persisted?.inMemoryMatches && Object.keys(persisted.inMemoryMatches).length > 0) {
+          // Convert persisted matches to the format expected by endActiveSession
+          matchesData = Object.entries(persisted.inMemoryMatches).map(([round, matches]) => ({
+            round: Number(round),
+            matches: matches as CourtWithPlayers[]
+          }))
+          console.log('[endSession] Loaded match data from persistence:', {
+            rounds: matchesData.length,
+            totalMatches: matchesData.reduce((sum, r) => sum + r.matches.length, 0)
+          })
+        }
+      }
+      
+      await api.endActiveSession(matchesData)
       setActiveSession(null)
       // Refresh groups after ending
       const fetchedGroups = await api.fetchTrainingGroups()
@@ -188,7 +207,7 @@ export const useLandingState = (opts?: UseLandingStateOptions): UseLandingState 
     } finally {
       setEnding(false)
     }
-  }, [ending, notify])
+  }, [ending, notify, activeSession])
 
   return {
     loading,
