@@ -316,7 +316,7 @@ export const useMatchProgram = ({
     })
   }, [])
   
-  const handleActivateOneRoundPlayer = useCallback(async (playerId: string) => {
+  const _handleActivateOneRoundPlayer = useCallback(async (playerId: string) => {
     if (!session) return
     try {
       // Ensure player is not on a court

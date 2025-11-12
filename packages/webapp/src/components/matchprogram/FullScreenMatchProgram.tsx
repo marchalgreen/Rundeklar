@@ -132,8 +132,6 @@ export const FullScreenMatchProgram: React.FC<FullScreenMatchProgramProps> = ({
     <div className="flex flex-col gap-2">
       {Array.from({ length: count }).map((_, idx) => {
         const slotIndex = startIndex + idx
-        const entry = court.slots.find((slot) => slot.slot === slotIndex)
-        const player = entry?.player
         return (
           <PlayerSlot
             key={slotIndex}

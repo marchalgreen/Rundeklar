@@ -6,7 +6,7 @@
 
 import React from 'react'
 import type { TrainingSession } from '@herlev-hjorten/common'
-import { getPlayerUiVariant, setPlayerUiVariant } from '../../lib/uiVariants'
+// Variant selector removed — only option A is kept
 
 interface MatchProgramHeaderProps {
   /** Current training session */

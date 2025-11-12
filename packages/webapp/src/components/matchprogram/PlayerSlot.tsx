@@ -6,9 +6,9 @@
 
 import React, { useEffect, useState } from 'react'
 import type { CourtWithPlayers, Player } from '@herlev-hjorten/common'
-import { getCategoryLetter, getCategoryBadge, getPlayerSlotBgColor } from '../../lib/matchProgramUtils'
+import { getCategoryLetter, getPlayerSlotBgColor } from '../../lib/matchProgramUtils'
 import { formatPlayerCardName } from '../../lib/formatting'
-import { InitialsAvatar, MiniIdenticon, getSeedHue } from '../ui/PlayerAvatar'
+import { InitialsAvatar, getSeedHue } from '../ui/PlayerAvatar'
 import { getPlayerUiVariant, VARIANT_CHANGED_EVENT, type PlayerUiVariant } from '../../lib/uiVariants'
 
 interface PlayerSlotProps {
@@ -88,7 +88,7 @@ export const PlayerSlot: React.FC<PlayerSlotProps> = ({
   const isDragOverOccupied = isDragOver && !!player
   const isRecentlySwapped = player && recentlySwappedPlayers.has(player.id)
   const isDuplicatePlayer = player && duplicatePlayersMap.get(court.courtIdx)?.has(player.id)
-  const catLetter = player ? getCategoryLetter(player.primaryCategory) : null
+  const _catLetter = player ? getCategoryLetter(player.primaryCategory) : null
 
   // Compute avatar rail color for variant A
   const avatarRailColor = (() => {
