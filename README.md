@@ -61,3 +61,24 @@ packages/
 - Appen seedes automatisk første gang IndexedDB initialiseres.
 - Alle operationer kører lokalt i browseren; rydning af site-data nulstiller databasen.
 - Matchmaker-logikken er isoleret i `packages/webapp/src/lib/matchmaker.ts` og dækket af Vitest.
+
+## Engineering Guidelines Index (source of truth & precedence)
+
+When guidelines conflict, use this precedence order and refer to the canonical source for each topic:
+
+1. Non‑negotiable guardrails (canonical)
+   - `prompts/agentPrompts/guards.md`
+2. Architecture (application‑wide patterns)
+   - `packages/webapp/ARCHITECTURE.md`
+3. Code organization and patterns
+   - `packages/webapp/CODE_ORGANIZATION_GUIDE.md`
+4. Responsive design (canonical for responsiveness)
+   - `packages/webapp/RESPONSIVE_DESIGN_GUIDE.md`
+5. Delivery checklist (build/run/verify)
+   - `packages/webapp/AlwaysWorks.md`
+6. Feature‑specific docs and plans
+   - e.g., `packages/webapp/RESPONSIVE_REFACTORING_PLAN.md`, specs under `packages/webapp/tests/`
+
+Notes:
+- Do not duplicate rules across documents. Summarize locally and link to the canonical doc.
+- If a local doc and a canonical doc disagree, the canonical doc wins (per the order above).

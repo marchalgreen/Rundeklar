@@ -9,6 +9,7 @@
 import React from 'react'
 import { PageCard } from '../components/ui'
 import { useTenant } from '../contexts/TenantContext'
+import courtsSettings from '../services/courtsSettings'
 import { useSession, useCheckIns } from '../hooks'
 import { useMatchProgram } from '../hooks/useMatchProgram'
 import { FullScreenMatchProgram } from '../components/matchprogram/FullScreenMatchProgram'
@@ -26,8 +27,25 @@ import { MatchProgramHeader } from '../components/matchprogram/MatchProgramHeade
  * ```
  */
 const MatchProgramPage = () => {
-  const { config } = useTenant()
-  const maxCourts = config.maxCourts
+  const { config, tenantId } = useTenant()
+  const [maxCourts, setMaxCourts] = React.useState(() => courtsSettings.getEffectiveCourtsInUse(tenantId, config.maxCourts))
+  React.useEffect(() => {
+    const recompute = () => setMaxCourts(courtsSettings.getEffectiveCourtsInUse(tenantId, config.maxCourts))
+    recompute()
+    const onStorage = (e: StorageEvent) => {
+      if (e.key === `courtsInUse:${tenantId}`) recompute()
+    }
+    const onLocal = (e: Event) => {
+      const ev = e as CustomEvent
+      if (ev.detail?.tenantId === tenantId) recompute()
+    }
+    window.addEventListener('storage', onStorage)
+    window.addEventListener('courtsInUse:changed', onLocal as EventListener)
+    return () => {
+      window.removeEventListener('storage', onStorage)
+      window.removeEventListener('courtsInUse:changed', onLocal as EventListener)
+    }
+  }, [tenantId, config.maxCourts])
   
   // Data hooks
   const { session, loading: sessionLoading, startSession, endSession } = useSession()
@@ -85,7 +103,6 @@ const MatchProgramPage = () => {
     isResizing,
     inMemoryMatches,
     hasRunAutoMatch,
-    handleStartTraining,
     handleEndTraining,
     handleMouseDown,
     handleResizeStart,
@@ -163,7 +180,6 @@ const MatchProgramPage = () => {
         onAutoMatch={handleAutoMatch}
         onResetMatches={handleResetMatches}
         onEnterFullScreen={() => setIsFullScreen(true)}
-        onStartTraining={handleStartTraining}
         onEndTraining={handleEndTraining}
       />
 

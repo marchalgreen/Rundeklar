@@ -1,5 +1,10 @@
 # Code Organization & Best Practices Guide
 
+Canonical sources and precedence:
+- Non‑negotiable guardrails: `prompts/agentPrompts/guards.md`
+- Responsive design (canonical): `packages/webapp/RESPONSIVE_DESIGN_GUIDE.md`
+- If this guide conflicts with the above, the canonical docs win.
+
 > **See also:** [Responsive Design Guide](./RESPONSIVE_DESIGN_GUIDE.md) for mobile-first UI patterns
 
 ## Core Principles
@@ -29,6 +34,35 @@
    - New feature/concern → New file
    - Extension of existing → Add to existing file
    - Related functionality → Consider grouping
+
+### 2. Responsive by Default
+
+- All new UI must be built mobile-first and be responsive across breakpoints.
+- Use Tailwind responsive modifiers (`sm:`, `md:`, `lg:`, `xl:`) for spacing, typography, and layout.
+- Avoid fixed widths without responsive alternatives; prefer fluid widths with max-w on larger screens.
+- Verify no horizontal overflow and adequate touch targets on mobile.
+- See `RESPONSIVE_DESIGN_GUIDE.md` for patterns and the pre-commit checklist (375px, 768px, 1024px, 1280px).
+
+### 3. Documentation & Comments
+
+- JSDoc is required for all exported functions, classes, components, hooks, and services.
+- Comment for intent and invariants, not obvious code. Prefer clear names over redundant comments.
+- Keep comments concise; document non-obvious rationale, edge cases, and performance caveats.
+- Hooks must document inputs, returned shape, and side effects.
+- Services must document inputs/outputs and invariants; keep pure when possible.
+- API functions must document request/response shapes and error cases.
+- Add or update module README when introducing new modules or major features.
+
+```typescript
+/**
+ * Loads players list filtered by optional criteria.
+ *
+ * @param filters - Optional list filters (query, active flag)
+ * @returns Players matching filters
+ * @throws {AppError} On API failures; see normalizeError for details
+ */
+export async function listPlayers(filters?: PlayerListFilters): Promise<Player[]> { ... }
+```
 
 ## Code Organization Patterns
 

@@ -28,6 +28,7 @@ import {
   createCheckIn as createCheckInInDb,
   deleteCheckIn as deleteCheckInInDb,
   getCourts,
+  createCourt as createCourtInDb,
   getMatches,
   createMatch as createMatchInDb,
   updateMatch as updateMatchInDb,
@@ -265,7 +266,7 @@ const saveAllMatches = async (matchesData: Array<{ round: number; matches: Court
   }
 
   const state = await getStateCopy()
-  const courts = state.courts
+  const courts = state.courts.slice()
   const startedAt = new Date().toISOString()
 
   // Delete all existing matches for this session (we'll recreate them)
@@ -281,8 +282,13 @@ const saveAllMatches = async (matchesData: Array<{ round: number; matches: Court
   // Create all matches and match players for all rounds
   for (const { round, matches: roundMatches } of matchesData) {
     for (const courtMatch of roundMatches) {
-      const court = courts.find((c) => c.idx === courtMatch.courtIdx)
-      if (!court || courtMatch.slots.length === 0) continue
+      let court = courts.find((c) => c.idx === courtMatch.courtIdx)
+      if (!court) {
+        // Create missing court on the fly for indices beyond the seeded set
+        court = await createCourtInDb({ idx: courtMatch.courtIdx } as any)
+        courts.push(court)
+      }
+      if (courtMatch.slots.length === 0) continue
 
       // Create match for this court and round
       const match = await createMatchInDb({
@@ -1537,7 +1543,7 @@ const movePlayer = async (payload: MatchMovePayload, round?: number): Promise<vo
   const parsed = z
     .object({
       playerId: z.string().min(1),
-      toCourtIdx: z.number().int().min(1).max(8).optional(),
+      toCourtIdx: z.number().int().min(1).optional(),
       toSlot: z.number().int().min(0).max(7).optional(),
       round: z.number().int().min(1).max(4).optional(),
       swapWithPlayerId: z.string().optional()
@@ -1587,9 +1593,10 @@ const movePlayer = async (payload: MatchMovePayload, round?: number): Promise<vo
     return
   }
 
-  const court = state.courts.find((court) => court.idx === parsed.toCourtIdx)
+  let court = state.courts.find((court) => court.idx === parsed.toCourtIdx)
   if (!court) {
-    throw new Error('Banen findes ikke')
+    // Create court if it doesn't exist yet (supports clubs with many courts)
+    court = await createCourtInDb({ idx: parsed.toCourtIdx } as any)
   }
 
   // Only find matches in the current round for this court

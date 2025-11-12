@@ -91,6 +91,28 @@ pnpm prisma migrate deploy
 
 ⸻
 
+📝 Code Comments & JSDoc (CRITICAL)
+• **JSDoc is required** for all exported functions, classes, components, hooks, and services.
+• Comment for intent, invariants, and non-obvious rationale — never restate what the code already says.
+• Hooks must document inputs, returned shape, side effects, and error handling pattern.
+• Services must document inputs/outputs, invariants, and edge cases; keep functions pure where possible.
+• API functions must document request/response shapes and expected errors.
+• Module-level README must be added/updated when introducing new modules or significant features.
+• Keep comments concise and up to date; remove stale comments during refactors.
+
+Example JSDoc:
+```ts
+/**
+ * Creates a new player.
+ * @param input - Player creation data
+ * @returns Created player with generated ID
+ * @throws {AppError} On validation or persistence failure
+ */
+export async function createPlayer(input: PlayerCreateInput): Promise<Player> { ... }
+```
+
+⸻
+
 ♿ Accessibility & Localization
 • Maintain logical focus order and visible focus rings.
 • All interactive elements must be keyboard-navigable.

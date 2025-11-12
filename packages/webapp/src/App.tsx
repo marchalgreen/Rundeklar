@@ -4,10 +4,11 @@ import PlayersPage from './routes/PlayersDB'
 import CheckInPage from './routes/CheckIn'
 import MatchProgramPage from './routes/MatchProgram'
 import StatisticsPage from './routes/Statistics'
+import LandingPage from './routes/LandingPage'
 import { SidebarItem } from './components/navigation/SidebarItem'
-import { UserCheck, UsersRound, Grid2x2, BarChart3, Menu, X } from 'lucide-react'
+import { UserCheck, UsersRound, Grid2x2, BarChart3, Menu, X, PlayCircle } from 'lucide-react'
 import { TenantProvider, useTenant } from './contexts/TenantContext'
-import { extractTenantId, buildTenantPath } from './lib/tenant'
+import { extractTenantId } from './lib/tenant'
 
 /**
  * Header component — app branding and primary navigation.
@@ -65,6 +66,7 @@ const Header = () => {
   }, [isMenuOpen])
 
   const navItems = [
+    { to: buildPath('/coach'), icon: <PlayCircle />, label: 'Træner' },
     { to: buildPath('/check-in'), icon: <UserCheck />, label: 'Indtjekning' },
     { to: buildPath('/match-program'), icon: <Grid2x2 />, label: 'Kampprogram' },
     { to: buildPath('/players'), icon: <UsersRound />, label: 'Spillere' },
@@ -185,16 +187,26 @@ const AppInner = () => {
         <main className="flex-1 overflow-y-auto overflow-x-hidden max-w-full">
           <div className="flex w-full flex-col gap-4 sm:gap-6 px-4 sm:px-6 pb-6 sm:pb-10 pt-4 sm:pt-6 md:px-8 lg:px-12 max-w-full overflow-x-hidden">
             <Routes>
+              <Route path="/coach" element={<LandingPage onRedirectToCheckin={() => {
+                // Navigate to check-in; rely on default session state.
+                // For default tenant, use "/check-in"; otherwise include tenant prefix.
+                const target = tenantId && tenantId !== 'default' ? `#/${tenantId}/check-in` : '#/check-in'
+                window.location.hash = target
+              }} />} />
               <Route path="/players" element={<PlayersPage />} />
               <Route path="/check-in" element={<CheckInPage />} />
               <Route path="/match-program" element={<MatchProgramPage />} />
               <Route path="/statistics" element={<StatisticsPage />} />
               {/* Support tenant-prefixed routes */}
+              <Route path="/:tenantId/coach" element={<LandingPage onRedirectToCheckin={() => {
+                const id = tenantId && tenantId !== 'default' ? tenantId : 'default'
+                window.location.hash = id === 'default' ? '#/check-in' : `#/${id}/check-in`
+              }} />} />
               <Route path="/:tenantId/players" element={<PlayersPage />} />
               <Route path="/:tenantId/check-in" element={<CheckInPage />} />
               <Route path="/:tenantId/match-program" element={<MatchProgramPage />} />
               <Route path="/:tenantId/statistics" element={<StatisticsPage />} />
-              <Route path="*" element={<Navigate to="/check-in" replace />} />
+              <Route path="*" element={<Navigate to="/coach" replace />} />
             </Routes>
           </div>
         </main>

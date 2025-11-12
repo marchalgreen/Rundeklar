@@ -13,7 +13,7 @@ export const extractTenantId = (pathname: string): string => {
   const parts = pathname.replace(/^\/+/, '').split('/')
   
   // First part is tenant ID if it exists and is not a known route
-  const knownRoutes = ['check-in', 'match-program', 'players', 'statistics']
+  const knownRoutes = ['coach', 'check-in', 'match-program', 'players', 'statistics']
   const firstPart = parts[0]
   
   // If first part is a known route, it's the default tenant
@@ -86,5 +86,4 @@ export const buildTenantPath = (tenantId: string, path: string): string => {
   // For other tenants, add tenant prefix
   return `/${tenantId}/${cleanPath}`
 }
-
 

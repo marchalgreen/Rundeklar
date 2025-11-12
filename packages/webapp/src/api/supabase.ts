@@ -417,6 +417,21 @@ export const getCourts = async (): Promise<Court[]> => {
 }
 
 /**
+ * Creates a court in Supabase.
+ */
+export const createCourt = async (court: Omit<Court, 'id'>): Promise<Court> => {
+  const supabase = getSupabase()
+  const { data, error } = await supabase
+    .from('courts')
+    .insert({ idx: court.idx })
+    .select()
+    .single()
+  if (error) throw new Error(`Failed to create court: ${error.message}`)
+  invalidateCache()
+  return rowToCourt(data)
+}
+
+/**
  * Gets all matches from Supabase.
  */
 export const getMatches = async (): Promise<Match[]> => {
@@ -616,4 +631,3 @@ export const hasBackup = (): boolean => {
   }
   return false
 }
-

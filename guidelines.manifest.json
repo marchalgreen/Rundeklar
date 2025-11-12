@@ -1,0 +1,19 @@
+{
+  "version": 1,
+  "precedence": [
+    "prompts/agentPrompts/guards.md",
+    "packages/webapp/ARCHITECTURE.md",
+    "packages/webapp/CODE_ORGANIZATION_GUIDE.md",
+    "packages/webapp/RESPONSIVE_DESIGN_GUIDE.md",
+    "packages/webapp/AlwaysWorks.md"
+  ],
+  "notes": [
+    "Canonical sources; summarize elsewhere and link back here.",
+    "If a local doc conflicts with an earlier item, the earlier item wins."
+  ],
+  "extras": [
+    "packages/webapp/RESPONSIVE_REFACTORING_PLAN.md",
+    "packages/webapp/RESPONSIVE_REFACTORING_ASSESSMENT.md"
+  ]
+}
+

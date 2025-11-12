@@ -1,5 +1,7 @@
 # 📱 Responsive Design System Guide
 
+Canonical: This guide is the source of truth for responsiveness. For overall rule precedence, see the “Engineering Guidelines Index” in `README.md` and `prompts/agentPrompts/guards.md`.
+
 **CRITICAL:** All UI components MUST be built with responsive design in mind from the start. This is not optional.
 
 ## 🎯 Core Principle: Mobile-First Design

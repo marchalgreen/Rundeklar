@@ -5,7 +5,7 @@
  * with animations. Uses custom hooks for data management and sub-components for UI.
  */
 
-import React, { useCallback, useMemo, useState } from 'react'
+import React, { useCallback, useEffect, useMemo, useState } from 'react'
 import type { Player } from '@herlev-hjorten/common'
 import { UsersRound } from 'lucide-react'
 import { PageCard, EmptyState } from '../components/ui'
@@ -14,6 +14,7 @@ import { PlayerCard, CheckedInPlayerCard, LetterFilters } from '../components/ch
 import { useSession, useCheckIns, usePlayers } from '../hooks'
 import { formatDate } from '../lib/formatting'
 import { LETTER_FILTERS, UI_CONSTANTS } from '../constants'
+import coachLandingApi from '../services/coachLandingApi'
 
 /**
  * Check-in page component.
@@ -25,12 +26,15 @@ import { LETTER_FILTERS, UI_CONSTANTS } from '../constants'
  */
 const CheckInPage = () => {
   // Data hooks
-  const { session, loading: sessionLoading, startSession } = useSession()
+  const { session, loading: sessionLoading } = useSession()
   const { players, loading: playersLoading } = usePlayers({ active: true })
   const { checkedIn, checkIn, checkOut } = useCheckIns(session?.id ?? null)
 
   // UI state
   const [search, setSearch] = useState('')
+  // Optional defaults from coach landing handoff
+  const [defaultGroupId, setDefaultGroupId] = useState<string | null>(null)
+  const [extraAllowedIds, setExtraAllowedIds] = useState<Set<string>>(new Set())
   const [filterLetter, setFilterLetter] = useState<string>(LETTER_FILTERS.ALL)
   const [oneRoundOnlyPlayers, setOneRoundOnlyPlayers] = useState<Set<string>>(new Set())
   const [justCheckedIn, setJustCheckedIn] = useState<Set<string>>(new Set())
@@ -38,13 +42,14 @@ const CheckInPage = () => {
   const [animatingIn, setAnimatingIn] = useState<Set<string>>(new Set())
 
   const loading = sessionLoading || playersLoading
-
-  /**
-   * Handles starting a training session.
-   */
-  const handleStartTraining = useCallback(async () => {
-    await startSession()
-  }, [startSession])
+  // Read one-time handoff seed from LandingPage to prefilter group and include cross-group players in list
+  useEffect(() => {
+    const seed = coachLandingApi.readAndClearPendingSeed?.()
+    if (seed) {
+      setDefaultGroupId(seed.groupId ?? null)
+      setExtraAllowedIds(new Set(seed.extraPlayerIds ?? []))
+    }
+  }, [])
 
   /**
    * Handles player check-in with animation feedback.
@@ -181,6 +186,10 @@ const CheckInPage = () => {
     return players.filter((player) => {
       // Exclude checked-in players from the main list
       if (checkedInIds.has(player.id)) return false
+      // Default to selected group from landing, but include extra allowed cross-group players
+      const groupId = (player as any).trainingGroup ?? null
+      const matchesGroup = defaultGroupId ? (groupId === defaultGroupId || extraAllowedIds.has(player.id)) : true
+      if (!matchesGroup) return false
       const matchesLetter =
         filterLetter === LETTER_FILTERS.ALL || (typeof filterLetter === 'string' && player.name.toLowerCase().startsWith(filterLetter.toLowerCase()))
       const nameLower = player.name.toLowerCase()
@@ -188,7 +197,7 @@ const CheckInPage = () => {
       const matchesSearch = !term || nameLower.includes(term) || aliasLower.includes(term)
       return matchesLetter && matchesSearch
     })
-  }, [players, search, filterLetter, checkedInIds])
+  }, [players, search, filterLetter, checkedInIds, defaultGroupId, extraAllowedIds])
 
   /** Sorted checked-in players by first name. */
   const sortedCheckedIn = useMemo(() => {
@@ -209,46 +218,10 @@ const CheckInPage = () => {
 
   if (!session) {
     return (
-      <section className="flex h-full items-center justify-center p-4 sm:p-6">
-        <div className="w-full max-w-2xl">
-          <div className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-[hsl(var(--surface)/.95)] via-[hsl(var(--surface)/.98)] to-[hsl(var(--surface-glass)/.85)] p-6 sm:p-8 md:p-12 shadow-[0_8px_32px_hsl(var(--primary)/.08)] ring-1 ring-[hsl(var(--line)/.12)] backdrop-blur-sm">
-            {/* Decorative background elements */}
-            <div className="absolute -right-12 -top-12 h-48 w-48 rounded-full bg-[hsl(var(--primary)/.06)] blur-3xl" />
-            <div className="absolute -bottom-12 -left-12 h-48 w-48 rounded-full bg-[hsl(var(--accent)/.06)] blur-3xl" />
-
-            <div className="relative z-10 flex flex-col items-center gap-6 text-center">
-              {/* Icon */}
-              <div className="relative">
-                <div className="absolute inset-0 rounded-full bg-[hsl(var(--primary)/.12)] blur-xl" />
-                <div className="relative rounded-full bg-gradient-to-br from-[hsl(var(--primary)/.15)] to-[hsl(var(--accent)/.15)] p-6 ring-2 ring-[hsl(var(--primary)/.2)]">
-                  <UsersRound className="h-12 w-12 text-[hsl(var(--primary))]" />
-                </div>
-              </div>
-
-              {/* Title and description */}
-              <div className="space-y-3">
-                <h1 className="text-3xl font-bold text-[hsl(var(--foreground))] tracking-tight">
-                  Velkommen til dagens træning
-                </h1>
-                <p className="mx-auto max-w-md text-base leading-relaxed text-[hsl(var(--muted))]">
-                  Start en ny træning for at begynde at tjekke spillere ind og arrangere kampe. Når træningen er
-                  startet, kan du se alle tilmeldte spillere og oprette kampprogrammer.
-                </p>
-              </div>
-
-              {/* CTA Button */}
-              <div className="pt-2">
-                <button
-                  type="button"
-                  onClick={handleStartTraining}
-                  className="min-w-[200px] h-14 px-8 text-lg font-semibold rounded-lg bg-[hsl(var(--primary))] text-white shadow-[0_4px_16px_hsl(var(--primary)/.25)] hover:shadow-[0_6px_24px_hsl(var(--primary)/.35)] transition-all duration-300"
-                >
-                  Start træning
-                </button>
-              </div>
-            </div>
-          </div>
-        </div>
+      <section className="mx-auto flex h-full max-w-4xl items-center justify-center p-4 sm:p-6">
+        <PageCard className="rounded-full px-6 py-3 text-center text-[hsl(var(--muted))]">
+          Ingen aktiv træning. Gå til Træner-siden for at starte en træning.
+        </PageCard>
       </section>
     )
   }

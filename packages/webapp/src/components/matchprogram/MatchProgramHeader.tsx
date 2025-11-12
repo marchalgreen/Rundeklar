@@ -36,8 +36,6 @@ interface MatchProgramHeaderProps {
   onResetMatches: () => void
   /** Handler to enter full-screen */
   onEnterFullScreen: () => void
-  /** Handler to start training */
-  onStartTraining: () => void
   /** Handler to end training */
   onEndTraining: () => void
 }
@@ -82,7 +80,6 @@ export const MatchProgramHeader: React.FC<MatchProgramHeaderProps> = ({
   onAutoMatch,
   onResetMatches,
   onEnterFullScreen,
-  onStartTraining,
   onEndTraining
 }) => {
   return (
@@ -176,13 +173,7 @@ export const MatchProgramHeader: React.FC<MatchProgramHeaderProps> = ({
               Afslut træning
             </button>
           ) : (
-            <button
-              type="button"
-              onClick={onStartTraining}
-              className="rounded-md bg-accent px-2.5 py-1.5 sm:px-3 sm:py-2 md:px-4 text-xs sm:text-sm font-semibold text-white hover:opacity-90 transition-all duration-200 ease-[cubic-bezier(.2,.8,.2,1)] motion-reduce:transition-none ring-focus hover:shadow-sm whitespace-nowrap"
-            >
-              Start træning
-            </button>
+            <></>
           )}
         </div>
       </div>

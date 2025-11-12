@@ -4,6 +4,8 @@ description: Ensure what you implement Always Works™ in the Herlev Hjorten web
 
 # How to ensure **Always Works™** implementation
 
+Note on precedence: For guardrails, see `prompts/agentPrompts/guards.md`. This checklist complements, and does not override, the canonical guardrails or the `RESPONSIVE_DESIGN_GUIDE.md`.
+
 Please ensure your implementation Always Works™ for: **$ARGUMENTS**  
 _(e.g. “Check-in flow”, “Match auto-arrange”, “Player CRUD”, “Statistics aggregation”, etc.)_
 
@@ -29,6 +31,7 @@ Follow this systematic approach.
 - [ ] **Error paths:** I forced at least one failure case and saw a clear, actionable error (e.g. validation toast, disabled action, or logged AppError).
 - [ ] **Config holds:** Tenant config from `src/config/tenants/*.json` is loaded/applied (branding, courts count, categories) and survives reload.
 - [ ] **I’d bet €100 this works.**
+ - [ ] **Documented it:** All exported functions/classes/components updated with JSDoc; module README added/updated if introducing a new module.
 
 ---
 
@@ -48,6 +51,18 @@ Follow this systematic approach.
   - `MatchProgram`: auto-arrange or manual move; verify assignments and leftover bench.
   - `PlayersDB`: create/edit/delete player; validate partner edit and form validation.
   - `Statistics`: confirm totals update after actions.
+- **Responsive checks (required for UI changes):**
+  - [ ] Mobile 375px (iPhone SE): no horizontal overflow, readable text, tappable buttons (≥44px).
+  - [ ] Tablet 768px (iPad portrait): layouts adapt (grids/stacking), comfortable spacing.
+  - [ ] Tablet 1024px (iPad landscape): multi-column layouts and headers align.
+  - [ ] Desktop 1280px+: optimal spacing, no fixed-width overflow.
+  - [ ] Uses mobile-first classes with responsive modifiers (`sm:`, `md:`, `lg:`).
+  - See `RESPONSIVE_DESIGN_GUIDE.md` for full patterns and the pre-commit checklist.
+ - **Documentation checks (required for all changes):**
+   - [ ] JSDoc present on all new or modified exported functions/classes/components/hooks/services.
+   - [ ] Hook docs describe inputs, return shape, side effects, and error handling.
+   - [ ] API docs describe request/response shapes and error cases.
+   - [ ] Module README added/updated when introducing or significantly changing a module.
 - **Logic changes:** Run unit tests (`pnpm test`). Add/extend tests under `packages/webapp/tests/` (e.g., `matchmaker.test.ts`) for new edge cases. Reproduce the scenario end-to-end in the UI.
 - **Data/Supabase changes:** Ensure `.env.local` is configured and the SQL migration is applied (see Supabase section). Verify changes in Supabase Table Editor after UI actions.
 - **Config changes:** Modify `src/config/tenants/*.json`, restart dev server, and verify branding/court settings are reflected. Rebuild to ensure configs are copied to `dist/`.

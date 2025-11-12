@@ -1,5 +1,7 @@
 # Application Architecture
 
+Note on precedence: This document defers to `prompts/agentPrompts/guards.md` for non‑negotiable rules. If guidance here conflicts, the guardrails win. For responsive rules, see the canonical `packages/webapp/RESPONSIVE_DESIGN_GUIDE.md`.
+
 ## Overview
 
 This application is a multi-tenant badminton training management system built with React, TypeScript, and Supabase. It follows a modular, layered architecture with clear separation of concerns.
@@ -20,6 +22,7 @@ This application is a multi-tenant badminton training management system built wi
 - Extract complex logic into custom hooks
 - Use composition over inheritance
 - Keep components under 300 lines when possible
+- All new UI must be mobile-first responsive. Follow `RESPONSIVE_DESIGN_GUIDE.md` and test at 375px, 768px, 1024px, and 1280px before committing.
 
 ### 2. Business Logic Layer (`src/hooks/`, `src/services/`)
 
@@ -258,6 +261,8 @@ services/
 
 ## Documentation Standards
 
+All new code must include documentation that matches existing conventions across the app. JSDoc on exported APIs is mandatory.
+
 ### JSDoc Comments
 
 All exported functions, classes, and components should have JSDoc:
@@ -282,6 +287,13 @@ export const createPlayer = async (input: PlayerCreateInput): Promise<Player> =>
   // implementation
 }
 ```
+
+### Component, Hook, and Service Documentation
+
+- Components: Document props (with `@prop`), responsibilities, and any non-obvious UI behavior.
+- Hooks: Document inputs, return shape, side effects, and error normalization pattern.
+- Services: Document purpose, inputs/outputs, invariants, and performance/edge-case notes.
+- API layer: Document request/response shape and expected error cases.
 
 ### README Files
 
