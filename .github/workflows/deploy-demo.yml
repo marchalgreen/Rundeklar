@@ -37,15 +37,15 @@ jobs:
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
 
-      - name: Build Demo (no base path)
+      - name: Build Demo (with repository base path)
         env:
           NODE_ENV: production
-          VITE_BASE_PATH: '/'
+          VITE_BASE_PATH: '/RundeManagerDemo/'
           VITE_SUPABASE_URL: ${{ secrets.VITE_SUPABASE_URL }}
           VITE_SUPABASE_ANON_KEY: ${{ secrets.VITE_SUPABASE_ANON_KEY }}
         run: |
           cd packages/webapp
-          VITE_BASE_PATH='/' pnpm build
+          VITE_BASE_PATH='/RundeManagerDemo/' pnpm build
 
       - name: Deploy to Demo Repository
         uses: peaceiris/actions-gh-pages@v3
