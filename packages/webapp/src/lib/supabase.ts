@@ -35,11 +35,9 @@ export const createTenantSupabaseClient = (config: TenantConfig): SupabaseClient
   }
 
   // Log connection info in development (only for real tenants)
+  // Note: Only logs tenant ID, not sensitive credentials
   if (import.meta.env.DEV) {
-    console.log(`Supabase client initialized for tenant "${config.id}":`, {
-      url: config.supabaseUrl,
-      keyPrefix: config.supabaseKey?.substring(0, 20) + '...'
-    })
+    console.log(`Supabase client initialized for tenant "${config.id}"`)
   }
 
   const client = createClient(config.supabaseUrl, config.supabaseKey)
