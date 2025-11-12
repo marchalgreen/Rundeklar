@@ -1,4 +1,5 @@
 #!/usr/bin/env tsx
+/// <reference types="node" />
 /**
  * Clear statistics data script.
  * 
