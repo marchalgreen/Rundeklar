@@ -441,10 +441,10 @@ const PlayersPage = () => {
   )
 
   return (
-    <section className="flex flex-col gap-6 pt-6">
-      <header className="flex items-center justify-between mb-4">
+    <section className="flex flex-col gap-4 sm:gap-6 pt-4 sm:pt-6">
+      <header className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between mb-3 sm:mb-4">
         <div className="flex-1">
-          <h1 className="text-2xl font-semibold text-[hsl(var(--foreground))]">Spillere</h1>
+          <h1 className="text-xl sm:text-2xl font-semibold text-[hsl(var(--foreground))]">Spillere</h1>
           <p className="text-base text-[hsl(var(--muted))] mt-1">Administrer medlemslisten og deres status.</p>
           {error && (
             <span className="mt-2 inline-block text-sm text-[hsl(var(--destructive))]">{error}</span>
@@ -471,7 +471,7 @@ const PlayersPage = () => {
         </div>
       </header>
 
-      <PageCard className="space-y-4">
+      <PageCard className="space-y-3 sm:space-y-4">
         <TableSearch
           value={search}
           onChange={(value) => setSearch(value)}

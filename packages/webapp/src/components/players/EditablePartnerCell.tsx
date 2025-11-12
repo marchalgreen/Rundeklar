@@ -50,7 +50,7 @@ const PartnerOverrideDialog: React.FC<{
     }}
   >
     <div
-      className="bg-[hsl(var(--surface))] rounded-lg shadow-lg p-6 max-w-md w-full mx-4 ring-1 ring-[hsl(var(--line)/.12)]"
+      className="bg-[hsl(var(--surface))] rounded-lg shadow-lg p-4 sm:p-6 max-w-md w-full mx-4 ring-1 ring-[hsl(var(--line)/.12)]"
       onClick={(e) => e.stopPropagation()}
     >
       <h3 className="text-lg font-semibold text-[hsl(var(--foreground))] mb-2">Bekræft overskrivning</h3>
@@ -432,7 +432,7 @@ export const EditablePartnerCell: React.FC<EditablePartnerCellProps> = ({
     return (
       <>
         {dialogElement}
-      <div className="w-full max-w-[200px] mx-auto">
+      <div className="w-full max-w-full sm:max-w-[200px] mx-auto">
         <button
           type="button"
           onClick={() => setIsEditing(true)}
@@ -447,9 +447,9 @@ export const EditablePartnerCell: React.FC<EditablePartnerCellProps> = ({
 
   // Editing state - render the editing UI
   return (
-    <>
-      {dialogElement}
-      <div ref={dropdownRef} className="relative w-full max-w-[200px]">
+      <>
+        {dialogElement}
+      <div ref={dropdownRef} className="relative w-full max-w-full sm:max-w-[200px]">
         <input
           type="text"
           value={searchTerm}
@@ -466,7 +466,7 @@ export const EditablePartnerCell: React.FC<EditablePartnerCellProps> = ({
           autoFocus
           onClick={(e) => e.stopPropagation()}
         />
-        <div className="absolute top-[28px] left-0 w-full min-w-[200px] bg-[hsl(var(--surface))] border border-[hsl(var(--line)/.14)] rounded shadow-lg max-h-[150px] overflow-y-auto z-[100]">
+        <div className="absolute top-[28px] left-0 w-full min-w-[180px] sm:min-w-[200px] bg-[hsl(var(--surface))] border border-[hsl(var(--line)/.14)] rounded shadow-lg max-h-[150px] overflow-y-auto z-[100]">
           <button
             type="button"
             onClick={(e) => {

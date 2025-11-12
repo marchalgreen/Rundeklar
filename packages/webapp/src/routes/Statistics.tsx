@@ -157,10 +157,10 @@ const StatisticsPage = () => {
   }
 
   return (
-    <section className="pt-6 space-y-6">
-      <header className="flex items-center justify-between mb-4">
+    <section className="pt-4 sm:pt-6 space-y-4 sm:space-y-6">
+      <header className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between mb-3 sm:mb-4">
         <div className="flex-1">
-          <h1 className="text-2xl font-semibold text-[hsl(var(--foreground))]">Statistik</h1>
+          <h1 className="text-xl sm:text-2xl font-semibold text-[hsl(var(--foreground))]">Statistik</h1>
           <p className="text-base text-[hsl(var(--muted))] mt-1">Se spillernes statistik og sammenlign data.</p>
         </div>
       </header>

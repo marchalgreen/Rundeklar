@@ -60,12 +60,12 @@ export const ToastProvider = ({ children }: { children: React.ReactNode }) => {
   return (
     <ToastContext.Provider value={value}>
       {children}
-      <div className="pointer-events-none fixed top-6 right-6 z-50 flex w-80 max-w-[calc(100vw-2rem)] flex-col gap-3">
+      <div className="pointer-events-none fixed top-4 right-4 sm:top-6 sm:right-6 z-50 flex w-[calc(100vw-2rem)] sm:w-80 max-w-[calc(100vw-2rem)] flex-col gap-2 sm:gap-3">
         {toasts.map((toast) => (
           <div
             key={toast.id}
             className={clsx(
-              'pointer-events-auto rounded-lg p-4 shadow-lg ring-1 ring-[hsl(var(--line)/.2)] backdrop-blur-sm transition-all duration-200 ease-out',
+              'pointer-events-auto rounded-lg p-3 sm:p-4 shadow-lg ring-1 ring-[hsl(var(--line)/.2)] backdrop-blur-sm transition-all duration-200 ease-out',
               variantStyles[toast.variant ?? 'default']
             )}
             role="status"
@@ -74,8 +74,8 @@ export const ToastProvider = ({ children }: { children: React.ReactNode }) => {
             <div className="flex items-start gap-3">
               <span className="mt-0.5 text-current">{variantIcon[toast.variant ?? 'default']}</span>
               <div className="flex-1">
-                <div className="text-sm font-semibold">{toast.title}</div>
-                {toast.description && <p className="mt-1 text-sm text-[hsl(var(--muted))]">{toast.description}</p>}
+                <div className="text-xs sm:text-sm font-semibold">{toast.title}</div>
+                {toast.description && <p className="mt-1 text-xs sm:text-sm text-[hsl(var(--muted))]">{toast.description}</p>}
               </div>
               <button
                 type="button"

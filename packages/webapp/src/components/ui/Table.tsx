@@ -152,7 +152,7 @@ export function DataTable<T>({ data, columns, initialSort, sort: controlledSort,
 
   return (
     <div className="overflow-hidden rounded-lg card-glass-active ring-1 ring-[hsl(var(--line)/.12)]">
-      <div ref={scrollContainerRef} data-table-container className="max-h-[520px] overflow-auto">
+      <div ref={scrollContainerRef} data-table-container className="max-h-[400px] sm:max-h-[520px] overflow-auto">
         <table className="min-w-full divide-y divide-[hsl(var(--line)/.16)] text-sm">
           <thead className="sticky top-0 z-10 bg-[hsl(var(--surface)/.85)] backdrop-blur">
             <tr>
@@ -162,7 +162,7 @@ export function DataTable<T>({ data, columns, initialSort, sort: controlledSort,
                   scope="col"
                   style={{ width: column.width }}
                   className={clsx(
-                    'px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-[hsl(var(--muted))]',
+                    'px-3 py-2 sm:px-4 sm:py-3 text-left text-[10px] sm:text-xs font-semibold uppercase tracking-wide text-[hsl(var(--muted))]',
                     column.align === 'center' && 'text-center',
                     column.align === 'right' && 'text-right'
                   )}
@@ -203,7 +203,7 @@ export function DataTable<T>({ data, columns, initialSort, sort: controlledSort,
                     <td
                       key={column.id}
                       className={clsx(
-                        'px-4 py-3 text-sm text-[hsl(var(--foreground))]',
+                        'px-3 py-2 sm:px-4 sm:py-3 text-sm text-[hsl(var(--foreground))]',
                         column.align === 'center' && 'text-center',
                         column.align === 'right' && 'text-right'
                       )}

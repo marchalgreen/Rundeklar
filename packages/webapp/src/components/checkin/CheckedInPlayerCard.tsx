@@ -80,7 +80,7 @@ export const CheckedInPlayerCard: React.FC<CheckedInPlayerCardProps> = ({
   return (
     <div
       className={clsx(
-        'flex items-center justify-between gap-3 rounded-md border-hair px-3 py-3 min-h-[64px]',
+        'flex items-center justify-between gap-3 rounded-md border-hair px-2 py-2 sm:px-3 sm:py-3 min-h-[64px]',
         'hover:shadow-sm transition-all duration-300 ease-[cubic-bezier(.2,.8,.2,1)]',
         'motion-reduce:transition-none bg-[hsl(var(--success)/.06)]',
         catLetter && 'cat-rail',
@@ -96,7 +96,7 @@ export const CheckedInPlayerCard: React.FC<CheckedInPlayerCardProps> = ({
         <CategoryBadge category={player.primaryCategory} />
         <div className="min-w-0 flex-1">
           <div className="flex items-center gap-1.5 flex-wrap">
-            <p className="text-base font-semibold text-[hsl(var(--foreground))] truncate">
+            <p className="text-sm sm:text-base font-semibold text-[hsl(var(--foreground))] truncate">
               {formatPlayerName(player.name, player.alias)}
             </p>
             {isOneRoundOnly && (

@@ -209,9 +209,9 @@ const CheckInPage = () => {
 
   if (!session) {
     return (
-      <section className="flex h-full items-center justify-center p-6">
+      <section className="flex h-full items-center justify-center p-4 sm:p-6">
         <div className="w-full max-w-2xl">
-          <div className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-[hsl(var(--surface)/.95)] via-[hsl(var(--surface)/.98)] to-[hsl(var(--surface-glass)/.85)] p-12 shadow-[0_8px_32px_hsl(var(--primary)/.08)] ring-1 ring-[hsl(var(--line)/.12)] backdrop-blur-sm">
+          <div className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-[hsl(var(--surface)/.95)] via-[hsl(var(--surface)/.98)] to-[hsl(var(--surface-glass)/.85)] p-6 sm:p-8 md:p-12 shadow-[0_8px_32px_hsl(var(--primary)/.08)] ring-1 ring-[hsl(var(--line)/.12)] backdrop-blur-sm">
             {/* Decorative background elements */}
             <div className="absolute -right-12 -top-12 h-48 w-48 rounded-full bg-[hsl(var(--primary)/.06)] blur-3xl" />
             <div className="absolute -bottom-12 -left-12 h-48 w-48 rounded-full bg-[hsl(var(--accent)/.06)] blur-3xl" />
@@ -254,10 +254,10 @@ const CheckInPage = () => {
   }
 
   return (
-    <section className="flex flex-col gap-6 pt-4">
-      <header className="flex items-center justify-between mb-2">
+    <section className="flex flex-col gap-4 sm:gap-6 pt-2 sm:pt-4">
+      <header className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between mb-2 sm:mb-3">
         <div className="flex-1">
-          <h1 className="text-xl font-semibold text-[hsl(var(--foreground))]">Indtjekning</h1>
+          <h1 className="text-lg sm:text-xl font-semibold text-[hsl(var(--foreground))]">Indtjekning</h1>
           <p className="text-base text-[hsl(var(--muted))] mt-1">
             Aktiv træning: {formatDate(session.date, false)}
             {checkedIn.length > 0 && (

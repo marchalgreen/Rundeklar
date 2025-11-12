@@ -125,8 +125,9 @@ export const PlayerForm: React.FC<PlayerFormProps> = ({
       role="dialog"
       aria-modal="true"
     >
-      <div className="h-full w-full max-w-md ring-1 ring-[hsl(var(--line)/.12)] bg-[hsl(var(--surface)/.98)] backdrop-blur-md p-6 shadow-[0_2px_8px_hsl(var(--line)/.12)]">
-        <div className="flex items-start justify-between mb-6">
+      <div className="h-full w-full max-w-md mx-4 sm:mx-0 ring-1 ring-[hsl(var(--line)/.12)] bg-[hsl(var(--surface)/.98)] backdrop-blur-md shadow-[0_2px_8px_hsl(var(--line)/.12)] flex flex-col">
+        {/* Header */}
+        <div className="flex items-start justify-between p-4 sm:p-6 border-b border-[hsl(var(--line)/.12)] flex-shrink-0">
           <div>
             <h3 className="text-lg font-medium text-[hsl(var(--foreground))]">
               {mode === 'create' ? 'Ny spiller' : 'Rediger spiller'}
@@ -137,7 +138,8 @@ export const PlayerForm: React.FC<PlayerFormProps> = ({
             Luk
           </Button>
         </div>
-        <form onSubmit={onSubmit} className="space-y-5">
+        {/* Scrollable content */}
+        <form onSubmit={onSubmit} className="flex-1 overflow-y-auto p-4 sm:p-6 space-y-4 sm:space-y-5 min-h-0">
           <label className="flex flex-col gap-2 text-sm">
             <span className="font-medium text-[hsl(var(--foreground))]">Navn *</span>
             <input
@@ -265,16 +267,16 @@ export const PlayerForm: React.FC<PlayerFormProps> = ({
               </select>
             </label>
           </div>
-
-          <div className="flex justify-end gap-3 pt-2">
-            <Button variant="ghost" type="button" onClick={onClose}>
-              Annuller
-            </Button>
-            <Button type="submit" className="ring-2 ring-[hsl(var(--accent)/.2)]">
-              Gem spiller
-            </Button>
-          </div>
         </form>
+        {/* Sticky footer actions */}
+        <div className="sticky bottom-0 border-t border-[hsl(var(--line)/.12)] bg-[hsl(var(--surface)/.98)]/95 backdrop-blur p-4 sm:p-6 flex justify-end gap-3">
+          <Button variant="ghost" type="button" onClick={onClose}>
+            Annuller
+          </Button>
+          <Button type="submit" className="ring-2 ring-[hsl(var(--accent)/.2)]" onClick={(e) => { e.preventDefault(); /* submit via form */ const form = (e.currentTarget.closest('div')?.previousElementSibling as HTMLFormElement | null); form?.requestSubmit?.() }}>
+            Gem spiller
+          </Button>
+        </div>
       </div>
     </div>
   )

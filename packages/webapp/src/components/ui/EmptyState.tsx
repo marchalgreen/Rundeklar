@@ -14,10 +14,10 @@ export type EmptyStateProps = {
  * @remarks Used when no data is available (e.g., no players, no matches).
  */
 export const EmptyState = ({ icon, title, helper, action, className }: EmptyStateProps) => (
-  <div className={clsx('flex flex-col items-center gap-3 text-center card-glass-inactive rounded-lg p-10', className)}>
-    <div className="rounded-full bg-[hsl(var(--surface)/.6)] p-4 text-accent">{icon}</div>
-    <h3 className="text-lg font-semibold text-[hsl(var(--foreground))]">{title}</h3>
-    <p className="max-w-sm text-sm text-[hsl(var(--muted))]">{helper}</p>
+  <div className={clsx('flex flex-col items-center gap-2 sm:gap-3 text-center card-glass-inactive rounded-lg p-6 sm:p-8 md:p-10', className)}>
+    <div className="rounded-full bg-[hsl(var(--surface)/.6)] p-3 sm:p-4 text-accent">{icon}</div>
+    <h3 className="text-base sm:text-lg font-semibold text-[hsl(var(--foreground))]">{title}</h3>
+    <p className="max-w-sm text-xs sm:text-sm text-[hsl(var(--muted))]">{helper}</p>
     {action}
   </div>
 )
