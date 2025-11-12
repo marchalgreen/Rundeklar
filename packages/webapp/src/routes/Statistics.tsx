@@ -538,43 +538,6 @@ const StatisticsPage = () => {
             </div>
           </div>
 
-          {/* Additional Metrics Section */}
-          <div className="card-glass-active border-hair rounded-lg p-4 md:p-5 shadow-sm">
-            <div className="space-y-3">
-              <h2 className="text-base font-semibold text-[hsl(var(--foreground))]">Yderligere statistik</h2>
-              <div className="grid gap-6 md:grid-cols-2">
-                {statistics.mostPlayedCourt !== null && (
-                  <div className="flex flex-col gap-1">
-                    <span className="text-sm text-[hsl(var(--muted))]">Mest spillede bane</span>
-                    <span className="text-xl font-semibold text-[hsl(var(--foreground))]">Bane {statistics.mostPlayedCourt}</span>
-                  </div>
-                )}
-                {statistics.averageLevelDifference !== null && (
-                  <div className="flex flex-col gap-1">
-                    <span className="text-sm text-[hsl(var(--muted))]">Gennemsnitlig niveauforskel</span>
-                    <span className="text-xl font-semibold text-[hsl(var(--foreground))]">
-                      {Math.round(statistics.averageLevelDifference)} point
-                    </span>
-                  </div>
-                )}
-                {Object.keys(statistics.matchesBySeason).length > 0 && (
-                  <div className="flex flex-col gap-1">
-                    <span className="text-sm text-[hsl(var(--muted))]">Kampe pr. sæson</span>
-                    <div className="mt-2 space-y-1">
-                      {Object.entries(statistics.matchesBySeason)
-                        .sort(([a], [b]) => b.localeCompare(a))
-                        .map(([season, count]) => (
-                          <div key={season} className="flex items-center justify-between text-sm">
-                            <span className="text-[hsl(var(--muted))]">Sæson {season}</span>
-                            <span className="font-semibold text-[hsl(var(--foreground))]">{String(count)}</span>
-                          </div>
-                        ))}
-                    </div>
-                  </div>
-                )}
-              </div>
-            </div>
-          </div>
             </>
           ) : null}
         </div>
