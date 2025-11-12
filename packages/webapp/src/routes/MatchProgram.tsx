@@ -185,7 +185,7 @@ const MatchProgramPage = () => {
 
       {!session && (
         <PageCard className="rounded-full px-6 py-3 text-center text-[hsl(var(--muted))]">
-          Start træningen for at begynde at matche spillere på banerne.
+          Ingen aktiv træning. Gå til Træner-siden for at starte en træning.
         </PageCard>
       )}
 
