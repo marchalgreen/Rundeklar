@@ -12,6 +12,7 @@ import type { Group, PlayerLite, ActiveSession, StartSessionPayload } from '../r
  */
 
 const PENDING_SEED_KEY = 'coach-landing:pending-session-seed'
+const LAST_GROUP_KEY = 'coach-landing:last-group-id'
 
 type PendingSeed = { groupId: string | null; extraPlayerIds: string[] }
 
@@ -27,6 +28,26 @@ export const readAndClearPendingSeed = (): PendingSeed | null => {
     if (!raw) return null
     localStorage.removeItem(PENDING_SEED_KEY)
     return JSON.parse(raw)
+  } catch {
+    return null
+  }
+}
+
+/** Persist last selected group id (sticky across navigations). */
+export const persistLastGroupId = (groupId: string | null) => {
+  try {
+    if (groupId) {
+      localStorage.setItem(LAST_GROUP_KEY, groupId)
+    } else {
+      localStorage.removeItem(LAST_GROUP_KEY)
+    }
+  } catch {}
+}
+
+/** Read last selected group id (non-destructive). */
+export const readLastGroupId = (): string | null => {
+  try {
+    return localStorage.getItem(LAST_GROUP_KEY)
   } catch {
     return null
   }
@@ -61,14 +82,17 @@ export const fetchTrainingGroups = async (): Promise<Group[]> => {
 /**
  * Lists players for a group (or all) with optional search term.
  */
-export const searchPlayers = async (opts: { q?: string; groupId?: string | null; limit?: number }): Promise<PlayerLite[]> => {
-  const { q, groupId, limit = 50 } = opts
+export const searchPlayers = async (opts: { q?: string; groupId?: string | null; excludeGroupId?: string; limit?: number }): Promise<PlayerLite[]> => {
+  const { q, groupId, excludeGroupId, limit = 50 } = opts
   // Existing API supports q, active filtering; group we filter client-side.
   const players = await api.players.list({ q: q?.trim() || undefined, active: true })
   const filtered = players.filter((p) => {
-    if (!groupId) return true
     const groups = ((p as any).trainingGroups as string[] | undefined) ?? []
-    return groups.includes(groupId)
+    // If a specific group was requested, only include those in that group
+    const includeByGroup = groupId ? groups.includes(groupId) : true
+    // Optionally exclude players who belong to a given group (e.g., active group)
+    const excludeByGroup = excludeGroupId ? !groups.includes(excludeGroupId) : true
+    return includeByGroup && excludeByGroup
   })
   const mapped: PlayerLite[] = filtered.slice(0, limit).map((p) => ({
     id: p.id,
@@ -98,6 +122,8 @@ export const getActiveForCoach = async (_coachId: string): Promise<ActiveSession
 export const startSession = async (payload: StartSessionPayload): Promise<ActiveSession> => {
   // Persist seed for CheckIn to optionally read (group + extra players)
   persistPendingSeed({ groupId: payload.groupId, extraPlayerIds: payload.allowedCrossGroupPlayerIds ?? [] })
+  // Also persist last selected group for future openings while session is active
+  persistLastGroupId(payload.groupId)
 
   const session = await api.session.startOrGetActive()
   return { sessionId: session.id, startedAt: session.date, groupId: payload.groupId }
@@ -115,5 +141,7 @@ export default {
   startSession,
   endActiveSession,
   persistPendingSeed,
-  readAndClearPendingSeed
+  readAndClearPendingSeed,
+  persistLastGroupId,
+  readLastGroupId
 }

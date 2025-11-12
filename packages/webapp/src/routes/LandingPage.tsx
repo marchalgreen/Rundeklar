@@ -73,7 +73,12 @@ const GroupCard: React.FC<{
           <div>
             <div className="text-base sm:text-lg font-medium text-[hsl(var(--foreground))]">{name}</div>
             <div className="text-sm text-[hsl(var(--muted))] mt-1">
-              {playersCount} spillere • Seneste: {formatDate(lastSessionAt ?? null, false)}
+              {playersCount} spillere
+              {lastSessionAt ? (
+                <>
+                  {' '}• Seneste: {formatDate(lastSessionAt, false)}
+                </>
+              ) : null}
             </div>
           </div>
           <div className="shrink-0 rounded-md px-2.5 py-1 text-xs font-semibold bg-[hsl(var(--surface-2))] text-[hsl(var(--foreground))] ring-1 ring-[hsl(var(--line)/.12)]">
@@ -202,10 +207,9 @@ const StartSessionControls: React.FC<{
   disabled: boolean
   starting: boolean
   onStart: () => void
-  onOpenSearch: (ev?: React.MouseEvent<HTMLButtonElement>) => void
   addedPlayers: Array<{ id: string; displayName: string }>
   onRemovePlayer: (id: string) => void
-}> = ({ disabled, starting, onStart, onOpenSearch, addedPlayers, onRemovePlayer }) => {
+}> = ({ disabled, starting, onStart, addedPlayers, onRemovePlayer }) => {
   return (
     <PageCard className="mt-4">
       <div className="flex flex-col gap-3">
@@ -213,10 +217,6 @@ const StartSessionControls: React.FC<{
           <Button onClick={onStart} disabled={disabled} loading={starting}>
             <Play className="w-4 h-4" aria-hidden />
             Start session
-          </Button>
-          <Button variant="secondary" onClick={(ev) => onOpenSearch(ev)}>
-            <Search className="w-4 h-4" aria-hidden />
-            Søg spillere på tværs
           </Button>
           <div className="ml-auto text-sm text-[hsl(var(--muted))] flex items-center gap-2">
             <Users className="w-4 h-4" aria-hidden />
@@ -260,6 +260,12 @@ const LandingPage: React.FC<LandingPageProps> = ({ coach, onRedirectToCheckin })
   const searchOpenerRef = useRef<HTMLElement | null>(null)
   const [courtsInUse, setCourtsInUse] = useState<number>(() => courtsSettings.getEffectiveCourtsInUse(tenantId, config.maxCourts))
 
+  const activeGroupName = useMemo(() => {
+    if (!state.activeSession?.groupId) return null
+    const g = state.groups.find((x) => x.id === state.activeSession?.groupId)
+    return g?.name ?? state.activeSession.groupId
+  }, [state.activeSession?.groupId, state.groups])
+
   useEffect(() => {
     courtsSettings.setStoredCourtsInUse(tenantId, courtsInUse)
   }, [tenantId, courtsInUse])
@@ -285,6 +291,14 @@ const LandingPage: React.FC<LandingPageProps> = ({ coach, onRedirectToCheckin })
             <div>
               <div className="text-base sm:text-lg font-medium text-[hsl(var(--foreground))]">Aktiv træning</div>
               <div className="text-sm text-[hsl(var(--muted))] mt-1">Startet: {formatDate(state.activeSession.startedAt)}</div>
+              {activeGroupName && (
+                <div className="inline-flex items-center gap-2 mt-1">
+                  <span className="text-xs text-[hsl(var(--muted))]">Gruppe:</span>
+                  <span className="text-xs px-2 py-0.5 rounded bg-[hsl(var(--surface-2))] ring-1 ring-[hsl(var(--line)/.12)] text-[hsl(var(--foreground))]">
+                    {activeGroupName}
+                  </span>
+                </div>
+              )}
             </div>
             <div className="flex gap-2">
               <Button onClick={state.goToCheckIn}>
@@ -319,10 +333,6 @@ const LandingPage: React.FC<LandingPageProps> = ({ coach, onRedirectToCheckin })
             disabled={!state.selectedGroupId && state.crossGroupPlayers.length === 0}
             starting={state.starting}
             onStart={state.start}
-            onOpenSearch={(ev) => {
-              searchOpenerRef.current = (ev?.currentTarget ?? null) as HTMLElement | null
-              state.openSearch()
-            }}
             addedPlayers={state.crossGroupPlayers}
             onRemovePlayer={state.removeCrossGroupPlayer}
           />

@@ -75,7 +75,12 @@ export const useLandingState = (opts?: UseLandingStateOptions): UseLandingState 
       try {
         const active = await api.getActiveForCoach(coachId)
         if (active) {
-          setActiveSession(active)
+          // If backend doesn't carry groupId, fall back to last remembered group
+          const remembered = api.readLastGroupId?.() ?? null
+          setActiveSession({
+            ...active,
+            groupId: active.groupId ?? remembered
+          })
           setStatusMessage(null)
         }
         const fetchedGroups = await api.fetchTrainingGroups()

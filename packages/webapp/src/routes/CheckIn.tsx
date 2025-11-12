@@ -8,13 +8,15 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react'
 import type { Player } from '@herlev-hjorten/common'
 import { UsersRound } from 'lucide-react'
-import { PageCard, EmptyState } from '../components/ui'
+import { PageCard, EmptyState, Button } from '../components/ui'
 import { TableSearch } from '../components/ui/Table'
 import { PlayerCard, CheckedInPlayerCard, LetterFilters } from '../components/checkin'
 import { useSession, useCheckIns, usePlayers } from '../hooks'
 import { formatDate } from '../lib/formatting'
 import { LETTER_FILTERS, UI_CONSTANTS } from '../constants'
 import coachLandingApi from '../services/coachLandingApi'
+import CrossGroupSearchModal from '../components/checkin/CrossGroupSearchModal'
+import api from '../api'
 
 /**
  * Check-in page component.
@@ -27,7 +29,7 @@ import coachLandingApi from '../services/coachLandingApi'
 const CheckInPage = () => {
   // Data hooks
   const { session, loading: sessionLoading } = useSession()
-  const { players, loading: playersLoading } = usePlayers({ active: true })
+  const { players, loading: playersLoading, refetch: refetchPlayers } = usePlayers({ active: true })
   const { checkedIn, checkIn, checkOut } = useCheckIns(session?.id ?? null)
 
   // UI state
@@ -40,6 +42,20 @@ const CheckInPage = () => {
   const [justCheckedIn, setJustCheckedIn] = useState<Set<string>>(new Set())
   const [animatingOut, setAnimatingOut] = useState<Set<string>>(new Set())
   const [animatingIn, setAnimatingIn] = useState<Set<string>>(new Set())
+  // Cross-group search state
+  const [searchOpen, setSearchOpen] = useState(false)
+  const [searchTerm, setSearchTerm] = useState('')
+  const [searchResults, setSearchResults] = useState<Array<{ id: string; displayName: string; groupId: string | null }>>([])
+  const [searching, setSearching] = useState(false)
+  const [searchOpener, setSearchOpener] = useState<HTMLElement | null>(null)
+  // Confirm action modal for picked cross-group player
+  const [confirmPlayerId, setConfirmPlayerId] = useState<string | null>(null)
+  // Derived prevent-pick set (extra allowed + already checked-in)
+  const pickedIdsSet = useMemo(() => {
+    const ids = new Set<string>(extraAllowedIds)
+    checkedIn.forEach((p) => ids.add(p.id))
+    return ids
+  }, [extraAllowedIds, checkedIn])
 
   const loading = sessionLoading || playersLoading
   // Read one-time handoff seed from LandingPage to prefilter group and include cross-group players in list
@@ -48,8 +64,36 @@ const CheckInPage = () => {
     if (seed) {
       setDefaultGroupId(seed.groupId ?? null)
       setExtraAllowedIds(new Set(seed.extraPlayerIds ?? []))
+    } else {
+      // Fallback to last known group if opening Check-in without a fresh seed
+      const lastGroup = coachLandingApi.readLastGroupId?.() ?? null
+      setDefaultGroupId(lastGroup)
     }
   }, [])
+
+  // Fetch cross-group search results
+  useEffect(() => {
+    if (!searchOpen) return
+    let cancelled = false
+    const run = async () => {
+      setSearching(true)
+      try {
+        const res = await coachLandingApi.searchPlayers({
+          q: searchTerm,
+          groupId: null,
+          excludeGroupId: defaultGroupId ?? undefined,
+          limit: 50
+        })
+        if (!cancelled) setSearchResults(res)
+      } finally {
+        if (!cancelled) setSearching(false)
+      }
+    }
+    void run()
+    return () => {
+      cancelled = true
+    }
+  }, [searchOpen, searchTerm, defaultGroupId])
 
   /**
    * Handles player check-in with animation feedback.
@@ -274,8 +318,22 @@ const CheckInPage = () => {
 
         {/* Players overview */}
         <PageCard className="space-y-6">
-          <div className="flex flex-col gap-4">
-            <TableSearch value={search} onChange={setSearch} placeholder="Søg efter spiller" />
+          <div className="flex flex-col gap-3">
+            <div className="flex items-center gap-2">
+              <div className="flex-1">
+                <TableSearch value={search} onChange={setSearch} placeholder="Søg efter spiller" />
+              </div>
+              <Button
+                variant="secondary"
+                onClick={(ev) => {
+                  setSearchOpener((ev.currentTarget ?? null) as HTMLElement | null)
+                  setSearchOpen(true)
+                }}
+                title="Tillad spiller fra anden gruppe i denne træning"
+              >
+                Tilføj fra anden gruppe
+              </Button>
+            </div>
             <LetterFilters selectedLetter={filterLetter} onLetterSelect={setFilterLetter} />
           </div>
 
@@ -303,6 +361,106 @@ const CheckInPage = () => {
           </div>
         </PageCard>
       </div>
+      <CrossGroupSearchModal
+        open={searchOpen}
+        onClose={() => setSearchOpen(false)}
+        term={searchTerm}
+        setTerm={setSearchTerm}
+        results={searchResults}
+        onPick={(id) => {
+          // Defer action choice to a custom confirm modal (no automatic allow)
+          setConfirmPlayerId(id)
+        }}
+        pickedIds={pickedIdsSet}
+        returnFocusTo={searchOpener}
+      />
+      {/* Confirm modal with three choices */}
+      {confirmPlayerId && (() => {
+        const picked = players.find((p) => p.id === confirmPlayerId) || null
+        if (!picked) return null
+        const canAddToGroup = Boolean(defaultGroupId)
+        const onClose = () => setConfirmPlayerId(null)
+        return (
+          <div
+            className="fixed inset-0 z-[60] flex items-center justify-center bg-black/40 backdrop-blur-sm"
+            role="dialog"
+            aria-modal="true"
+            onClick={(e) => {
+              if (e.target === e.currentTarget) onClose()
+            }}
+          >
+            <div
+              className="w-full max-w-md mx-4 bg-[hsl(var(--surface)/.98)] backdrop-blur-md ring-1 ring-[hsl(var(--line)/.12)] rounded-lg shadow-[var(--shadow-md)] p-4 sm:p-6"
+              onClick={(e) => e.stopPropagation()}
+            >
+              <h3 className="text-lg font-semibold text-[hsl(var(--foreground))]">Tillad {picked.name}</h3>
+              <p className="text-sm text-[hsl(var(--muted))] mt-1">
+                Vælg hvad du vil gøre med denne spiller.
+              </p>
+              <div className="mt-4 grid gap-2">
+                <Button
+                  onClick={() => {
+                    void (async () => {
+                      // Ensure allowed for this session (even though we check in immediately)
+                      setExtraAllowedIds((prev) => {
+                        const next = new Set(prev)
+                        next.add(picked.id)
+                        return next
+                      })
+                      await handleCheckIn(picked)
+                      setSearchOpen(false)
+                      onClose()
+                    })()
+                  }}
+                >
+                  Tjek ind nu
+                </Button>
+                <Button
+                  variant="secondary"
+                  onClick={() => {
+                    // Temporarily allow for this active session only
+                    setExtraAllowedIds((prev) => {
+                      const next = new Set(prev)
+                      next.add(picked.id)
+                      return next
+                    })
+                    setSearchOpen(false)
+                    onClose()
+                  }}
+                >
+                  Tillad for denne træning
+                </Button>
+                <Button
+                  variant="secondary"
+                  disabled={!canAddToGroup}
+                  onClick={() => {
+                    if (!defaultGroupId) return
+                    void (async () => {
+                      // Permanently add to the active training group
+                      const existing = ((picked as any).trainingGroups as string[] | undefined) ?? []
+                      const next = Array.from(new Set([...existing, defaultGroupId]))
+                      await api.players.update({ id: picked.id, patch: { trainingGroups: next } } as any)
+                      await refetchPlayers()
+                      // Close both modals; player will now be part of the group list
+                      setSearchOpen(false)
+                      onClose()
+                    })()
+                  }}
+                  title={!canAddToGroup ? 'Ingen aktiv gruppe valgt' : undefined}
+                >
+                  Tilføj permanent til denne træningsgruppe
+                </Button>
+                <Button
+                  variant="ghost"
+                  onClick={onClose}
+                >
+                  Annuller
+                </Button>
+              </div>
+            </div>
+          </div>
+        )
+      })()}
     </section>
   )
 }
