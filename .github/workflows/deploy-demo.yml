@@ -45,7 +45,7 @@ jobs:
           VITE_SUPABASE_ANON_KEY: ${{ secrets.VITE_SUPABASE_ANON_KEY }}
         run: |
           cd packages/webapp
-          pnpm build
+          VITE_BASE_PATH='/' pnpm build
 
       - name: Deploy to Demo Repository
         uses: peaceiris/actions-gh-pages@v3
