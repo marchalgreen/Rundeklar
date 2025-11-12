@@ -214,7 +214,7 @@ const AppInner = () => {
               <Route path="/:tenantId/check-in" element={<CheckInPage />} />
               <Route path="/:tenantId/match-program" element={<MatchProgramPage />} />
               <Route path="/:tenantId/statistics" element={<StatisticsPage />} />
-              <Route path="*" element={<Navigate to="/coach" replace />} />
+              <Route path="*" element={<Navigate to={tenantId === 'rundemanager' ? '/rundemanager/coach' : '/coach'} replace />} />
             </Routes>
           </div>
         </main>

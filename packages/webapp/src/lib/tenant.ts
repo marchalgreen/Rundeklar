@@ -9,6 +9,31 @@ import type { TenantConfig } from '@herlev-hjorten/common'
  * extractTenantId("/check-in") // "default"
  */
 export const extractTenantId = (pathname: string): string => {
+  // Check if we're on the demo domain and default to rundemanager tenant
+  if (typeof window !== 'undefined') {
+    const hostname = window.location.hostname
+    // If on RundeManagerDemo GitHub Pages, default to rundemanager tenant
+    if (hostname.includes('rundemanagerdemo') || hostname === 'marchalgreen.github.io' && window.location.pathname.includes('RundeManagerDemo')) {
+      // Only override if no explicit tenant in path
+      const parts = pathname.replace(/^\/+/, '').split('/')
+      const knownRoutes = ['coach', 'check-in', 'match-program', 'players', 'statistics']
+      const firstPart = parts[0]
+      
+      // If first part is a known route (no tenant prefix), use rundemanager
+      if (knownRoutes.includes(firstPart)) {
+        return 'rundemanager'
+      }
+      
+      // If first part is a tenant ID, use it
+      if (firstPart && !knownRoutes.includes(firstPart)) {
+        return firstPart
+      }
+      
+      // Default to rundemanager for demo domain
+      return 'rundemanager'
+    }
+  }
+  
   // Remove leading slash and split by "/"
   const parts = pathname.replace(/^\/+/, '').split('/')
   
@@ -57,6 +82,11 @@ export const getCurrentTenantId = (): string => {
     return 'default'
   }
   
+  // Check if we're on the demo domain and default to rundemanager tenant
+  const hostname = window.location.hostname
+  const isDemoDomain = hostname.includes('rundemanagerdemo') || 
+    (hostname === 'marchalgreen.github.io' && window.location.pathname.includes('RundeManagerDemo'))
+  
   // For HashRouter, pathname is like "/#/demo/check-in" or "/#/check-in"
   // For BrowserRouter, pathname is like "/demo/check-in" or "/check-in"
   const pathname = window.location.pathname
@@ -64,6 +94,21 @@ export const getCurrentTenantId = (): string => {
   
   // Extract path from hash if using HashRouter
   const actualPath = hash ? hash.replace(/^#/, '') : pathname
+  
+  // If on demo domain and no explicit tenant in path, default to rundemanager
+  if (isDemoDomain) {
+    const parts = actualPath.replace(/^\/+/, '').split('/')
+    const knownRoutes = ['coach', 'check-in', 'match-program', 'players', 'statistics']
+    const firstPart = parts[0]
+    
+    // If first part is a known route (no tenant prefix), use rundemanager
+    if (!firstPart || knownRoutes.includes(firstPart)) {
+      return 'rundemanager'
+    }
+    
+    // If first part is a tenant ID, use it
+    return firstPart
+  }
   
   return extractTenantId(actualPath)
 }
