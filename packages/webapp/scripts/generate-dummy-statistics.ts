@@ -18,9 +18,8 @@
 
 import { createClient } from '@supabase/supabase-js'
 import { loadTenantConfig } from '../src/lib/tenant'
-import { setCurrentTenantSupabaseClient, setCurrentTenantConfig, createTenantSupabaseClient } from '../src/lib/supabase'
-import { getStateCopy } from '../src/lib/supabase'
-import { createId } from '../src/lib/supabase'
+import { setCurrentTenantSupabaseClient, setCurrentTenantConfig } from '../src/lib/supabase'
+import { getStateCopy, createId, createSession, createCheckIn, createStatisticsSnapshot } from '../src/api/supabase'
 import type { Match, MatchPlayer, CheckIn } from '@herlev-hjorten/common'
 
 /**
@@ -82,9 +81,6 @@ async function generateDummyHistoricalData() {
   sessions.sort((a, b) => a.date.localeCompare(b.date))
 
   console.log(`📅 Generating ${sessions.length} sessions...`)
-
-  // Import Supabase functions
-  const { createSession, createCheckIn, createStatisticsSnapshot } = await import('../src/lib/supabase')
 
   // Process each session and create in Supabase
   let sessionCount = 0
@@ -265,8 +261,8 @@ async function generateDummyStatistics() {
       process.exit(1)
     }
 
-    // Create Supabase client and set it as the current tenant client
-    const supabase = createTenantSupabaseClient(config)
+    // Create Supabase client directly (bypassing createTenantSupabaseClient to avoid import.meta.env issues)
+    const supabase = createClient(config.supabaseUrl, config.supabaseKey)
     setCurrentTenantSupabaseClient(supabase)
     setCurrentTenantConfig(config)
 
