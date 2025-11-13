@@ -1,9 +1,13 @@
 {
-  "buildCommand": "pnpm build",
+  "buildCommand": "cd packages/webapp && pnpm build",
   "outputDirectory": "packages/webapp/dist",
   "installCommand": "pnpm install",
   "framework": "vite",
   "rewrites": [
+    {
+      "source": "/api/(.*)",
+      "destination": "/api/$1"
+    },
     {
       "source": "/(.*)",
       "destination": "/index.html"
