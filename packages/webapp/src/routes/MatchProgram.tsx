@@ -212,7 +212,7 @@ const MatchProgramPage = () => {
 
         {/* Courts */}
         <section className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3 xl:gap-2.5 pb-2">
-          {matches.map((court) => (
+          {Array.isArray(matches) ? matches.map((court) => (
             <CourtCard
               key={court.courtIdx}
               court={court}
@@ -234,7 +234,11 @@ const MatchProgramPage = () => {
               onSlotDragLeave={handleSlotDragLeave}
               onSlotDrop={handleSlotDrop}
             />
-          ))}
+          )) : (
+            <div className="col-span-full text-center text-red-500 p-4">
+              Error: matches is not an array. {error || 'Unknown error'}
+            </div>
+          )}
         </section>
       </div>
 

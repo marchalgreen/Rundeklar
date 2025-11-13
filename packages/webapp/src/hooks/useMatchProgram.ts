@@ -437,11 +437,16 @@ export const useMatchProgram = ({
       
       // Fall back to database
       const data = await api.matches.list(selectedRound)
-      const completeData = ensureAllCourts(data, maxCourts)
+      // Ensure data is always an array
+      const safeData = Array.isArray(data) ? data : []
+      const completeData = ensureAllCourts(safeData, maxCourts)
       setInMemoryMatches((prev) => ({ ...prev, [selectedRound]: completeData }))
       setMatches(completeData)
     } catch (err: any) {
+      console.error('[useMatchProgram] Error loading matches:', err)
       setError(err.message ?? 'Kunne ikke hente baner')
+      // Ensure matches is always an array even on error
+      setMatches([])
     }
   }, [session, selectedRound, maxCourts])
   
