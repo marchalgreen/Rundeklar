@@ -296,14 +296,14 @@ const CheckInPage = () => {
         {/* Checked-in players section */}
         <PageCard className="space-y-2 flex flex-col">
           <header className="flex items-center justify-between">
-            <h3 className="text-sm font-semibold">Tjekket ind</h3>
+            <h3 className="text-sm sm:text-base font-semibold">Tjekket ind</h3>
             <span className="rounded-full bg-[hsl(var(--surface-2))] px-2 py-0.5 text-xs font-medium">
               {checkedIn.length}
             </span>
           </header>
-          <div className="flex flex-col space-y-2 pr-2">
+          <div className="flex flex-col space-y-2 pr-2 overflow-y-auto max-h-[60vh] lg:max-h-none">
             {checkedIn.length === 0 ? (
-              <p className="text-xs text-[hsl(var(--muted))] text-center py-4">Ingen spillere tjekket ind</p>
+              <p className="text-xs sm:text-sm text-[hsl(var(--muted))] text-center py-4">Ingen spillere tjekket ind</p>
             ) : (
               sortedCheckedIn.map((player) => (
                 <CheckedInPlayerCard
@@ -319,19 +319,21 @@ const CheckInPage = () => {
         </PageCard>
 
         {/* Players overview */}
-        <PageCard className="space-y-6">
+        <PageCard className="space-y-4 sm:space-y-6">
           <div className="flex flex-col gap-3">
-            <div className="flex items-center gap-2">
-              <div className="flex-1">
+            <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2 sm:gap-2">
+              <div className="flex-1 min-w-0">
                 <TableSearch value={search} onChange={setSearch} placeholder="Søg efter spiller" />
               </div>
               <Button
                 variant="secondary"
+                size="sm"
                 onClick={(ev) => {
                   setSearchOpener((ev.currentTarget ?? null) as HTMLElement | null)
                   setSearchOpen(true)
                 }}
                 title="Tillad spiller fra anden gruppe i denne træning"
+                className="w-full sm:w-auto whitespace-normal sm:whitespace-nowrap text-xs sm:text-sm"
               >
                 Tilføj fra anden gruppe
               </Button>
@@ -339,7 +341,7 @@ const CheckInPage = () => {
             <LetterFilters selectedLetter={filterLetter} onLetterSelect={setFilterLetter} />
           </div>
 
-          <div className="flex flex-col space-y-2">
+          <div className="flex flex-col space-y-2 overflow-y-auto max-h-[60vh] lg:max-h-none">
             {filteredPlayers.length === 0 ? (
               <EmptyState
                 icon={<UsersRound />}
@@ -395,8 +397,8 @@ const CheckInPage = () => {
               className="w-full max-w-md mx-4 bg-[hsl(var(--surface)/.98)] backdrop-blur-md ring-1 ring-[hsl(var(--line)/.12)] rounded-lg shadow-[var(--shadow-md)] p-4 sm:p-6"
               onClick={(e) => e.stopPropagation()}
             >
-              <h3 className="text-lg font-semibold text-[hsl(var(--foreground))]">Tillad {picked.name}</h3>
-              <p className="text-sm text-[hsl(var(--muted))] mt-1">
+              <h3 className="text-base sm:text-lg font-semibold text-[hsl(var(--foreground))]">Tillad {picked.name}</h3>
+              <p className="text-xs sm:text-sm text-[hsl(var(--muted))] mt-1">
                 Vælg hvad du vil gøre med denne spiller.
               </p>
               <div className="mt-4 grid gap-2">
@@ -414,6 +416,7 @@ const CheckInPage = () => {
                       onClose()
                     })()
                   }}
+                  className="w-full text-xs sm:text-sm"
                 >
                   Tjek ind nu
                 </Button>
@@ -429,6 +432,7 @@ const CheckInPage = () => {
                     setSearchOpen(false)
                     onClose()
                   }}
+                  className="w-full text-xs sm:text-sm"
                 >
                   Tillad for denne træning
                 </Button>
@@ -449,12 +453,14 @@ const CheckInPage = () => {
                     })()
                   }}
                   title={!canAddToGroup ? 'Ingen aktiv gruppe valgt' : undefined}
+                  className="w-full text-xs sm:text-sm whitespace-normal"
                 >
                   Tilføj permanent til denne træningsgruppe
                 </Button>
                 <Button
                   variant="ghost"
                   onClick={onClose}
+                  className="w-full text-xs sm:text-sm"
                 >
                   Annuller
                 </Button>

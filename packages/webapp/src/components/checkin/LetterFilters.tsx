@@ -1,7 +1,7 @@
 /**
  * Letter filter component for filtering players by first letter of name.
  * 
- * Displays two rows of letter buttons for filtering players alphabetically.
+ * Displays letter buttons that wrap responsively based on screen size.
  */
 
 import React from 'react'
@@ -31,8 +31,9 @@ const LetterButton: React.FC<{
     type="button"
     onClick={onClick}
     className={clsx(
-      'rounded-full px-3 py-1 text-sm transition-all duration-200',
+      'rounded-full px-2 sm:px-3 py-1 text-xs sm:text-sm transition-all duration-200',
       'ease-[cubic-bezier(.2,.8,.2,1)] motion-reduce:transition-none',
+      'min-w-[32px] sm:min-w-[36px] flex items-center justify-center',
       isSelected
         ? 'bg-accent text-white shadow-[0_2px_8px_hsl(var(--line)/.12)]'
         : 'bg-[hsl(var(--surface-2))] text-[hsl(var(--muted))] hover:text-foreground border-hair'
@@ -45,7 +46,8 @@ const LetterButton: React.FC<{
 /**
  * Letter filters component.
  * 
- * Displays two rows of letter buttons for filtering players.
+ * Displays letter buttons for filtering players alphabetically.
+ * Responsive layout: single row on mobile, organized rows on larger screens.
  * 
  * @example
  * ```tsx
@@ -60,31 +62,20 @@ export const LetterFilters: React.FC<LetterFiltersProps> = ({
   onLetterSelect
 }) => {
   const allLettersArray = Array.from(LETTER_FILTERS.ALL_LETTERS)
-  const row1 = [LETTER_FILTERS.ALL, ...allLettersArray.slice(0, LETTER_FILTERS.ROW_SPLIT_INDEX)]
-  const row2 = allLettersArray.slice(LETTER_FILTERS.ROW_SPLIT_INDEX)
+  const allLetters = [LETTER_FILTERS.ALL, ...allLettersArray]
   
+  // Single flex-wrap container that wraps naturally
+  // Smaller buttons and tighter gaps on mobile prevent excessive rows
   return (
-    <div className="flex flex-col gap-2">
-      <div className="flex gap-2 flex-wrap">
-        {row1.map((letter) => (
-          <LetterButton
-            key={letter}
-            letter={letter}
-            isSelected={selectedLetter === letter}
-            onClick={() => onLetterSelect(letter)}
-          />
-        ))}
-      </div>
-      <div className="flex gap-2 flex-wrap">
-        {row2.map((letter) => (
-          <LetterButton
-            key={letter}
-            letter={letter}
-            isSelected={selectedLetter === letter}
-            onClick={() => onLetterSelect(letter)}
-          />
-        ))}
-      </div>
+    <div className="flex flex-wrap gap-1.5 sm:gap-2">
+      {allLetters.map((letter) => (
+        <LetterButton
+          key={letter}
+          letter={letter}
+          isSelected={selectedLetter === letter}
+          onClick={() => onLetterSelect(letter)}
+        />
+      ))}
     </div>
   )
 }

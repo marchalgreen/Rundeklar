@@ -96,7 +96,7 @@ export const CheckedInPlayerCard: React.FC<CheckedInPlayerCardProps> = ({
   return (
     <div
       className={clsx(
-        'flex items-center justify-between gap-3 rounded-md border-hair px-2 py-2 sm:px-3 sm:py-3 min-h-[64px]',
+        'flex items-center justify-between gap-2 sm:gap-3 rounded-md border-hair px-2 py-2 sm:px-3 sm:py-3 min-h-[64px]',
         'hover:shadow-sm transition-all duration-300 ease-[cubic-bezier(.2,.8,.2,1)]',
         'motion-reduce:transition-none bg-[hsl(var(--success)/.06)]',
         'avatar-rail',
@@ -110,17 +110,22 @@ export const CheckedInPlayerCard: React.FC<CheckedInPlayerCardProps> = ({
         ...(variantCardBg ? ({ backgroundColor: variantCardBg } as React.CSSProperties) : {})
       }}
     >
-      <div className="flex items-center gap-2 min-w-0 flex-1">
+      <div className="flex items-center gap-1.5 sm:gap-2 min-w-0 flex-1">
         <InitialsAvatar seed={player.id} name={player.name} gender={player.gender ?? null} />
         <div className="min-w-0 flex-1">
-          <div className="flex items-center gap-1.5 flex-wrap">
-            <p className={`font-semibold text-[hsl(var(--foreground))] truncate text-base sm:text-lg`}>
+          <div className="flex items-center gap-1 sm:gap-1.5 flex-wrap">
+            <p className={`font-semibold text-[hsl(var(--foreground))] truncate text-sm sm:text-base md:text-lg`}>
               {formatPlayerCardName(player.name, player.alias)}
             </p>
             {isOneRoundOnly && (
-              <span className="inline-flex items-center rounded-full bg-[hsl(var(--surface-2))] text-[hsl(var(--muted))] border-hair px-2 py-1 text-xs whitespace-nowrap">
-                Kun 1 runde
-              </span>
+              <>
+                <span className="hidden sm:inline-flex items-center rounded-full bg-[hsl(var(--surface-2))] text-[hsl(var(--muted))] border-hair px-2 py-1 text-xs whitespace-nowrap">
+                  Kun 1 runde
+                </span>
+                <span className="sm:hidden inline-flex items-center rounded-full bg-[hsl(var(--surface-2))] text-[hsl(var(--muted))] border-hair px-1.5 py-0.5 text-xs whitespace-nowrap">
+                  1
+                </span>
+              </>
             )}
           </div>
         </div>
@@ -129,7 +134,7 @@ export const CheckedInPlayerCard: React.FC<CheckedInPlayerCardProps> = ({
         variant="secondary"
         size="sm"
         onClick={() => onCheckOut(player)}
-        className="text-xs px-3 py-1.5 flex-shrink-0"
+        className="text-xs px-2 sm:px-3 py-1.5 flex-shrink-0 whitespace-nowrap"
       >
         Tjek ud
       </Button>

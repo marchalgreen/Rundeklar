@@ -237,7 +237,7 @@ export const TableSearch = ({ value, onChange, placeholder }: TableSearchProps) 
   }
 
   return (
-    <label className="relative inline-flex w-full max-w-sm items-center">
+    <label className="relative inline-flex w-full items-center">
       <Search className="pointer-events-none absolute left-3 h-4 w-4 text-[hsl(var(--muted))]" aria-hidden />
       <input
         value={value}
