@@ -352,18 +352,27 @@ export const resetState = () => {
  */
 export const getStateCopy = async (): Promise<DatabaseState> => {
   const state = await loadState()
+  // Safety checks: ensure all arrays exist before mapping
+  const safePlayers = Array.isArray(state.players) ? state.players : []
+  const safeSessions = Array.isArray(state.sessions) ? state.sessions : []
+  const safeCheckIns = Array.isArray(state.checkIns) ? state.checkIns : []
+  const safeCourts = Array.isArray(state.courts) ? state.courts : []
+  const safeMatches = Array.isArray(state.matches) ? state.matches : []
+  const safeMatchPlayers = Array.isArray(state.matchPlayers) ? state.matchPlayers : []
+  const safeStatistics = Array.isArray(state.statistics) ? state.statistics : []
+  
   return {
-    players: state.players.map((player) => ({ ...player })),
-    sessions: state.sessions.map((session) => ({ ...session })),
-    checkIns: state.checkIns.map((checkIn) => ({ ...checkIn })),
-    courts: state.courts.map((court) => ({ ...court })),
-    matches: state.matches.map((match) => ({ ...match })),
-    matchPlayers: state.matchPlayers.map((matchPlayer) => ({ ...matchPlayer })),
-    statistics: (state.statistics ?? []).map((stat) => ({
+    players: safePlayers.map((player) => ({ ...player })),
+    sessions: safeSessions.map((session) => ({ ...session })),
+    checkIns: safeCheckIns.map((checkIn) => ({ ...checkIn })),
+    courts: safeCourts.map((court) => ({ ...court })),
+    matches: safeMatches.map((match) => ({ ...match })),
+    matchPlayers: safeMatchPlayers.map((matchPlayer) => ({ ...matchPlayer })),
+    statistics: safeStatistics.map((stat) => ({
       ...stat,
-      matches: stat.matches.map((m) => ({ ...m })),
-      matchPlayers: stat.matchPlayers.map((mp) => ({ ...mp })),
-      checkIns: stat.checkIns.map((c) => ({ ...c }))
+      matches: Array.isArray(stat.matches) ? stat.matches.map((m) => ({ ...m })) : [],
+      matchPlayers: Array.isArray(stat.matchPlayers) ? stat.matchPlayers.map((mp) => ({ ...mp })) : [],
+      checkIns: Array.isArray(stat.checkIns) ? stat.checkIns.map((c) => ({ ...c })) : []
     }))
   }
 }
