@@ -13,6 +13,7 @@ import cors from 'cors'
 import { readFileSync, existsSync } from 'fs'
 import { join, dirname } from 'path'
 import { fileURLToPath } from 'url'
+import type { VercelRequest, VercelResponse } from '@vercel/node'
 
 const __filename = fileURLToPath(import.meta.url)
 const __dirname = dirname(__filename)
@@ -50,6 +51,12 @@ if (!envLoaded) {
   console.warn('⚠️  No .env.local file found. Looking in:', possiblePaths)
 }
 
+// Fallback: Use VITE_DATABASE_URL if DATABASE_URL is not set (for compatibility)
+if (!process.env.DATABASE_URL && process.env.VITE_DATABASE_URL) {
+  process.env.DATABASE_URL = process.env.VITE_DATABASE_URL
+  console.log('📝 Using VITE_DATABASE_URL as DATABASE_URL')
+}
+
 const app = express()
 const PORT = 3000
 
@@ -62,10 +69,14 @@ let sql: ReturnType<typeof postgres> | null = null
 
 function getPostgresClient() {
   if (!sql) {
-    const connectionString = process.env.DATABASE_URL || process.env.DATABASE_URL_UNPOOLED
+    const connectionString = 
+      process.env.DATABASE_URL || 
+      process.env.DATABASE_URL_UNPOOLED ||
+      process.env.VITE_DATABASE_URL ||
+      process.env.VITE_DATABASE_URL_UNPOOLED
     
     if (!connectionString) {
-      throw new Error('DATABASE_URL environment variable is not set. Create .env.local with DATABASE_URL=...')
+      throw new Error('DATABASE_URL environment variable is not set. Create .env.local with DATABASE_URL=... or VITE_DATABASE_URL=...')
     }
 
     console.log('🔌 Connecting to Neon database...')
@@ -79,6 +90,49 @@ function getPostgresClient() {
   }
   
   return sql
+}
+
+// Wrapper to convert Vercel handler to Express handler
+const wrapHandler = (handler: (req: VercelRequest, res: VercelResponse) => Promise<void>) => {
+  return async (req: express.Request, res: express.Response) => {
+    // Convert Express req/res to Vercel format
+    const vercelReq = req as unknown as VercelRequest
+    const vercelRes = res as unknown as VercelResponse
+    await handler(vercelReq, vercelRes)
+  }
+}
+
+// Load auth route handlers
+async function setupAuthRoutes() {
+  const registerHandler = (await import('../api/auth/register.js')).default
+  const verifyEmailHandler = (await import('../api/auth/verify-email.js')).default
+  const loginHandler = (await import('../api/auth/login.js')).default
+  const refreshHandler = (await import('../api/auth/refresh.js')).default
+  const logoutHandler = (await import('../api/auth/logout.js')).default
+  const forgotPasswordHandler = (await import('../api/auth/forgot-password.js')).default
+  const resetPasswordHandler = (await import('../api/auth/reset-password.js')).default
+  const changePasswordHandler = (await import('../api/auth/change-password.js')).default
+  const setup2FAHandler = (await import('../api/auth/setup-2fa.js')).default
+  const verify2FASetupHandler = (await import('../api/auth/verify-2fa-setup.js')).default
+  const disable2FAHandler = (await import('../api/auth/disable-2fa.js')).default
+  const meHandler = (await import('../api/auth/me.js')).default
+  const updateProfileHandler = (await import('../api/auth/update-profile.js')).default
+
+  // Auth routes
+  app.post('/api/auth/register', wrapHandler(registerHandler))
+  app.post('/api/auth/verify-email', wrapHandler(verifyEmailHandler))
+  app.post('/api/auth/login', wrapHandler(loginHandler))
+  app.post('/api/auth/refresh', wrapHandler(refreshHandler))
+  app.post('/api/auth/logout', wrapHandler(logoutHandler))
+  app.post('/api/auth/forgot-password', wrapHandler(forgotPasswordHandler))
+  app.post('/api/auth/reset-password', wrapHandler(resetPasswordHandler))
+  app.post('/api/auth/change-password', wrapHandler(changePasswordHandler))
+  app.post('/api/auth/setup-2fa', wrapHandler(setup2FAHandler))
+  app.post('/api/auth/verify-2fa-setup', wrapHandler(verify2FASetupHandler))
+  app.post('/api/auth/disable-2fa', wrapHandler(disable2FAHandler))
+  app.get('/api/auth/me', wrapHandler(meHandler))
+  app.put('/api/auth/update-profile', wrapHandler(updateProfileHandler))
+  app.post('/api/auth/update-profile', wrapHandler(updateProfileHandler))
 }
 
 // API route handler (same as Vercel serverless function)
@@ -114,10 +168,20 @@ app.post('/api/db', async (req, res) => {
   }
 })
 
-app.listen(PORT, () => {
-  console.log(`🚀 API server running on http://127.0.0.1:${PORT}`)
-  console.log(`📡 API endpoint: http://127.0.0.1:${PORT}/api/db`)
-  console.log(`\n💡 Keep this running while developing`)
-  console.log(`💡 Start frontend in another terminal: pnpm dev\n`)
+// Setup auth routes and start server
+setupAuthRoutes().then(() => {
+  app.listen(PORT, () => {
+    console.log(`🚀 API server running on http://127.0.0.1:${PORT}`)
+    console.log(`📡 API endpoints:`)
+    console.log(`   - POST /api/db`)
+    console.log(`   - POST /api/auth/register`)
+    console.log(`   - POST /api/auth/login`)
+    console.log(`   - ... and other auth routes`)
+    console.log(`\n💡 Keep this running while developing`)
+    console.log(`💡 Frontend will start automatically via concurrently\n`)
+  })
+}).catch((error) => {
+  console.error('Failed to load auth routes:', error)
+  process.exit(1)
 })
 

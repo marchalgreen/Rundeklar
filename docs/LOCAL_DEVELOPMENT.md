@@ -44,9 +44,18 @@ Create `.env.local` in `packages/webapp/`:
 
 ```bash
 DATABASE_URL=postgresql://user:password@ep-xxxxx.region.aws.neon.tech/dbname?sslmode=require
+
+# Authentication (see docs/AUTH_SETUP.md for details)
+AUTH_JWT_SECRET=your-jwt-secret-here  # Generate with: openssl rand -base64 32
+RESEND_API_KEY=re_xxxxxxxxxxxxx
+RESEND_FROM_EMAIL=onboarding@resend.dev
+RESEND_FROM_NAME=Herlev Hjorten
+APP_URL=http://localhost:5173
 ```
 
 **Note**: The API route reads `DATABASE_URL` from environment variables. The frontend doesn't need it.
+
+For full authentication setup instructions, see [docs/AUTH_SETUP.md](./AUTH_SETUP.md).
 
 ## Troubleshooting
 

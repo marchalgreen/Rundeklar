@@ -5,10 +5,19 @@ import CheckInPage from './routes/CheckIn'
 import MatchProgramPage from './routes/MatchProgram'
 import StatisticsPage from './routes/Statistics'
 import LandingPage from './routes/LandingPage'
+import LoginPage from './routes/auth/Login'
+import RegisterPage from './routes/auth/Register'
+import VerifyEmailPage from './routes/auth/VerifyEmail'
+import ForgotPasswordPage from './routes/auth/ForgotPassword'
+import ResetPasswordPage from './routes/auth/ResetPassword'
+import AccountSettingsPage from './routes/auth/AccountSettings'
 import { SidebarItem } from './components/navigation/SidebarItem'
-import { UserCheck, UsersRound, Grid2x2, BarChart3, Menu, X, PlayCircle } from 'lucide-react'
+import { UserCheck, UsersRound, Grid2x2, BarChart3, Menu, X, PlayCircle, User, LogOut } from 'lucide-react'
 import { TenantProvider, useTenant } from './contexts/TenantContext'
+import { AuthProvider, useAuth } from './contexts/AuthContext'
+import { ProtectedRoute } from './components/auth/ProtectedRoute'
 import { extractTenantId } from './lib/tenant'
+import { Button } from './components/ui'
 
 /**
  * Component that updates document title based on tenant config.
@@ -34,10 +43,13 @@ const TenantTitleUpdater = () => {
  */
 const Header = () => {
   const { config, buildPath } = useTenant()
+  const { isAuthenticated, club, logout } = useAuth()
   const logoPath = `${import.meta.env.BASE_URL}${config.logo}`
   const [isMenuOpen, setIsMenuOpen] = useState(false)
+  const [isUserMenuOpen, setIsUserMenuOpen] = useState(false)
   const menuRef = useRef<HTMLDivElement>(null)
   const buttonRef = useRef<HTMLButtonElement>(null)
+  const userMenuRef = useRef<HTMLDivElement>(null)
 
   // Close menu on escape key
   useEffect(() => {
@@ -57,10 +69,13 @@ const Header = () => {
       if (isMenuOpen && menuRef.current && !menuRef.current.contains(e.target as Node) && !buttonRef.current?.contains(e.target as Node)) {
         setIsMenuOpen(false)
       }
+      if (isUserMenuOpen && userMenuRef.current && !userMenuRef.current.contains(e.target as Node)) {
+        setIsUserMenuOpen(false)
+      }
     }
     document.addEventListener('mousedown', handleClickOutside)
     return () => document.removeEventListener('mousedown', handleClickOutside)
-  }, [isMenuOpen])
+  }, [isMenuOpen, isUserMenuOpen])
 
   // Close menu when route changes (mobile)
   const location = useLocation()
@@ -134,8 +149,51 @@ const Header = () => {
           {isMenuOpen ? <X size={24} /> : <Menu size={24} />}
         </button>
 
-        {/* Desktop: Right spacer for balance */}
-        <div className="hidden lg:block flex-shrink-0" style={{ width: '200px' }} aria-hidden="true" />
+        {/* Desktop: Right section - User menu or login */}
+        <div className="hidden lg:flex items-center justify-end flex-shrink-0" style={{ width: '200px' }}>
+          {isAuthenticated ? (
+            <div className="relative" ref={userMenuRef}>
+              <button
+                onClick={() => setIsUserMenuOpen(!isUserMenuOpen)}
+                className="flex items-center gap-2 px-3 py-2 rounded-md hover:bg-[hsl(var(--surface-2))] transition-colors"
+                aria-label="Bruger menu"
+              >
+                <User size={20} />
+                <span className="text-sm">{club?.email}</span>
+              </button>
+              {isUserMenuOpen && (
+                <div className="absolute right-0 mt-2 w-48 bg-[hsl(var(--surface))] border border-[hsl(var(--line))] rounded-md shadow-lg z-50">
+                  <Link
+                    to={buildPath('/account')}
+                    className="block px-4 py-2 hover:bg-[hsl(var(--surface-2))] text-sm"
+                    onClick={() => setIsUserMenuOpen(false)}
+                  >
+                    <div className="flex items-center gap-2">
+                      <User size={16} />
+                      Kontoindstillinger
+                    </div>
+                  </Link>
+                  <button
+                    onClick={() => {
+                      logout()
+                      setIsUserMenuOpen(false)
+                    }}
+                    className="w-full text-left px-4 py-2 hover:bg-[hsl(var(--surface-2))] text-sm text-red-600 dark:text-red-400"
+                  >
+                    <div className="flex items-center gap-2">
+                      <LogOut size={16} />
+                      Log ud
+                    </div>
+                  </button>
+                </div>
+              )}
+            </div>
+          ) : (
+            <Link to={buildPath('/login')}>
+              <Button size="sm">Log ind</Button>
+            </Link>
+          )}
+        </div>
       </header>
 
       {/* Mobile/Tablet: Slide-out menu */}
@@ -203,38 +261,60 @@ const AppInner = () => {
   const actualPath = hash ? hash.replace(/^#/, '') : pathname
   const tenantId = extractTenantId(actualPath)
 
+  // Check if current route is an auth route (should hide header)
+  const isAuthRoute = /^\/([^/]+\/)?(login|register|verify-email|forgot-password|reset-password)(\/|$)/.test(actualPath)
+
   return (
     <TenantProvider tenantId={tenantId}>
-      <TenantTitleUpdater />
-      <div className="flex min-h-screen flex-col text-[hsl(var(--foreground))] overflow-x-hidden max-w-full">
-        <Header />
-        <main className="flex-1 overflow-y-auto overflow-x-hidden max-w-full">
-          <div className="flex w-full flex-col gap-4 sm:gap-6 px-4 sm:px-6 pb-6 sm:pb-10 pt-4 sm:pt-6 md:px-8 lg:px-12 max-w-full overflow-x-hidden">
-            <Routes>
-              <Route path="/coach" element={<LandingPage onRedirectToCheckin={() => {
-                // Navigate to check-in; rely on default session state.
-                // For default tenant, use "/check-in"; otherwise include tenant prefix.
-                const target = tenantId && tenantId !== 'default' ? `#/${tenantId}/check-in` : '#/check-in'
-                window.location.hash = target
-              }} />} />
-              <Route path="/players" element={<PlayersPage />} />
-              <Route path="/check-in" element={<CheckInPage />} />
-              <Route path="/match-program" element={<MatchProgramPage />} />
-              <Route path="/statistics" element={<StatisticsPage />} />
-              {/* Support tenant-prefixed routes */}
-              <Route path="/:tenantId/coach" element={<LandingPage onRedirectToCheckin={() => {
-                const id = tenantId && tenantId !== 'default' ? tenantId : 'default'
-                window.location.hash = id === 'default' ? '#/check-in' : `#/${id}/check-in`
-              }} />} />
-              <Route path="/:tenantId/players" element={<PlayersPage />} />
-              <Route path="/:tenantId/check-in" element={<CheckInPage />} />
-              <Route path="/:tenantId/match-program" element={<MatchProgramPage />} />
-              <Route path="/:tenantId/statistics" element={<StatisticsPage />} />
-              <Route path="*" element={<Navigate to={tenantId === 'rundemanager' ? '/rundemanager/coach' : '/coach'} replace />} />
-            </Routes>
-          </div>
-        </main>
-      </div>
+      <AuthProvider>
+        <TenantTitleUpdater />
+        <div className="flex min-h-screen flex-col text-[hsl(var(--foreground))] overflow-x-hidden max-w-full">
+          {!isAuthRoute && <Header />}
+          <main className="flex-1 overflow-y-auto overflow-x-hidden max-w-full">
+            <div className="flex w-full flex-col gap-4 sm:gap-6 px-4 sm:px-6 pb-6 sm:pb-10 pt-4 sm:pt-6 md:px-8 lg:px-12 max-w-full overflow-x-hidden">
+              <Routes>
+                {/* Auth routes */}
+                <Route path="/login" element={<LoginPage />} />
+                <Route path="/register" element={<RegisterPage />} />
+                <Route path="/verify-email" element={<VerifyEmailPage />} />
+                <Route path="/forgot-password" element={<ForgotPasswordPage />} />
+                <Route path="/reset-password" element={<ResetPasswordPage />} />
+                <Route path="/account" element={<ProtectedRoute><AccountSettingsPage /></ProtectedRoute>} />
+                
+                {/* Tenant-prefixed auth routes */}
+                <Route path="/:tenantId/login" element={<LoginPage />} />
+                <Route path="/:tenantId/register" element={<RegisterPage />} />
+                <Route path="/:tenantId/verify-email" element={<VerifyEmailPage />} />
+                <Route path="/:tenantId/forgot-password" element={<ForgotPasswordPage />} />
+                <Route path="/:tenantId/reset-password" element={<ResetPasswordPage />} />
+                <Route path="/:tenantId/account" element={<ProtectedRoute><AccountSettingsPage /></ProtectedRoute>} />
+
+                {/* Main app routes */}
+                <Route path="/coach" element={<LandingPage onRedirectToCheckin={() => {
+                  const target = tenantId && tenantId !== 'default' ? `#/${tenantId}/check-in` : '#/check-in'
+                  window.location.hash = target
+                }} />} />
+                <Route path="/players" element={<PlayersPage />} />
+                <Route path="/check-in" element={<CheckInPage />} />
+                <Route path="/match-program" element={<MatchProgramPage />} />
+                <Route path="/statistics" element={<StatisticsPage />} />
+                
+                {/* Tenant-prefixed routes */}
+                <Route path="/:tenantId/coach" element={<LandingPage onRedirectToCheckin={() => {
+                  const id = tenantId && tenantId !== 'default' ? tenantId : 'default'
+                  window.location.hash = id === 'default' ? '#/check-in' : `#/${id}/check-in`
+                }} />} />
+                <Route path="/:tenantId/players" element={<PlayersPage />} />
+                <Route path="/:tenantId/check-in" element={<CheckInPage />} />
+                <Route path="/:tenantId/match-program" element={<MatchProgramPage />} />
+                <Route path="/:tenantId/statistics" element={<StatisticsPage />} />
+                
+                <Route path="*" element={<Navigate to={tenantId === 'rundemanager' ? '/rundemanager/coach' : '/coach'} replace />} />
+              </Routes>
+            </div>
+          </main>
+        </div>
+      </AuthProvider>
     </TenantProvider>
   )
 }
