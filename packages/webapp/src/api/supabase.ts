@@ -118,9 +118,9 @@ const rowToStatisticsSnapshot = (row: any): StatisticsSnapshot => ({
   sessionId: row.session_id,
   sessionDate: row.session_date,
   season: row.season,
-  matches: (row.matches as any[]) || [],
-  matchPlayers: (row.match_players as any[]) || [],
-  checkIns: (row.check_ins as any[]) || [],
+  matches: Array.isArray(row.matches) ? row.matches : [],
+  matchPlayers: Array.isArray(row.match_players) ? row.match_players : [],
+  checkIns: Array.isArray(row.check_ins) ? row.check_ins : [],
   createdAt: row.created_at
 })
 

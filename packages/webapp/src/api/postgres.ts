@@ -217,16 +217,32 @@ const rowToMatchPlayer = (row: any): MatchPlayer => ({
 /**
  * Converts a Postgres row to a StatisticsSnapshot.
  */
-const rowToStatisticsSnapshot = (row: any): StatisticsSnapshot => ({
-  id: row.id,
-  sessionId: row.session_id,
-  sessionDate: row.session_date,
-  season: row.season,
-  matches: (row.matches as any[]) || [],
-  matchPlayers: (row.match_players as any[]) || [],
-  checkIns: (row.check_ins as any[]) || [],
-  createdAt: row.created_at
-})
+const rowToStatisticsSnapshot = (row: any): StatisticsSnapshot => {
+  // Helper to parse JSONB columns - postgres.js may return them as strings or already parsed
+  const parseJsonb = (value: any): any[] => {
+    if (Array.isArray(value)) return value
+    if (typeof value === 'string') {
+      try {
+        const parsed = JSON.parse(value)
+        return Array.isArray(parsed) ? parsed : []
+      } catch {
+        return []
+      }
+    }
+    return []
+  }
+  
+  return {
+    id: row.id,
+    sessionId: row.session_id,
+    sessionDate: row.session_date,
+    season: row.season,
+    matches: parseJsonb(row.matches),
+    matchPlayers: parseJsonb(row.match_players),
+    checkIns: parseJsonb(row.check_ins),
+    createdAt: row.created_at
+  }
+}
 
 /**
  * Loads database state from Postgres.
@@ -1045,15 +1061,17 @@ export const getStatisticsSnapshots = async (): Promise<StatisticsSnapshot[]> =>
 export const createStatisticsSnapshot = async (snapshot: Omit<StatisticsSnapshot, 'id' | 'createdAt'>): Promise<StatisticsSnapshot> => {
   const sql = getPostgres()
   const tenantId = getTenantId()
+  // Pass arrays directly - postgres library handles JSONB conversion automatically
+  // Ensure arrays are never null/undefined (use empty array as fallback)
   const [created] = await sql`
     INSERT INTO statistics_snapshots (session_id, session_date, season, matches, match_players, check_ins, tenant_id)
     VALUES (
       ${snapshot.sessionId},
       ${snapshot.sessionDate},
       ${snapshot.season},
-      ${JSON.stringify(snapshot.matches)},
-      ${JSON.stringify(snapshot.matchPlayers)},
-      ${JSON.stringify(snapshot.checkIns)},
+      ${snapshot.matches ?? []},
+      ${snapshot.matchPlayers ?? []},
+      ${snapshot.checkIns ?? []},
       ${tenantId}
     )
     RETURNING *

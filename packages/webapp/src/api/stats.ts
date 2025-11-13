@@ -6,7 +6,7 @@ import type {
   MatchPlayer,
   CheckIn
 } from '@herlev-hjorten/common'
-import { createId, getStateCopy, getStatisticsSnapshots, createStatisticsSnapshot, createSession, createCheckIn, getMatches, getMatchPlayers, invalidateCache } from './postgres'
+import { createId, getStateCopy, getStatisticsSnapshots, createStatisticsSnapshot, createSession, createCheckIn, getMatches, getMatchPlayers, getCheckIns, invalidateCache } from './postgres'
 
 /**
  * Determines season from a date string (August to July).
@@ -93,21 +93,22 @@ const snapshotSession = async (sessionId: string): Promise<StatisticsSnapshot> =
     const season = getSeasonFromDate(session.date)
     console.log('[snapshotSession] Season calculated:', season)
 
-    // Directly query Postgres for fresh matches and matchPlayers to avoid stale cache
-    // Also get checkIns from fresh state
-    console.log('[snapshotSession] Querying Postgres for matches and matchPlayers...')
-    const [allMatches, allMatchPlayers] = await Promise.all([
+    // Explicitly invalidate checkIns cache to ensure fresh data
+    invalidateCache('checkIns')
+    
+    // Directly query Postgres for fresh matches, matchPlayers, and checkIns to avoid stale cache
+    console.log('[snapshotSession] Querying Postgres for matches, matchPlayers, and checkIns...')
+    const [allMatches, allMatchPlayers, allCheckIns] = await Promise.all([
       getMatches(),
-      getMatchPlayers()
+      getMatchPlayers(),
+      getCheckIns()
     ])
     
     console.log('[snapshotSession] Retrieved from Postgres:', {
       totalMatches: allMatches.length,
-      totalMatchPlayers: allMatchPlayers.length
+      totalMatchPlayers: allMatchPlayers.length,
+      totalCheckIns: allCheckIns.length
     })
-    
-    // Get checkIns from fresh state (already loaded above)
-    const allCheckIns = state.checkIns
     
     const sessionMatches = allMatches.filter((m) => m.sessionId === sessionId)
     const sessionMatchPlayers = allMatchPlayers.filter((mp) =>
@@ -212,7 +213,9 @@ const getCheckInsBySeason = async (playerId: string): Promise<Record<string, num
   const bySeason: Record<string, number> = {}
 
   statistics.forEach((stat) => {
-    const checkInCount = stat.checkIns.filter((c) => c.playerId === playerId).length
+    // Safety check: ensure checkIns is an array
+    const checkIns = Array.isArray(stat.checkIns) ? stat.checkIns : []
+    const checkInCount = checkIns.filter((c) => c.playerId === playerId).length
     if (checkInCount > 0) {
       bySeason[stat.season] = (bySeason[stat.season] ?? 0) + checkInCount
     }
@@ -235,9 +238,12 @@ const getTopPartners = async (
   const partnerCounts = new Map<string, number>()
 
   statistics.forEach((stat) => {
+    // Safety check: ensure matchPlayers is an array
+    const matchPlayers = Array.isArray(stat.matchPlayers) ? stat.matchPlayers : []
+    
     // Group matchPlayers by matchId
     const matchGroups = new Map<string, MatchPlayer[]>()
-    stat.matchPlayers.forEach((mp) => {
+    matchPlayers.forEach((mp) => {
       if (!matchGroups.has(mp.matchId)) {
         matchGroups.set(mp.matchId, [])
       }
@@ -297,9 +303,12 @@ const getTopOpponents = async (
   const opponentCounts = new Map<string, number>()
 
   statistics.forEach((stat) => {
+    // Safety check: ensure matchPlayers is an array
+    const matchPlayers = Array.isArray(stat.matchPlayers) ? stat.matchPlayers : []
+    
     // Group matchPlayers by matchId
     const matchGroups = new Map<string, MatchPlayer[]>()
-    stat.matchPlayers.forEach((mp) => {
+    matchPlayers.forEach((mp) => {
       if (!matchGroups.has(mp.matchId)) {
         matchGroups.set(mp.matchId, [])
       }
@@ -356,9 +365,12 @@ const getPlayerComparison = async (
   let opponentCount = 0
 
   statistics.forEach((stat) => {
+    // Safety check: ensure matchPlayers is an array
+    const matchPlayers = Array.isArray(stat.matchPlayers) ? stat.matchPlayers : []
+    
     // Group matchPlayers by matchId
     const matchGroups = new Map<string, MatchPlayer[]>()
-    stat.matchPlayers.forEach((mp) => {
+    matchPlayers.forEach((mp) => {
       if (!matchGroups.has(mp.matchId)) {
         matchGroups.set(mp.matchId, [])
       }
@@ -423,7 +435,9 @@ const getPlayerStatistics = async (
   const checkInsBySeason: Record<string, number> = {}
   let totalCheckIns = 0
   relevantStats.forEach((stat) => {
-    const checkInCount = stat.checkIns.filter((c) => c.playerId === playerId).length
+    // Safety check: ensure checkIns is an array
+    const checkIns = Array.isArray(stat.checkIns) ? stat.checkIns : []
+    const checkInCount = checkIns.filter((c) => c.playerId === playerId).length
     if (checkInCount > 0) {
       checkInsBySeason[stat.season] = (checkInsBySeason[stat.season] ?? 0) + checkInCount
       totalCheckIns += checkInCount
@@ -438,13 +452,17 @@ const getPlayerStatistics = async (
   let lastPlayedDate: string | null = null
 
   relevantStats.forEach((stat) => {
+    // Safety checks: ensure matchPlayers and matches are arrays
+    const matchPlayers = Array.isArray(stat.matchPlayers) ? stat.matchPlayers : []
+    const matches = Array.isArray(stat.matches) ? stat.matches : []
+    
     // Group matchPlayers by matchId to count unique matches
     const playerMatches = new Set<string>()
-    stat.matchPlayers
+    matchPlayers
       .filter((mp) => mp.playerId === playerId)
       .forEach((mp) => {
         playerMatches.add(mp.matchId)
-        const match = stat.matches.find((m) => m.id === mp.matchId)
+        const match = matches.find((m) => m.id === mp.matchId)
         if (match) {
           const court = state.courts.find((c) => c.id === match.courtId)
           if (court) {
