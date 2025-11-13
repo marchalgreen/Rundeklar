@@ -58,6 +58,11 @@ async function executeQuery(query: string, params: any[] = []): Promise<any[]> {
   }
 
   const result = await response.json()
+  // Safety check: ensure result.data is always an array
+  if (!Array.isArray(result.data)) {
+    console.error('[executeQuery] API returned non-array data:', result)
+    return []
+  }
   return result.data
 }
 
@@ -226,25 +231,57 @@ export const loadState = async (): Promise<DatabaseState> => {
     const tenantId = getTenantId()
 
     // Load all data in parallel (filtered by tenant_id)
-    const [players, sessions, checkIns, courts, matches, matchPlayers, statistics] = await Promise.all([
-      sql`SELECT * FROM players WHERE tenant_id = ${tenantId} ORDER BY name`,
-      sql`SELECT * FROM training_sessions WHERE tenant_id = ${tenantId} ORDER BY created_at DESC`,
-      sql`SELECT * FROM check_ins WHERE tenant_id = ${tenantId} ORDER BY created_at`,
-      sql`SELECT * FROM courts WHERE tenant_id = ${tenantId} ORDER BY idx`,
-      sql`SELECT * FROM matches WHERE tenant_id = ${tenantId} ORDER BY started_at`,
-      sql`SELECT * FROM match_players WHERE tenant_id = ${tenantId}`,
-      sql`SELECT * FROM statistics_snapshots WHERE tenant_id = ${tenantId} ORDER BY session_date DESC`
+    const results = await Promise.all([
+      sql`SELECT * FROM players WHERE tenant_id = ${tenantId} ORDER BY name`.catch(err => {
+        console.error('[loadState] Error loading players:', err)
+        return []
+      }),
+      sql`SELECT * FROM training_sessions WHERE tenant_id = ${tenantId} ORDER BY created_at DESC`.catch(err => {
+        console.error('[loadState] Error loading sessions:', err)
+        return []
+      }),
+      sql`SELECT * FROM check_ins WHERE tenant_id = ${tenantId} ORDER BY created_at`.catch(err => {
+        console.error('[loadState] Error loading checkIns:', err)
+        return []
+      }),
+      sql`SELECT * FROM courts WHERE tenant_id = ${tenantId} ORDER BY idx`.catch(err => {
+        console.error('[loadState] Error loading courts:', err)
+        return []
+      }),
+      sql`SELECT * FROM matches WHERE tenant_id = ${tenantId} ORDER BY started_at`.catch(err => {
+        console.error('[loadState] Error loading matches:', err)
+        return []
+      }),
+      sql`SELECT * FROM match_players WHERE tenant_id = ${tenantId}`.catch(err => {
+        console.error('[loadState] Error loading matchPlayers:', err)
+        return []
+      }),
+      sql`SELECT * FROM statistics_snapshots WHERE tenant_id = ${tenantId} ORDER BY session_date DESC`.catch(err => {
+        console.error('[loadState] Error loading statistics:', err)
+        return []
+      })
     ])
+    
+    const [players, sessions, checkIns, courts, matches, matchPlayers, statistics] = results
+
+    // Safety check: ensure all results are arrays before mapping
+    const safePlayers = Array.isArray(players) ? players : []
+    const safeSessions = Array.isArray(sessions) ? sessions : []
+    const safeCheckIns = Array.isArray(checkIns) ? checkIns : []
+    const safeCourts = Array.isArray(courts) ? courts : []
+    const safeMatches = Array.isArray(matches) ? matches : []
+    const safeMatchPlayers = Array.isArray(matchPlayers) ? matchPlayers : []
+    const safeStatistics = Array.isArray(statistics) ? statistics : []
 
     // Convert rows to types
     cachedState = {
-      players: players.map(rowToPlayer),
-      sessions: sessions.map(rowToSession),
-      checkIns: checkIns.map(rowToCheckIn),
-      courts: courts.map(rowToCourt),
-      matches: matches.map(rowToMatch),
-      matchPlayers: matchPlayers.map(rowToMatchPlayer),
-      statistics: statistics.map(rowToStatisticsSnapshot)
+      players: safePlayers.map(rowToPlayer),
+      sessions: safeSessions.map(rowToSession),
+      checkIns: safeCheckIns.map(rowToCheckIn),
+      courts: safeCourts.map(rowToCourt),
+      matches: safeMatches.map(rowToMatch),
+      matchPlayers: safeMatchPlayers.map(rowToMatchPlayer),
+      statistics: safeStatistics.map(rowToStatisticsSnapshot)
     }
 
     return cachedState
