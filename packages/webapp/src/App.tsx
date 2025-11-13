@@ -109,7 +109,7 @@ const Header = () => {
         {/* Left section: Logo and title */}
         <Link 
           to={buildPath('/coach')}
-          className="flex items-center gap-2 sm:gap-3 flex-shrink-0 min-w-0 hover:opacity-80 transition-opacity cursor-pointer"
+          className="flex items-center gap-2 sm:gap-3 flex-shrink-0 min-w-0 max-w-[calc(50%-120px)] lg:max-w-[200px] hover:opacity-80 transition-opacity cursor-pointer"
           aria-label={`Gå til ${config.name} startside`}
         >
           <img 
@@ -125,10 +125,11 @@ const Header = () => {
         {/* Desktop: Horizontal navigation - absolutely positioned and centered */}
         <nav 
           aria-label="Primær navigation" 
-          className="hidden lg:flex absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 items-center gap-1 xl:gap-2"
+          className="hidden lg:flex absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 items-center gap-1 xl:gap-2 z-10"
           style={{ 
             width: 'max-content',
-            minWidth: 'max-content'
+            minWidth: 'max-content',
+            pointerEvents: 'auto'
           }}
         >
           {navItems.map((item) => (
