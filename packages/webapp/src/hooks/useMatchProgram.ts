@@ -317,23 +317,6 @@ export const useMatchProgram = ({
     })
   }, [])
   
-  const _handleActivateOneRoundPlayer = useCallback(async (playerId: string) => {
-    if (!session) return
-    try {
-      // Ensure player is not on a court
-      // This will be handled by handleMove
-      await handleMove(playerId)
-      // Also ensure they're not marked as unavailable
-      if (unavailablePlayers.has(playerId)) {
-        handleMarkAvailable(playerId)
-      }
-      // Add to activated one-round players set so they appear in bench
-      setActivatedOneRoundPlayers((prev) => new Set(prev).add(playerId))
-    } catch (err: any) {
-      setError(err.message ?? 'Kunne ikke aktivere spiller')
-    }
-  }, [session, unavailablePlayers, handleMarkAvailable, handleMove])
-  
   const handleToggleCourtLock = useCallback((courtIdx: number) => {
     setLockedCourts((prev) => {
       const roundLocks = prev[selectedRound] || new Set<number>()
@@ -900,6 +883,23 @@ export const useMatchProgram = ({
       setError(err.message ?? 'Kunne ikke nulstille kampe')
     }
   }, [session, selectedRound, inMemoryMatches, currentRoundLockedCourts, maxCourts, updateInMemoryMatches, notify])
+  
+  const _handleActivateOneRoundPlayer = useCallback(async (playerId: string) => {
+    if (!session) return
+    try {
+      // Ensure player is not on a court
+      // This will be handled by handleMove
+      await handleMove(playerId)
+      // Also ensure they're not marked as unavailable
+      if (unavailablePlayers.has(playerId)) {
+        handleMarkAvailable(playerId)
+      }
+      // Add to activated one-round players set so they appear in bench
+      setActivatedOneRoundPlayers((prev) => new Set(prev).add(playerId))
+    } catch (err: any) {
+      setError(err.message ?? 'Kunne ikke aktivere spiller')
+    }
+  }, [session, unavailablePlayers, handleMarkAvailable, handleMove])
   
   const onDropToBench = useCallback(async (event: React.DragEvent<HTMLDivElement>) => {
     const playerId = event.dataTransfer.getData('application/x-player-id')

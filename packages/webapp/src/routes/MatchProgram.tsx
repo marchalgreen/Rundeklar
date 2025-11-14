@@ -104,7 +104,6 @@ const MatchProgramPage = () => {
     handleEndTraining: _handleEndTraining,
     handleMouseDown,
     handleResizeStart,
-    handleToggleBenchCollapse: _handleToggleBenchCollapse,
     handleExtendedCapacityChange,
     handleTogglePreviousRounds,
     handleSlotDragStart,
