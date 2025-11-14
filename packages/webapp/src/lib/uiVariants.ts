@@ -5,14 +5,14 @@
 
 export type PlayerUiVariant = 'A'
 
-const STORAGE_KEY = 'ui:playerCardVariant'
+const _STORAGE_KEY = 'ui:playerCardVariant'
 export const VARIANT_CHANGED_EVENT = 'ui:playerCardVariant:changed'
 
 export const getPlayerUiVariant = (): PlayerUiVariant => {
   return 'A'
 }
 
-export const setPlayerUiVariant = (variant: PlayerUiVariant) => {
+export const setPlayerUiVariant = (_variant: PlayerUiVariant) => {
   window.dispatchEvent(new CustomEvent(VARIANT_CHANGED_EVENT, { detail: { variant: 'A' } }))
 }
 

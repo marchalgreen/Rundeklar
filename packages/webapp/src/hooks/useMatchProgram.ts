@@ -526,7 +526,7 @@ export const useMatchProgram = ({
     } else {
       void loadMatches()
     }
-  }, [session?.id, selectedRound, loadMatches])
+  }, [session, selectedRound, loadMatches])
   
   // Persist state on changes
   useEffect(() => {

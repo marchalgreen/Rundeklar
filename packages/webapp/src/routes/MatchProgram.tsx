@@ -69,7 +69,7 @@ const MatchProgramPage = () => {
     setSelectedRound,
     error,
     unavailablePlayers,
-    handleMarkUnavailable,
+    handleMarkUnavailable: _handleMarkUnavailable,
     handleMarkAvailable,
     handleActivateOneRoundPlayer,
     dragOverInactive,

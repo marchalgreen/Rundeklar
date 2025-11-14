@@ -275,7 +275,7 @@ const LandingPage: React.FC<LandingPageProps> = ({ coach, onRedirectToCheckin })
       const trainingGroups = ((player as any).trainingGroups as string[] | undefined) ?? []
       return !trainingGroups.includes(landing.activeSession!.groupId!)
     }).length
-  }, [checkedIn, landing.activeSession?.groupId])
+  }, [checkedIn, landing.activeSession])
 
   useEffect(() => {
     courtsSettings.setStoredCourtsInUse(tenantId, courtsInUse)
