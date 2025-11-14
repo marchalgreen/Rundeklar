@@ -12,7 +12,7 @@
  * If tenant-id is not provided, it will use "default"
  */
 
-import { createClient } from '@supabase/supabase-js'
+import { createClient, type SupabaseClient } from '@supabase/supabase-js'
 import { readFileSync } from 'fs'
 import { resolve } from 'path'
 import { loadTenantConfig } from '../src/lib/tenant'
@@ -28,7 +28,7 @@ const readMigrationFile = (): string => {
 /**
  * Seeds courts based on tenant's maxCourts configuration.
  */
-const seedCourts = async (supabase: ReturnType<typeof createClient>, maxCourts: number) => {
+const seedCourts = async (supabase: SupabaseClient<any>, maxCourts: number) => {
   console.log(`🏸 Seeding ${maxCourts} courts...`)
   
   // First, check if courts already exist
@@ -36,7 +36,7 @@ const seedCourts = async (supabase: ReturnType<typeof createClient>, maxCourts: 
   const existingIdxs = new Set(existingCourts?.map(c => c.idx) || [])
   
   // Create courts that don't exist yet
-  const courtsToCreate = []
+  const courtsToCreate: Array<{ idx: number }> = []
   for (let i = 1; i <= maxCourts; i++) {
     if (!existingIdxs.has(i)) {
       courtsToCreate.push({ idx: i })

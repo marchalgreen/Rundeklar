@@ -73,7 +73,7 @@ async function seedCourts(tenantId: string = 'default') {
     console.log('')
 
     // Create missing courts
-    const courtsToCreate = []
+    const courtsToCreate: Array<{ idx: number }> = []
     for (let i = 1; i <= config.maxCourts; i++) {
       if (!existingIdxs.has(i)) {
         courtsToCreate.push({ idx: i })

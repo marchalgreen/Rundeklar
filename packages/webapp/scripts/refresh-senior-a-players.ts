@@ -188,7 +188,19 @@ async function refreshSeniorAPlayers(tenantId: string = 'default') {
 
     // Step 2: Add 25 new Senior A players with random names
     console.log('➕ Step 2: Adding 25 new Senior A players...')
-    const newSeniorAPlayers = []
+    const newSeniorAPlayers: Array<{
+      name: string
+      alias: null
+      level_single: null
+      level_double: null
+      level_mix: null
+      gender: 'Herre' | 'Dame'
+      primary_category: 'Single' | 'Double' | 'Begge'
+      active: boolean
+      training_group: string[]
+      preferred_doubles_partners: never[]
+      preferred_mixed_partners: never[]
+    }> = []
     for (let i = 0; i < 25; i++) {
       // Mix of genders (roughly 50/50)
       const gender: 'Herre' | 'Dame' = Math.random() > 0.5 ? 'Herre' : 'Dame'

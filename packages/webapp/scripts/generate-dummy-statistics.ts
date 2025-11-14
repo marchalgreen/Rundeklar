@@ -20,7 +20,7 @@ import { createClient } from '@supabase/supabase-js'
 import { loadTenantConfig } from '../src/lib/tenant'
 import { setCurrentTenantSupabaseClient, setCurrentTenantConfig } from '../src/lib/supabase'
 import { getStateCopy, createId, createSession, createCheckIn, createStatisticsSnapshot } from '../src/api/supabase'
-import type { Match, MatchPlayer, CheckIn } from '@herlev-hjorten/common'
+import type { Match, MatchPlayer, CheckIn } from '@rundeklar/common'
 
 /**
  * Determines season from a date string (August to July).
