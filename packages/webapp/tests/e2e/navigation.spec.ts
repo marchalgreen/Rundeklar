@@ -5,41 +5,64 @@ test.describe('Navigation', () => {
     await page.goto('/#/coach')
     await page.waitForLoadState('networkidle')
     
-    // On mobile, navigation might be in hamburger menu - try both
-    const checkInLink = page.getByRole('link', { name: /indtjekning/i })
-    const isVisible = await checkInLink.isVisible().catch(() => false)
-    
-    if (!isVisible) {
-      // Try opening mobile menu
+    // Helper to open mobile menu if needed
+    const ensureMenuOpen = async () => {
       const menuButton = page.getByRole('button', { name: /åbn menu|menu/i })
-      if (await menuButton.isVisible().catch(() => false)) {
+      const menuVisible = await menuButton.isVisible().catch(() => false)
+      if (menuVisible) {
         await menuButton.click()
         await page.waitForTimeout(300) // Wait for menu animation
       }
     }
     
+    // Navigate to Check-In
+    let checkInLink = page.getByRole('link', { name: /indtjekning/i })
+    if (!(await checkInLink.isVisible().catch(() => false))) {
+      await ensureMenuOpen()
+      checkInLink = page.getByRole('link', { name: /indtjekning/i })
+    }
     await checkInLink.click()
-    await expect(page).toHaveURL(/#\/check-in/i)
+    await expect(page).toHaveURL(/#\/check-in/i, { timeout: 5000 })
     await page.waitForLoadState('networkidle')
     
     // Navigate to Match Program
-    await page.getByRole('link', { name: /kampprogram/i }).click()
-    await expect(page).toHaveURL(/#\/match-program/i)
+    let matchProgramLink = page.getByRole('link', { name: /kampprogram/i })
+    if (!(await matchProgramLink.isVisible().catch(() => false))) {
+      await ensureMenuOpen()
+      matchProgramLink = page.getByRole('link', { name: /kampprogram/i })
+    }
+    await matchProgramLink.click()
+    await expect(page).toHaveURL(/#\/match-program/i, { timeout: 5000 })
     await page.waitForLoadState('networkidle')
     
     // Navigate to Players
-    await page.getByRole('link', { name: /spillere/i }).click()
-    await expect(page).toHaveURL(/#\/players/i)
+    let playersLink = page.getByRole('link', { name: /spillere/i })
+    if (!(await playersLink.isVisible().catch(() => false))) {
+      await ensureMenuOpen()
+      playersLink = page.getByRole('link', { name: /spillere/i })
+    }
+    await playersLink.click()
+    await expect(page).toHaveURL(/#\/players/i, { timeout: 5000 })
     await page.waitForLoadState('networkidle')
     
     // Navigate to Statistics
-    await page.getByRole('link', { name: /statistik/i }).click()
-    await expect(page).toHaveURL(/#\/statistics/i)
+    let statisticsLink = page.getByRole('link', { name: /statistik/i })
+    if (!(await statisticsLink.isVisible().catch(() => false))) {
+      await ensureMenuOpen()
+      statisticsLink = page.getByRole('link', { name: /statistik/i })
+    }
+    await statisticsLink.click()
+    await expect(page).toHaveURL(/#\/statistics/i, { timeout: 5000 })
     await page.waitForLoadState('networkidle')
     
     // Navigate back to Coach
-    await page.getByRole('link', { name: /træner/i }).click()
-    await expect(page).toHaveURL(/#\/coach/i)
+    let coachLink = page.getByRole('link', { name: /træner/i })
+    if (!(await coachLink.isVisible().catch(() => false))) {
+      await ensureMenuOpen()
+      coachLink = page.getByRole('link', { name: /træner/i })
+    }
+    await coachLink.click()
+    await expect(page).toHaveURL(/#\/coach/i, { timeout: 5000 })
   })
 
   test('should have logo link to landing page', async ({ page }) => {

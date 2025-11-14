@@ -21,9 +21,12 @@ test.describe('Tenant Routing', () => {
     const appHeader = page.locator('header').first()
     await expect(appHeader).toBeVisible()
     
-    // Check for RundeManager branding
-    const brandName = page.getByText(/rundemanager/i)
-    await expect(brandName).toBeVisible()
+    // Check for RundeManager branding - check document title or logo alt text
+    const pageTitle = await page.title()
+    const hasBranding = /rundemanager/i.test(pageTitle) || 
+      (await page.locator('img[alt*="RundeManager"]').isVisible().catch(() => false))
+    
+    expect(hasBranding).toBe(true)
   })
 
   test('should maintain tenant context when navigating', async ({ page }) => {
