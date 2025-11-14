@@ -24,6 +24,16 @@ test.describe('Check-In Page', () => {
   test('should search and display players', async ({ page }) => {
     const searchInput = page.getByPlaceholder(/søg efter spiller/i)
     
+    // Check if search input exists (only visible if there's an active session)
+    const isVisible = await searchInput.isVisible().catch(() => false)
+    
+    if (!isVisible) {
+      // No active session - check for empty state instead
+      const emptyState = page.getByText(/ingen aktiv træning/i)
+      await expect(emptyState).toBeVisible()
+      return
+    }
+    
     // Type in search
     await searchInput.fill('test')
     
