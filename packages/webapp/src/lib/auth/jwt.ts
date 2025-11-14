@@ -18,7 +18,6 @@ export interface JWTPayload {
 }
 
 const ACCESS_TOKEN_EXPIRY = '15m'
-const REFRESH_TOKEN_EXPIRY = '7d'
 
 /**
  * Generate an access token for a club
@@ -58,7 +57,7 @@ export function verifyAccessToken(token: string): JWTPayload | null {
       return null
     }
     return decoded
-  } catch (error) {
+  } catch {
     return null
   }
 }

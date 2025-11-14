@@ -1,5 +1,5 @@
 import type { VercelRequest } from '@vercel/node'
-import { verifyAccessToken, type JWTPayload } from './jwt'
+import { verifyAccessToken } from './jwt'
 import { getCurrentTenantPostgresClient } from '../postgres'
 
 export interface AuthenticatedRequest extends VercelRequest {

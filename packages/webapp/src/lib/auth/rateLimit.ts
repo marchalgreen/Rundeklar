@@ -14,7 +14,7 @@ const WINDOW_MINUTES = 15
 export async function checkLoginAttempts(
   sql: ReturnType<typeof postgres>,
   email: string,
-  ipAddress?: string
+  _ipAddress?: string
 ): Promise<{
   allowed: boolean
   remainingAttempts: number

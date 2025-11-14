@@ -100,7 +100,7 @@ export async function sendPasswordResetEmail(
  */
 export async function send2FASetupEmail(
   email: string,
-  tenantId: string
+  _tenantId: string
 ): Promise<void> {
   if (!resend) {
     console.warn('Resend not configured - skipping 2FA setup email')

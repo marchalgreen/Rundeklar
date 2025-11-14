@@ -788,3 +788,4 @@ Follow this systematic approach.
 - **Data/Supabase changes:** Ensure `.env.local` is configured and the SQL migration is applied (see Supabase section). Verify changes in Supabase Table Editor after UI actions.
 - **Config changes:** Modify `src/config/tenants/*.json`, restart dev server, and verify branding/court settings are reflected. Rebuild to ensure configs are copied to `dist/`.
 
+

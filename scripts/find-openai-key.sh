@@ -44,3 +44,4 @@ echo "   3. Check your password manager"
 echo "   4. Create a new key at: https://platform.openai.com/api-keys"
 
 
+

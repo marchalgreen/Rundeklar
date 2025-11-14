@@ -117,3 +117,4 @@ Then you **don't need** the API key - just sign in with ChatGPT!
 
 **Bottom line:** If your colleague's setup works without an API key, you probably don't need one either - unless you're calling OpenAI APIs programmatically from your code!
 
+

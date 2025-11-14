@@ -1008,7 +1008,7 @@ export const useMatchProgram = ({
     } else {
       await handleMove(playerId, courtIdx, slot)
     }
-  }, [selectedRound, inMemoryMatches, matches, checkedIn, maxCourts, updateInMemoryMatches, handleMove])
+  }, [selectedRound, matches, checkedIn, maxCourts, updateInMemoryMatches, handleMove])
   
   const onDropToCourt = useCallback(async (event: React.DragEvent<HTMLDivElement>, _courtIdx: number) => {
     event.preventDefault()
@@ -1223,7 +1223,7 @@ export const useMatchProgram = ({
     setDragOverInactive(true)
   }, [dragSource])
   
-  const handleInactiveDragLeave = useCallback((event: React.DragEvent<HTMLDivElement>) => {
+  const handleInactiveDragLeave = useCallback((_event: React.DragEvent<HTMLDivElement>) => {
     if (dragSource === 'inactive') {
       return
     }

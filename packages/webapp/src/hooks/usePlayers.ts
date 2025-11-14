@@ -78,7 +78,7 @@ export const usePlayers = (filters?: PlayerListFilters): UsePlayersReturn => {
     } finally {
       setLoading(false)
     }
-  }, [filters?.q, filters?.active, notify])
+  }, [filters, notify])
 
   /**
    * Creates a new player.
