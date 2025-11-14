@@ -294,6 +294,7 @@ const LandingPage: React.FC<LandingPageProps> = ({ coach, onRedirectToCheckin })
 
   return (
     <div className="p-4 sm:p-6">
+      <div className="text-xs text-[hsl(var(--muted))] mb-2">Hello World</div>
       <WelcomeHeader coachName={coach?.displayName} />
 
       {landing.activeSession ? (
