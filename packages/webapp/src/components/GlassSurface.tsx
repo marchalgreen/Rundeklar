@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState, useId } from 'react'
+import React, { useEffect, useRef, useState, useId, useCallback } from 'react'
 
 export interface GlassSurfaceProps {
   children?: React.ReactNode
@@ -122,9 +122,25 @@ const GlassSurface: React.FC<GlassSurfaceProps> = ({
     return `data:image/svg+xml,${encodeURIComponent(svgContent)}`
   }
 
-  const updateDisplacementMap = () => {
+  const updateDisplacementMap = useCallback(() => {
     feImageRef.current?.setAttribute('href', generateDisplacementMap())
-  }
+  }, [
+    width,
+    height,
+    borderRadius,
+    borderWidth,
+    brightness,
+    opacity,
+    blur,
+    displace,
+    distortionScale,
+    redOffset,
+    greenOffset,
+    blueOffset,
+    xChannel,
+    yChannel,
+    mixBlendMode
+  ])
 
   useEffect(() => {
     updateDisplacementMap()
@@ -142,6 +158,7 @@ const GlassSurface: React.FC<GlassSurfaceProps> = ({
 
     gaussianBlurRef.current?.setAttribute('stdDeviation', displace.toString())
   }, [
+    updateDisplacementMap,
     width,
     height,
     borderRadius,
@@ -179,14 +196,14 @@ const GlassSurface: React.FC<GlassSurfaceProps> = ({
       }
       resizeObserver.disconnect()
     }
-  }, [])
+  }, [updateDisplacementMap])
 
   useEffect(() => {
     const timeout = requestAnimationFrame(() => {
       updateDisplacementMap()
     })
     return () => cancelAnimationFrame(timeout)
-  }, [width, height])
+  }, [updateDisplacementMap, width, height])
 
   const supportsSVGFilters = () => {
     const isWebkit = /Safari/.test(navigator.userAgent) && !/Chrome/.test(navigator.userAgent)

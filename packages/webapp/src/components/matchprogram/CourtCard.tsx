@@ -49,8 +49,6 @@ interface CourtCardProps {
   onSlotDrop: (event: React.DragEvent<HTMLDivElement>, courtIdx: number, slotIndex: number) => void
 }
 
-const EMPTY_SLOTS = MATCH_CONSTANTS.DEFAULT_SLOTS_PER_COURT
-
 /**
  * Court card component.
  * 

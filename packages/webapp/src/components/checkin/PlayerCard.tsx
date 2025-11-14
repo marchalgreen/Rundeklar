@@ -101,7 +101,7 @@ export const PlayerCard: React.FC<PlayerCardProps> = ({
     window.addEventListener(VARIANT_CHANGED_EVENT, onChange as EventListener)
     return () => window.removeEventListener(VARIANT_CHANGED_EVENT, onChange as EventListener)
   }, [])
-  const trainingGroups = useMemo(() => ((player as any).trainingGroups as string[] | undefined) ?? [], [player])
+  const _trainingGroups = useMemo(() => ((player as any).trainingGroups as string[] | undefined) ?? [], [player])
   const avatarRailColor = useMemo(() => {
     if (variant !== 'A') return undefined
     const hue = getSeedHue(player.id || player.name, player.gender ?? null)

@@ -1,10 +1,15 @@
 import jwt from 'jsonwebtoken'
+import crypto from 'crypto'
 
-const JWT_SECRET = process.env.AUTH_JWT_SECRET || process.env.VITE_AUTH_JWT_SECRET
-
-if (!JWT_SECRET) {
-  throw new Error('AUTH_JWT_SECRET environment variable is required')
+function getJWTSecret(): string {
+  const secret = process.env.AUTH_JWT_SECRET || process.env.VITE_AUTH_JWT_SECRET
+  if (!secret) {
+    throw new Error('AUTH_JWT_SECRET environment variable is required')
+  }
+  return secret
 }
+
+const JWT_SECRET = getJWTSecret()
 
 export interface JWTPayload {
   clubId: string
@@ -38,7 +43,7 @@ export function generateAccessToken(clubId: string, tenantId: string): string {
  * @returns Random token string
  */
 export function generateRefreshToken(): string {
-  return require('crypto').randomBytes(32).toString('hex')
+  return crypto.randomBytes(32).toString('hex')
 }
 
 /**
@@ -48,7 +53,7 @@ export function generateRefreshToken(): string {
  */
 export function verifyAccessToken(token: string): JWTPayload | null {
   try {
-    const decoded = jwt.verify(token, JWT_SECRET) as JWTPayload
+    const decoded = jwt.verify(token, JWT_SECRET) as unknown as JWTPayload
     if (decoded.type !== 'access') {
       return null
     }
@@ -64,7 +69,7 @@ export function verifyAccessToken(token: string): JWTPayload | null {
  * @returns Hashed token
  */
 export function hashRefreshToken(token: string): string {
-  return require('crypto').createHash('sha256').update(token).digest('hex')
+  return crypto.createHash('sha256').update(token).digest('hex')
 }
 
 /**

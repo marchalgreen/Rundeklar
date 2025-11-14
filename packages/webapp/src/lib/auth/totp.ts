@@ -1,5 +1,6 @@
 import speakeasy from 'speakeasy'
 import QRCode from 'qrcode'
+import crypto from 'crypto'
 
 /**
  * Generate a TOTP secret for two-factor authentication
@@ -51,7 +52,6 @@ export function verifyTOTP(secret: string, token: string, window: number = 1): b
  */
 export function generateBackupCodes(count: number = 10): string[] {
   const codes: string[] = []
-  const crypto = require('crypto')
   
   for (let i = 0; i < count; i++) {
     const code = crypto.randomBytes(4).toString('hex').toUpperCase()
@@ -67,7 +67,6 @@ export function generateBackupCodes(count: number = 10): string[] {
  * @returns Array of hashed codes
  */
 export function hashBackupCodes(codes: string[]): string[] {
-  const crypto = require('crypto')
   return codes.map(code => 
     crypto.createHash('sha256').update(code).digest('hex')
   )
@@ -80,7 +79,6 @@ export function hashBackupCodes(codes: string[]): string[] {
  * @returns Index of matching code, or -1 if not found
  */
 export function verifyBackupCode(code: string, hashedCodes: string[]): number {
-  const crypto = require('crypto')
   const codeHash = crypto.createHash('sha256').update(code.toUpperCase()).digest('hex')
   return hashedCodes.findIndex(hash => hash === codeHash)
 }
