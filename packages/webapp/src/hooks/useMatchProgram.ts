@@ -234,6 +234,9 @@ export const useMatchProgram = ({
   const [lockedCourts, setLockedCourts] = useState<Record<number, Set<number>>>({})
   const [hasRunAutoMatch, setHasRunAutoMatch] = useState<Set<number>>(new Set())
   
+  // Track if auto-match just ran to prevent duplicate toast from useEffect
+  const justRanAutoMatchRef = useRef<boolean>(false)
+  
   // In-memory matches (per round)
   const [inMemoryMatches, setInMemoryMatches] = useState<Record<number, CourtWithPlayers[]>>({})
   
@@ -275,6 +278,31 @@ export const useMatchProgram = ({
     () => filterBenchPlayers(checkedIn, assignedIds, selectedRound, unavailablePlayers, activatedOneRoundPlayers),
     [checkedIn, assignedIds, selectedRound, unavailablePlayers, activatedOneRoundPlayers]
   )
+
+  // Track when bench becomes empty and show toast reminder
+  const prevBenchLengthRef = useRef<number>(bench.length)
+  useEffect(() => {
+    const prevBenchLength = prevBenchLengthRef.current
+    const currentBenchLength = bench.length
+    
+    // Show toast when bench becomes empty and there are matches
+    // But skip if auto-match just ran (to avoid duplicate toast)
+    if (prevBenchLength > 0 && currentBenchLength === 0 && session && !justRanAutoMatchRef.current) {
+      const hasMatches = matches.some(court => 
+        court.slots.some(slot => slot.player)
+      )
+      if (hasMatches) {
+        notify({
+          variant: 'default',
+          title: 'Alle spillere er placeret!',
+          description: 'Tryk på "Vis kampprogram" eller F11 for at vise spillerne deres baner',
+          duration: 5000
+        })
+      }
+    }
+    
+    prevBenchLengthRef.current = currentBenchLength
+  }, [bench.length, matches, session, notify])
   
   const inactivePlayers = useMemo<CheckedInPlayer[]>(
     () => filterInactivePlayers(checkedIn, assignedIds, selectedRound, unavailablePlayers, activatedOneRoundPlayers),
@@ -853,6 +881,12 @@ export const useMatchProgram = ({
           ? `Omfordelt spillere på ${result.filledCourts} baner (Runde ${selectedRound})`
           : `Fordelte spillere på ${result.filledCourts} baner (Runde ${selectedRound})`
       })
+
+      // Mark that auto-match just ran to prevent duplicate toast from useEffect
+      justRanAutoMatchRef.current = true
+      setTimeout(() => {
+        justRanAutoMatchRef.current = false
+      }, 1000)
       
       // Sync with database in background (non-blocking, matches saved on session end anyway)
       // This is optional - matches are already saved when ending session

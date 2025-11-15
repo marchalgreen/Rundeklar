@@ -110,9 +110,9 @@ const Header = () => {
           width="100%"
           height="auto"
           borderRadius={0}
-          backgroundOpacity={0.25}
+          backgroundOpacity={0.3}
           blur={16}
-          brightness={105}
+          brightness={110}
           opacity={0.9}
           saturation={1.6}
           displace={0}
@@ -301,11 +301,11 @@ const AppContent = () => {
   
   return (
     <>
-      <TenantTitleUpdater />
-      <div className="flex min-h-screen flex-col text-[hsl(var(--foreground))] overflow-x-hidden max-w-full relative">
-        {!isAuthRoute && <Header />}
-        <main className="flex-1 overflow-y-auto overflow-x-hidden max-w-full relative z-0">
-          <div className="flex w-full flex-col gap-4 sm:gap-6 px-4 sm:px-6 pb-6 sm:pb-10 pt-4 sm:pt-6 md:px-8 lg:px-12 max-w-full overflow-x-hidden">
+        <TenantTitleUpdater />
+        <div className="flex min-h-screen flex-col text-[hsl(var(--foreground))] overflow-x-hidden max-w-full relative">
+          {!isAuthRoute && <Header />}
+          <main className="flex-1 overflow-y-auto overflow-x-hidden max-w-full relative z-0">
+            <div className="flex w-full flex-col gap-4 sm:gap-6 px-4 sm:px-6 pb-6 sm:pb-10 pt-4 sm:pt-6 md:px-8 lg:px-12 max-w-full overflow-x-hidden">
             {/* Auth pages */}
             {authPage === 'login' && <LoginPage />}
             {authPage === 'register' && <RegisterPage />}
@@ -323,9 +323,9 @@ const AppContent = () => {
             {!isAuthRoute && currentPage === 'players' && <PlayersPage />}
             {!isAuthRoute && currentPage === 'statistics' && <StatisticsPage />}
             {!isAuthRoute && currentPage === 'prism-test' && <PrismTestPage />}
-          </div>
-        </main>
-      </div>
+            </div>
+          </main>
+        </div>
     </>
   )
 }

@@ -31,6 +31,8 @@ interface MatchProgramHeaderProps {
   hasRunAutoMatch: boolean
   /** Number of bench players */
   benchCount: number
+  /** Whether there are matches (courts with players) */
+  hasMatches: boolean
   /** Handler for auto-match */
   onAutoMatch: () => void
   /** Handler to reset matches */
@@ -76,10 +78,13 @@ export const MatchProgramHeader: React.FC<MatchProgramHeaderProps> = ({
   onLoadPreviousRound,
   hasRunAutoMatch,
   benchCount,
+  hasMatches,
   onAutoMatch,
   onResetMatches,
   onEnterFullScreen
 }) => {
+  // Calculate if button should pulse (bench is empty and there are matches)
+  const shouldPulse = session && benchCount === 0 && hasMatches
   return (
     <header className="flex flex-col gap-2 sm:gap-3 mb-2 lg:mb-1.5">
       {/* Top section: Title and buttons aligned */}
@@ -155,9 +160,18 @@ export const MatchProgramHeader: React.FC<MatchProgramHeaderProps> = ({
             <button
               type="button"
               onClick={onEnterFullScreen}
-              className="rounded-md bg-accent px-2.5 py-1.5 sm:px-3 sm:py-2 md:px-4 text-xs sm:text-sm font-semibold text-white hover:opacity-90 transition-all duration-200 ease-[cubic-bezier(.2,.8,.2,1)] motion-reduce:transition-none ring-focus hover:shadow-sm whitespace-nowrap"
+              className={`rounded-md bg-accent px-3 py-2 sm:px-4 sm:py-2.5 md:px-5 md:py-3 text-xs sm:text-sm md:text-base font-semibold text-white hover:opacity-90 ring-focus whitespace-nowrap ${
+                shouldPulse 
+                  ? 'animate-pulse-gentle' 
+                  : 'shadow-[0_2px_8px_hsl(var(--primary)/.25)] transition-all duration-200 ease-[cubic-bezier(.2,.8,.2,1)] hover:shadow-lg motion-reduce:transition-none'
+              }`}
+              style={shouldPulse ? {
+                animation: 'pulse-gentle 2s ease-in-out infinite',
+                transition: 'none'
+              } : undefined}
+              title="Tryk F11 eller klik for at vise kampprogram"
             >
-              Vis kampprogram
+              Vis kampprogram {shouldPulse && '(F11)'}
             </button>
           )}
           {/* Variant selector removed — only option A is kept */}

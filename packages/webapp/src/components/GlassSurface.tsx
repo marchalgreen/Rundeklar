@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState, useId, useCallback } from 'react'
+import React, { useEffect, useRef, useId, useCallback } from 'react'
 
 export interface GlassSurfaceProps {
   children?: React.ReactNode
@@ -41,23 +41,6 @@ export interface GlassSurfaceProps {
   style?: React.CSSProperties
 }
 
-const useDarkMode = () => {
-  const [isDark, setIsDark] = useState(false)
-
-  useEffect(() => {
-    if (typeof window === 'undefined') return
-
-    const mediaQuery = window.matchMedia('(prefers-color-scheme: dark)')
-    setIsDark(mediaQuery.matches)
-
-    const handler = (e: MediaQueryListEvent) => setIsDark(e.matches)
-    mediaQuery.addEventListener('change', handler)
-    return () => mediaQuery.removeEventListener('change', handler)
-  }, [])
-
-  return isDark
-}
-
 const GlassSurface: React.FC<GlassSurfaceProps> = ({
   children,
   width = 200,
@@ -91,8 +74,6 @@ const GlassSurface: React.FC<GlassSurfaceProps> = ({
   const greenChannelRef = useRef<SVGFEDisplacementMapElement>(null)
   const blueChannelRef = useRef<SVGFEDisplacementMapElement>(null)
   const gaussianBlurRef = useRef<SVGFEGaussianBlurElement>(null)
-
-  const isDarkMode = useDarkMode()
 
   const generateDisplacementMap = useCallback(() => {
     const rect = containerRef.current?.getBoundingClientRect()
@@ -242,76 +223,45 @@ const GlassSurface: React.FC<GlassSurfaceProps> = ({
 
     const svgSupported = supportsSVGFilters()
     const backdropFilterSupported = supportsBackdropFilter()
-
+    
     if (svgSupported) {
       return {
         ...baseStyles,
-        background: isDarkMode ? `hsl(0 0% 0% / ${backgroundOpacity})` : `hsl(0 0% 100% / ${backgroundOpacity})`,
+        background: `hsl(0 0% 100% / ${backgroundOpacity})`,
         backdropFilter: `url(#${filterId}) saturate(${saturation})`,
-        boxShadow: isDarkMode
-          ? `0 0 2px 1px color-mix(in oklch, white, transparent 65%) inset,
-             0 0 10px 4px color-mix(in oklch, white, transparent 85%) inset,
-             0px 4px 16px rgba(17, 17, 26, 0.05),
-             0px 8px 24px rgba(17, 17, 26, 0.05),
-             0px 16px 56px rgba(17, 17, 26, 0.05),
-             0px 4px 16px rgba(17, 17, 26, 0.05) inset,
-             0px 8px 24px rgba(17, 17, 26, 0.05) inset,
-             0px 16px 56px rgba(17, 17, 26, 0.05) inset`
-          : `0 0 2px 1px color-mix(in oklch, black, transparent 85%) inset,
-             0 0 10px 4px color-mix(in oklch, black, transparent 90%) inset,
-             0px 4px 16px rgba(17, 17, 26, 0.05),
-             0px 8px 24px rgba(17, 17, 26, 0.05),
-             0px 16px 56px rgba(17, 17, 26, 0.05),
-             0px 4px 16px rgba(17, 17, 26, 0.05) inset,
-             0px 8px 24px rgba(17, 17, 26, 0.05) inset,
-             0px 16px 56px rgba(17, 17, 26, 0.05) inset`
+        boxShadow: `0 0 2px 1px color-mix(in oklch, black, transparent 85%) inset,
+                     0 0 10px 4px color-mix(in oklch, black, transparent 90%) inset,
+                     0px 4px 16px rgba(17, 17, 26, 0.05),
+                     0px 8px 24px rgba(17, 17, 26, 0.05),
+                     0px 16px 56px rgba(17, 17, 26, 0.05),
+                     0px 4px 16px rgba(17, 17, 26, 0.05) inset,
+                     0px 8px 24px rgba(17, 17, 26, 0.05) inset,
+                     0px 16px 56px rgba(17, 17, 26, 0.05) inset`
       }
     } else {
-      if (isDarkMode) {
-        if (!backdropFilterSupported) {
-          return {
-            ...baseStyles,
-            background: 'rgba(0, 0, 0, 0.4)',
-            border: '1px solid rgba(255, 255, 255, 0.2)',
-            boxShadow: `inset 0 1px 0 0 rgba(255, 255, 255, 0.2),
-                        inset 0 -1px 0 0 rgba(255, 255, 255, 0.1)`
-          }
-        } else {
-          return {
-            ...baseStyles,
-            background: 'rgba(255, 255, 255, 0.1)',
-            backdropFilter: 'blur(12px) saturate(1.8) brightness(1.2)',
-            WebkitBackdropFilter: 'blur(12px) saturate(1.8) brightness(1.2)',
-            border: '1px solid rgba(255, 255, 255, 0.2)',
-            boxShadow: `inset 0 1px 0 0 rgba(255, 255, 255, 0.2),
-                        inset 0 -1px 0 0 rgba(255, 255, 255, 0.1)`
-          }
+      // Light mode only - ensure glass effect works on mobile
+      if (!backdropFilterSupported) {
+        // Fallback for browsers without backdrop-filter support (older mobile browsers)
+        return {
+          ...baseStyles,
+          background: `rgba(255, 255, 255, ${Math.min(0.5, backgroundOpacity + 0.15)})`,
+          border: 'none',
+          boxShadow: `inset 0 1px 0 0 rgba(255, 255, 255, 0.7),
+                      inset 0 -1px 0 0 rgba(255, 255, 255, 0.5),
+                      0 1px 3px 0 rgba(0, 0, 0, 0.08)`
         }
       } else {
-        // Light mode - ensure glass effect works on mobile
-        if (!backdropFilterSupported) {
-          // Fallback for browsers without backdrop-filter support (older mobile browsers)
-          return {
-            ...baseStyles,
-            background: `rgba(255, 255, 255, ${Math.min(0.5, backgroundOpacity + 0.15)})`,
-            border: 'none',
-            boxShadow: `inset 0 1px 0 0 rgba(255, 255, 255, 0.7),
-                        inset 0 -1px 0 0 rgba(255, 255, 255, 0.5),
-                        0 1px 3px 0 rgba(0, 0, 0, 0.08)`
-          }
-        } else {
-          // Use backdrop-filter for modern browsers (including mobile Safari iOS 9+)
-          return {
-            ...baseStyles,
-            background: `rgba(255, 255, 255, ${backgroundOpacity})`,
-            backdropFilter: `blur(${blur}px) saturate(${saturation}) brightness(${brightness / 100})`,
-            WebkitBackdropFilter: `blur(${blur}px) saturate(${saturation}) brightness(${brightness / 100})`,
-            border: 'none',
-            boxShadow: `0 8px 32px 0 rgba(31, 38, 135, 0.12),
-                        0 2px 16px 0 rgba(31, 38, 135, 0.06),
-                        inset 0 1px 0 0 rgba(255, 255, 255, 0.6),
-                        inset 0 -1px 0 0 rgba(255, 255, 255, 0.4)`
-          }
+        // Use backdrop-filter for modern browsers (including mobile Safari iOS 9+)
+        return {
+          ...baseStyles,
+          background: `rgba(255, 255, 255, ${backgroundOpacity})`,
+          backdropFilter: `blur(${blur}px) saturate(${saturation}) brightness(${brightness / 100})`,
+          WebkitBackdropFilter: `blur(${blur}px) saturate(${saturation}) brightness(${brightness / 100})`,
+          border: 'none',
+          boxShadow: `0 8px 32px 0 rgba(31, 38, 135, 0.12),
+                      0 2px 16px 0 rgba(31, 38, 135, 0.06),
+                      inset 0 1px 0 0 rgba(255, 255, 255, 0.6),
+                      inset 0 -1px 0 0 rgba(255, 255, 255, 0.4)`
         }
       }
     }
@@ -320,9 +270,7 @@ const GlassSurface: React.FC<GlassSurfaceProps> = ({
   const glassSurfaceClasses =
     'relative flex items-center justify-center overflow-hidden transition-opacity duration-[260ms] ease-out'
 
-  const focusVisibleClasses = isDarkMode
-    ? 'focus-visible:outline-2 focus-visible:outline-[#0A84FF] focus-visible:outline-offset-2'
-    : 'focus-visible:outline-2 focus-visible:outline-[#007AFF] focus-visible:outline-offset-2'
+  const focusVisibleClasses = 'focus-visible:outline-2 focus-visible:outline-[#007AFF] focus-visible:outline-offset-2'
 
   return (
     <div

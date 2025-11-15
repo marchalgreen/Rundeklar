@@ -126,6 +126,28 @@ const MatchProgramPage = () => {
     handleCourtDrop
   } = matchProgram
 
+  // Calculate if there are matches (courts with players) - must be before any conditional returns
+  const hasMatches = React.useMemo(() => {
+    if (!Array.isArray(matches)) return false
+    return matches.some(court => 
+      court.slots.some(slot => slot.player)
+    )
+  }, [matches])
+
+  // Handle keyboard shortcut (F11) to open fullscreen - must be before any conditional returns
+  React.useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      // F11 key to open fullscreen
+      if (e.key === 'F11' && session && !isFullScreen) {
+        e.preventDefault()
+        setIsFullScreen(true)
+      }
+    }
+    document.addEventListener('keydown', handleKeyDown)
+    return () => {
+      document.removeEventListener('keydown', handleKeyDown)
+    }
+  }, [session, isFullScreen, setIsFullScreen])
 
   // Handle fullscreen body class - must be before any conditional returns
   React.useEffect(() => {
@@ -171,7 +193,6 @@ const MatchProgramPage = () => {
     )
   }
 
-
   return (
     <section className="flex flex-col gap-4 sm:gap-6 pt-2 sm:pt-4 xl:pt-2">
       <MatchProgramHeader
@@ -186,6 +207,7 @@ const MatchProgramPage = () => {
         onLoadPreviousRound={loadPreviousRound}
         hasRunAutoMatch={hasRunAutoMatch.has(selectedRound)}
         benchCount={bench.length}
+        hasMatches={hasMatches}
         onAutoMatch={handleAutoMatch}
         onResetMatches={handleResetMatches}
         onEnterFullScreen={() => setIsFullScreen(true)}

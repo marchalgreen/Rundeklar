@@ -21,10 +21,10 @@ type ToastContextValue = {
 const ToastContext = createContext<ToastContextValue | undefined>(undefined)
 
 const variantStyles: Record<ToastVariant, string> = {
-  default: 'bg-[hsl(var(--surface))] text-[hsl(var(--foreground))] ring-1 ring-[hsl(var(--line)/.12)]',
-  success: 'bg-[hsl(var(--success)/.15)] text-[hsl(var(--success))]',
-  warning: 'bg-[hsl(var(--warning)/.18)] text-[hsl(var(--warning))]',
-  danger: 'bg-[hsl(var(--danger)/.18)] text-[hsl(var(--danger))]'
+  default: 'card-glass-active text-[hsl(var(--foreground))] ring-1 ring-[hsl(var(--line)/.12)]',
+  success: 'card-glass-active text-[hsl(var(--success))] ring-1 ring-[hsl(var(--success)/.3)]',
+  warning: 'card-glass-active text-[hsl(var(--warning))] ring-1 ring-[hsl(var(--warning)/.3)]',
+  danger: 'card-glass-active text-[hsl(var(--danger))] ring-1 ring-[hsl(var(--danger)/.3)]'
 }
 
 const variantIcon: Record<ToastVariant, React.ReactElement> = {
@@ -85,7 +85,7 @@ export const ToastProvider = ({ children }: { children: React.ReactNode }) => {
           <div
             key={toast.id}
             className={clsx(
-              'pointer-events-auto rounded-lg p-3 sm:p-4 shadow-lg ring-1 ring-[hsl(var(--line)/.2)] backdrop-blur-sm transition-all duration-200 ease-out',
+              'pointer-events-auto rounded-lg p-3 sm:p-4 shadow-lg transition-all duration-200 ease-out',
               variantStyles[toast.variant ?? 'default']
             )}
             role="status"
