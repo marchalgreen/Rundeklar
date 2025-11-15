@@ -1,0 +1,22 @@
+{
+  "name": "Rundeklar",
+  "short_name": "Rundeklar",
+  "description": "Badminton club management app",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#000000",
+  "theme_color": "#0d7bdc",
+  "icons": [
+    {
+      "src": "/logo-only-gradient-blue-32x32.png",
+      "sizes": "32x32",
+      "type": "image/png"
+    },
+    {
+      "src": "/logo-only-gradient-blue-180x180.png",
+      "sizes": "180x180",
+      "type": "image/png"
+    }
+  ]
+}
+
