@@ -9,28 +9,13 @@ import type { TenantConfig } from '@rundeklar/common'
  * extractTenantId("/check-in") // "default"
  */
 export const extractTenantId = (pathname: string): string => {
-  // Check if we're on the demo domain and default to rundemanager tenant
+  // Check if we're on the demo domain and default to demo tenant
   if (typeof window !== 'undefined') {
     const hostname = window.location.hostname
-    // If on RundeManagerDemo GitHub Pages, default to rundemanager tenant
-    if (hostname.includes('rundemanagerdemo') || hostname === 'marchalgreen.github.io' && window.location.pathname.includes('RundeManagerDemo')) {
-      // Only override if no explicit tenant in path
-      const parts = pathname.replace(/^\/+/, '').split('/')
-      const knownRoutes = ['coach', 'check-in', 'match-program', 'players', 'statistics']
-      const firstPart = parts[0]
-      
-      // If first part is a known route (no tenant prefix), use rundemanager
-      if (knownRoutes.includes(firstPart)) {
-        return 'rundemanager'
-      }
-      
-      // If first part is a tenant ID, use it
-      if (firstPart && !knownRoutes.includes(firstPart)) {
-        return firstPart
-      }
-      
-      // Default to rundemanager for demo domain
-      return 'rundemanager'
+    // Check for demo domain (can be configured via VERCEL_URL or custom domain)
+    // Demo tenant should be on a different domain/subdomain than production
+    if (hostname.includes('demo') || hostname.includes('demo.') || hostname.includes('-demo')) {
+      return 'demo'
     }
   }
   
@@ -103,10 +88,14 @@ export const getCurrentTenantId = (): string => {
     return 'default'
   }
   
-  // Check if we're on the demo domain and default to rundemanager tenant
+  // Check if we're on the demo domain and default to demo tenant
   const hostname = window.location.hostname
-  const isDemoDomain = hostname.includes('rundemanagerdemo') || 
-    (hostname === 'marchalgreen.github.io' && window.location.pathname.includes('RundeManagerDemo'))
+  const isDemoDomain = hostname.includes('demo') || hostname.includes('demo.') || hostname.includes('-demo')
+  
+  // If on demo domain, always use demo tenant (regardless of URL path)
+  if (isDemoDomain) {
+    return 'demo'
+  }
   
   // For HashRouter, pathname is like "/#/demo/check-in" or "/#/check-in"
   // For BrowserRouter, pathname is like "/demo/check-in" or "/check-in"
@@ -115,21 +104,6 @@ export const getCurrentTenantId = (): string => {
   
   // Extract path from hash if using HashRouter
   const actualPath = hash ? hash.replace(/^#/, '') : pathname
-  
-  // If on demo domain and no explicit tenant in path, default to rundemanager
-  if (isDemoDomain) {
-    const parts = actualPath.replace(/^\/+/, '').split('/')
-    const knownRoutes = ['coach', 'check-in', 'match-program', 'players', 'statistics']
-    const firstPart = parts[0]
-    
-    // If first part is a known route (no tenant prefix), use rundemanager
-    if (!firstPart || knownRoutes.includes(firstPart)) {
-      return 'rundemanager'
-    }
-    
-    // If first part is a tenant ID, use it
-    return firstPart
-  }
   
   return extractTenantId(actualPath)
 }

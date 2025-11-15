@@ -327,9 +327,9 @@ const AppInner = () => {
                 <Route path="/:tenantId/statistics" element={<StatisticsPage />} />
                 
                 {/* Root route - redirect to coach to ensure clean home screen URL */}
-                <Route path="/" element={<Navigate to={tenantId === 'rundemanager' ? '/rundemanager/coach' : '/coach'} replace />} />
+                <Route path="/" element={<Navigate to={tenantId === 'demo' ? '/demo/coach' : '/coach'} replace />} />
                 
-                <Route path="*" element={<Navigate to={tenantId === 'rundemanager' ? '/rundemanager/coach' : '/coach'} replace />} />
+                <Route path="*" element={<Navigate to={tenantId === 'demo' ? '/demo/coach' : '/coach'} replace />} />
               </Routes>
             </div>
           </main>
