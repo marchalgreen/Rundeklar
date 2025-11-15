@@ -396,7 +396,7 @@ const CheckInPage = () => {
         const onClose = () => setConfirmPlayerId(null)
         return (
           <div
-            className="fixed inset-0 z-[60] flex items-center justify-center bg-black/40 backdrop-blur-sm"
+            className="fixed inset-0 z-[60] flex items-center justify-center bg-black/40"
             role="dialog"
             aria-modal="true"
             onClick={(e) => {
@@ -404,7 +404,7 @@ const CheckInPage = () => {
             }}
           >
             <div
-              className="w-full max-w-md mx-4 bg-[hsl(var(--surface)/.98)] backdrop-blur-md ring-1 ring-[hsl(var(--line)/.12)] rounded-lg shadow-[var(--shadow-md)] p-4 sm:p-6"
+              className="w-full max-w-md mx-4 bg-[hsl(var(--surface))] ring-1 ring-[hsl(var(--line)/.12)] rounded-lg shadow-[var(--shadow-md)] p-4 sm:p-6"
               onClick={(e) => e.stopPropagation()}
             >
               <h3 className="text-base sm:text-lg font-semibold text-[hsl(var(--foreground))]">Tillad {picked.name}</h3>

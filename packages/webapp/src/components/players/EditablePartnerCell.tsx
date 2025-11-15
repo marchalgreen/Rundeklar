@@ -42,7 +42,7 @@ const PartnerOverrideDialog: React.FC<{
   onCancel: () => void
 }> = ({ existingPartnerName, onConfirm, onCancel }) => (
   <div
-    className="fixed inset-0 z-[200] flex items-center justify-center bg-black/40 backdrop-blur-sm"
+    className="fixed inset-0 z-[200] flex items-center justify-center bg-black/40"
     onClick={(e) => {
       if (e.target === e.currentTarget) {
         onCancel()

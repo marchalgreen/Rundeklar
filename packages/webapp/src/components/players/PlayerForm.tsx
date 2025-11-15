@@ -12,23 +12,11 @@ import { formatPlayerName } from '../../lib/formatting'
 import { PLAYER_CATEGORIES, PLAYER_GENDERS } from '../../constants'
 import { fetchTrainingGroups } from '../../services/coachLandingApi'
 
-/**
- * Props for PlayerForm component.
- */
 interface PlayerFormProps {
-  /** Whether the form is open. */
   isOpen: boolean
-  
-  /** Form mode (create or edit). */
   mode: 'create' | 'edit'
-  
-  /** Current player being edited (null for create mode). */
   currentPlayer: Player | null
-  
-  /** All players for partner selection. */
   allPlayers: Player[]
-  
-  /** Form state values. */
   formState: {
     name: string
     alias: string
@@ -42,8 +30,6 @@ interface PlayerFormProps {
     preferredMixedPartners: string[]
     trainingGroups: string[]
   }
-  
-  /** Form state setters. */
   formSetters: {
     setName: (value: string) => void
     setAlias: (value: string) => void
@@ -57,31 +43,10 @@ interface PlayerFormProps {
     setPreferredMixedPartners: (value: string[]) => void
     setTrainingGroups: (value: string[]) => void
   }
-  
-  /** Callback when form is submitted. */
   onSubmit: (event: React.FormEvent) => void
-  
-  /** Callback when form is closed. */
   onClose: () => void
 }
 
-/**
- * Player form component.
- * 
- * @example
- * ```tsx
- * <PlayerForm
- *   isOpen={isOpen}
- *   mode="create"
- *   currentPlayer={null}
- *   allPlayers={players}
- *   formState={formState}
- *   formSetters={formSetters}
- *   onSubmit={handleSubmit}
- *   onClose={handleClose}
- * />
- * ```
- */
 export const PlayerForm: React.FC<PlayerFormProps> = ({
   isOpen,
   mode,
@@ -132,28 +97,18 @@ export const PlayerForm: React.FC<PlayerFormProps> = ({
     setNewGroupInput('')
   }, [newGroupInput, availableGroups, formSetters, formState.trainingGroups])
 
-  /**
-   * Filters players for doubles partner selection.
-   */
   const availableDoublesPartners = useMemo(() => {
     return allPlayers.filter((p) => {
-      // Exclude self
       if (p.id === currentPlayer?.id) return false
-      // Same gender for doubles partner
       if (formState.gender === PLAYER_GENDERS.MALE) return p.gender === PLAYER_GENDERS.MALE
       if (formState.gender === PLAYER_GENDERS.FEMALE) return p.gender === PLAYER_GENDERS.FEMALE
       return true
     })
   }, [allPlayers, currentPlayer?.id, formState.gender])
 
-  /**
-   * Filters players for mixed partner selection.
-   */
   const availableMixedPartners = useMemo(() => {
     return allPlayers.filter((p) => {
-      // Exclude self
       if (p.id === currentPlayer?.id) return false
-      // Opposite gender for mixed partner
       if (formState.gender === PLAYER_GENDERS.MALE) return p.gender === PLAYER_GENDERS.FEMALE
       if (formState.gender === PLAYER_GENDERS.FEMALE) return p.gender === PLAYER_GENDERS.MALE
       return true
@@ -164,13 +119,23 @@ export const PlayerForm: React.FC<PlayerFormProps> = ({
 
   return (
     <div
-      className="fixed inset-0 z-50 flex justify-end bg-black/40 backdrop-blur-sm transition-opacity duration-200 motion-reduce:transition-none"
+      className="fixed inset-0 top-[64px] z-40 flex justify-end bg-black/40"
       role="dialog"
       aria-modal="true"
+      onClick={(e) => {
+        if (e.target === e.currentTarget) onClose()
+      }}
     >
-      <div className="h-full w-full max-w-md mx-3 sm:mx-4 md:mx-0 ring-1 ring-[hsl(var(--line)/.12)] bg-[hsl(var(--surface)/.98)] backdrop-blur-md shadow-[0_2px_8px_hsl(var(--line)/.12)] flex flex-col">
+      <div 
+        className="h-full w-full max-w-md mx-3 sm:mx-4 md:mx-0 bg-[hsl(var(--surface))] ring-1 ring-[hsl(var(--line)/.12)] shadow-lg flex flex-col"
+        onClick={(e) => e.stopPropagation()}
+        style={{ backdropFilter: 'none', WebkitBackdropFilter: 'none', isolation: 'isolate' }}
+      >
         {/* Header */}
-        <div className="flex items-start justify-between p-3 sm:p-4 md:p-6 border-b border-[hsl(var(--line)/.12)] flex-shrink-0 gap-2">
+        <div 
+          className="flex items-start justify-between p-3 sm:p-4 md:p-6 border-b border-[hsl(var(--line)/.12)] flex-shrink-0 bg-[hsl(var(--surface))]"
+          style={{ backdropFilter: 'none', WebkitBackdropFilter: 'none' }}
+        >
           <div className="min-w-0 flex-1">
             <h3 className="text-base sm:text-lg font-medium text-[hsl(var(--foreground))]">
               {mode === 'create' ? 'Ny spiller' : 'Rediger spiller'}
@@ -181,18 +146,23 @@ export const PlayerForm: React.FC<PlayerFormProps> = ({
             Luk
           </Button>
         </div>
-        {/* Scrollable content */}
-        <form onSubmit={onSubmit} className="flex-1 overflow-y-auto p-4 sm:p-6 space-y-4 sm:space-y-5 min-h-0">
+
+        {/* Scrollable form */}
+        <form 
+          onSubmit={onSubmit} 
+          className="flex-1 overflow-y-auto min-h-0 p-4 sm:p-6 space-y-4 sm:space-y-5 scrollbar-thin"
+        >
           <label className="flex flex-col gap-2 text-sm">
             <span className="font-medium text-[hsl(var(--foreground))]">Navn *</span>
             <input
               value={formState.name}
               onChange={(event) => formSetters.setName(event.target.value)}
-              className="rounded-md bg-[hsl(var(--surface))] px-3 py-2 ring-1 ring-[hsl(var(--line)/.14)] focus:ring-2 focus:ring-[hsl(var(--ring))] outline-none transition-all duration-200 motion-reduce:transition-none text-[hsl(var(--foreground))]"
+              className="rounded-md bg-[hsl(var(--surface))] px-3 py-2 ring-1 ring-[hsl(var(--line)/.14)] focus:ring-2 focus:ring-[hsl(var(--ring))] outline-none text-[hsl(var(--foreground))]"
               required
             />
           </label>
-          <div className="space-y-2 pt-1">
+
+          <div className="space-y-2">
             <h4 className="text-sm font-medium text-[hsl(var(--foreground))]">Træningsgrupper</h4>
             <div className="flex flex-wrap gap-2">
               {availableGroups.length === 0 ? (
@@ -213,7 +183,6 @@ export const PlayerForm: React.FC<PlayerFormProps> = ({
                             ? 'bg-[hsl(var(--primary))] text-white ring-[hsl(var(--primary)/.3)]'
                             : 'bg-[hsl(var(--surface-2))] text-[hsl(var(--foreground))] ring-[hsl(var(--line)/.12)]'
                         }`}
-                        title={selected ? 'Klik for at fjerne' : 'Klik for at tilføje'}
                       >
                         {name}
                       </button>
@@ -232,7 +201,7 @@ export const PlayerForm: React.FC<PlayerFormProps> = ({
                   }
                 }}
                 placeholder="Ny gruppe..."
-                className="flex-1 rounded-md bg-[hsl(var(--surface))] px-3 py-2 ring-1 ring-[hsl(var(--line)/.14)] focus:ring-2 focus:ring-[hsl(var(--ring))] outline-none transition-all duration-200 text-[hsl(var(--foreground))]"
+                className="flex-1 rounded-md bg-[hsl(var(--surface))] px-3 py-2 ring-1 ring-[hsl(var(--line)/.14)] focus:ring-2 focus:ring-[hsl(var(--ring))] outline-none text-[hsl(var(--foreground))]"
               />
               <Button type="button" onClick={addNewGroup}>
                 Tilføj
@@ -248,65 +217,66 @@ export const PlayerForm: React.FC<PlayerFormProps> = ({
               </div>
             )}
           </div>
+
           <label className="flex flex-col gap-2 text-sm">
             <span className="font-medium text-[hsl(var(--foreground))]">Kaldenavn</span>
             <input
               value={formState.alias}
               onChange={(event) => formSetters.setAlias(event.target.value)}
-              className="rounded-md bg-[hsl(var(--surface))] px-3 py-2 ring-1 ring-[hsl(var(--line)/.14)] focus:ring-2 focus:ring-[hsl(var(--ring))] outline-none transition-all duration-200 motion-reduce:transition-none text-[hsl(var(--foreground))]"
+              className="rounded-md bg-[hsl(var(--surface))] px-3 py-2 ring-1 ring-[hsl(var(--line)/.14)] focus:ring-2 focus:ring-[hsl(var(--ring))] outline-none text-[hsl(var(--foreground))]"
             />
           </label>
+
           <div className="space-y-4">
             <h4 className="text-sm font-medium text-[hsl(var(--foreground))]">Rangliste</h4>
-
             <label className="flex flex-col gap-2 text-sm">
               <span className="font-medium text-[hsl(var(--foreground))]">Rangliste Single</span>
               <input
                 type="number"
                 value={formState.levelSingle}
                 onChange={(event) => formSetters.setLevelSingle(event.target.value)}
-                className="rounded-md bg-[hsl(var(--surface))] px-3 py-2 ring-1 ring-[hsl(var(--line)/.14)] focus:ring-2 focus:ring-[hsl(var(--ring))] outline-none transition-all duration-200 motion-reduce:transition-none text-[hsl(var(--foreground))]"
+                className="rounded-md bg-[hsl(var(--surface))] px-3 py-2 ring-1 ring-[hsl(var(--line)/.14)] focus:ring-2 focus:ring-[hsl(var(--ring))] outline-none text-[hsl(var(--foreground))]"
               />
             </label>
-
             <label className="flex flex-col gap-2 text-sm">
               <span className="font-medium text-[hsl(var(--foreground))]">Rangliste Double</span>
               <input
                 type="number"
                 value={formState.levelDouble}
                 onChange={(event) => formSetters.setLevelDouble(event.target.value)}
-                className="rounded-md bg-[hsl(var(--surface))] px-3 py-2 ring-1 ring-[hsl(var(--line)/.14)] focus:ring-2 focus:ring-[hsl(var(--ring))] outline-none transition-all duration-200 motion-reduce:transition-none text-[hsl(var(--foreground))]"
+                className="rounded-md bg-[hsl(var(--surface))] px-3 py-2 ring-1 ring-[hsl(var(--line)/.14)] focus:ring-2 focus:ring-[hsl(var(--ring))] outline-none text-[hsl(var(--foreground))]"
               />
             </label>
-
             <label className="flex flex-col gap-2 text-sm">
               <span className="font-medium text-[hsl(var(--foreground))]">Rangliste Mix</span>
               <input
                 type="number"
                 value={formState.levelMix}
                 onChange={(event) => formSetters.setLevelMix(event.target.value)}
-                className="rounded-md bg-[hsl(var(--surface))] px-3 py-2 ring-1 ring-[hsl(var(--line)/.14)] focus:ring-2 focus:ring-[hsl(var(--ring))] outline-none transition-all duration-200 motion-reduce:transition-none text-[hsl(var(--foreground))]"
+                className="rounded-md bg-[hsl(var(--surface))] px-3 py-2 ring-1 ring-[hsl(var(--line)/.14)] focus:ring-2 focus:ring-[hsl(var(--ring))] outline-none text-[hsl(var(--foreground))]"
               />
             </label>
           </div>
+
           <label className="flex flex-col gap-2 text-sm">
             <span className="font-medium text-[hsl(var(--foreground))]">Køn</span>
             <select
               value={formState.gender}
               onChange={(event) => formSetters.setGender(event.target.value as PlayerGender | '')}
-              className="rounded-md bg-[hsl(var(--surface))] px-3 py-2 ring-1 ring-[hsl(var(--line)/.14)] focus:ring-2 focus:ring-[hsl(var(--ring))] outline-none transition-all duration-200 motion-reduce:transition-none text-[hsl(var(--foreground))]"
+              className="rounded-md bg-[hsl(var(--surface))] px-3 py-2 ring-1 ring-[hsl(var(--line)/.14)] focus:ring-2 focus:ring-[hsl(var(--ring))] outline-none text-[hsl(var(--foreground))]"
             >
               <option value="">Vælg køn</option>
               <option value={PLAYER_GENDERS.MALE}>{PLAYER_GENDERS.MALE}</option>
               <option value={PLAYER_GENDERS.FEMALE}>{PLAYER_GENDERS.FEMALE}</option>
             </select>
           </label>
+
           <label className="flex flex-col gap-2 text-sm">
             <span className="font-medium text-[hsl(var(--foreground))]">Primær kategori</span>
             <select
               value={formState.primaryCategory}
               onChange={(event) => formSetters.setPrimaryCategory(event.target.value as PlayerCategory | '')}
-              className="rounded-md bg-[hsl(var(--surface))] px-3 py-2 ring-1 ring-[hsl(var(--line)/.14)] focus:ring-2 focus:ring-[hsl(var(--ring))] outline-none transition-all duration-200 motion-reduce:transition-none text-[hsl(var(--foreground))]"
+              className="rounded-md bg-[hsl(var(--surface))] px-3 py-2 ring-1 ring-[hsl(var(--line)/.14)] focus:ring-2 focus:ring-[hsl(var(--ring))] outline-none text-[hsl(var(--foreground))]"
             >
               <option value="">Vælg kategori</option>
               <option value={PLAYER_CATEGORIES.SINGLE}>{PLAYER_CATEGORIES.SINGLE}</option>
@@ -314,20 +284,19 @@ export const PlayerForm: React.FC<PlayerFormProps> = ({
               <option value={PLAYER_CATEGORIES.BOTH}>{PLAYER_CATEGORIES.BOTH}</option>
             </select>
           </label>
+
           <label className="flex items-center gap-2 text-sm text-[hsl(var(--muted))] cursor-pointer">
             <input
               type="checkbox"
               checked={formState.active}
               onChange={(event) => formSetters.setActive(event.target.checked)}
-              className="h-4 w-4 rounded bg-[hsl(var(--surface))] ring-1 ring-[hsl(var(--line)/.12)] focus:ring-2 focus:ring-[hsl(var(--ring))] outline-none transition-all duration-200 motion-reduce:transition-none"
+              className="h-4 w-4 rounded bg-[hsl(var(--surface))] ring-1 ring-[hsl(var(--line)/.12)] focus:ring-2 focus:ring-[hsl(var(--ring))] outline-none"
             />
             Aktiv spiller
           </label>
 
-          {/* Preferred Partners Section */}
           <div className="space-y-4 pt-4 border-t border-[hsl(var(--line)/.12)]">
             <h4 className="text-sm font-medium text-[hsl(var(--foreground))]">Fast makker</h4>
-
             <label className="flex flex-col gap-2 text-sm">
               <span className="font-medium text-[hsl(var(--foreground))]">Double makker</span>
               <select
@@ -336,7 +305,7 @@ export const PlayerForm: React.FC<PlayerFormProps> = ({
                   const selectedId = event.target.value
                   formSetters.setPreferredDoublesPartners(selectedId ? [selectedId] : [])
                 }}
-                className="rounded-md bg-[hsl(var(--surface))] px-3 py-2 ring-1 ring-[hsl(var(--line)/.14)] focus:ring-2 focus:ring-[hsl(var(--ring))] outline-none transition-all duration-200 motion-reduce:transition-none text-[hsl(var(--foreground))]"
+                className="rounded-md bg-[hsl(var(--surface))] px-3 py-2 ring-1 ring-[hsl(var(--line)/.14)] focus:ring-2 focus:ring-[hsl(var(--ring))] outline-none text-[hsl(var(--foreground))]"
               >
                 <option value="">Ingen</option>
                 {availableDoublesPartners.map((player) => (
@@ -346,7 +315,6 @@ export const PlayerForm: React.FC<PlayerFormProps> = ({
                 ))}
               </select>
             </label>
-
             <label className="flex flex-col gap-2 text-sm">
               <span className="font-medium text-[hsl(var(--foreground))]">Mix makker</span>
               <select
@@ -355,7 +323,7 @@ export const PlayerForm: React.FC<PlayerFormProps> = ({
                   const selectedId = event.target.value
                   formSetters.setPreferredMixedPartners(selectedId ? [selectedId] : [])
                 }}
-                className="rounded-md bg-[hsl(var(--surface))] px-3 py-2 ring-1 ring-[hsl(var(--line)/.14)] focus:ring-2 focus:ring-[hsl(var(--ring))] outline-none transition-all duration-200 motion-reduce:transition-none text-[hsl(var(--foreground))]"
+                className="rounded-md bg-[hsl(var(--surface))] px-3 py-2 ring-1 ring-[hsl(var(--line)/.14)] focus:ring-2 focus:ring-[hsl(var(--ring))] outline-none text-[hsl(var(--foreground))]"
               >
                 <option value="">Ingen</option>
                 {availableMixedPartners.map((player) => (
@@ -367,12 +335,21 @@ export const PlayerForm: React.FC<PlayerFormProps> = ({
             </label>
           </div>
         </form>
-        {/* Sticky footer actions */}
-        <div className="sticky bottom-0 border-t border-[hsl(var(--line)/.12)] bg-[hsl(var(--surface)/.98)]/95 backdrop-blur p-3 sm:p-4 md:p-6 flex flex-col sm:flex-row justify-end gap-2 sm:gap-3">
+
+        {/* Footer */}
+        <div className="flex-shrink-0 border-t border-[hsl(var(--line)/.12)] bg-[hsl(var(--surface))] p-3 sm:p-4 md:p-6 flex flex-col sm:flex-row justify-end gap-2 sm:gap-3">
           <Button variant="ghost" type="button" onClick={onClose} className="w-full sm:w-auto text-xs sm:text-sm">
             Annuller
           </Button>
-          <Button type="submit" className="ring-2 ring-[hsl(var(--accent)/.2)] w-full sm:w-auto text-xs sm:text-sm" onClick={(e) => { e.preventDefault(); /* submit via form */ const form = (e.currentTarget.closest('div')?.previousElementSibling as HTMLFormElement | null); form?.requestSubmit?.() }}>
+          <Button 
+            type="submit" 
+            className="w-full sm:w-auto text-xs sm:text-sm" 
+            onClick={(e) => {
+              e.preventDefault()
+              const form = e.currentTarget.closest('div')?.previousElementSibling as HTMLFormElement | null
+              form?.requestSubmit()
+            }}
+          >
             Gem spiller
           </Button>
         </div>

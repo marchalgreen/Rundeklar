@@ -1,6 +1,6 @@
 import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react'
 
-type Page = 'coach' | 'check-in' | 'rounds' | 'match-program' | 'players' | 'statistics' | 'prism-test'
+export type Page = 'coach' | 'check-in' | 'rounds' | 'match-program' | 'players' | 'statistics' | 'prism-test'
 type AuthPage = 'login' | 'register' | 'verify-email' | 'forgot-password' | 'reset-password' | 'account'
 
 interface NavigationContextType {

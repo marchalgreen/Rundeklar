@@ -5,7 +5,6 @@ import MatchProgramPage from './routes/MatchProgram'
 import StatisticsPage from './routes/Statistics'
 import LandingPage from './routes/LandingPage'
 import PrismTestPage from './routes/PrismTest'
-import GlassSurface from './components/GlassSurface'
 import LoginPage from './routes/auth/Login'
 import RegisterPage from './routes/auth/Register'
 import VerifyEmailPage from './routes/auth/VerifyEmail'
@@ -105,22 +104,8 @@ const Header = () => {
 
   return (
     <>
-      <header className="relative z-10 fullscreen-hide" style={{ willChange: 'transform' }}>
-        <GlassSurface
-          width="100%"
-          height="auto"
-          borderRadius={0}
-          backgroundOpacity={0.3}
-          blur={16}
-          brightness={110}
-          opacity={0.9}
-          saturation={1.6}
-          displace={0}
-          distortionScale={0}
-          className="relative"
-          style={{ minHeight: '64px', transform: 'translateZ(0)' }}
-        >
-          <div className="flex items-center justify-between px-3 sm:px-6 py-3 sm:py-4 w-full">
+      <header className="relative z-10 fullscreen-hide bg-[hsl(var(--surface-2))] border-b border-[hsl(var(--line)/.12)] shadow-[0_1px_3px_rgba(0,0,0,0.08)]" style={{ willChange: 'transform' }}>
+        <div className="relative flex items-center justify-between px-3 sm:px-6 py-3 sm:py-4 w-full" style={{ minHeight: '64px', position: 'relative' }}>
             {/* Left section: Logo */}
             <div className="flex items-center flex-shrink-0">
               <button
@@ -178,7 +163,7 @@ const Header = () => {
                     <span className="text-sm truncate max-w-[120px]">{club?.email}</span>
                   </button>
                   {isUserMenuOpen && (
-                    <div className="absolute right-0 mt-2 w-48 bg-[hsl(var(--surface)/.85)] backdrop-blur-md border border-[hsl(var(--line))] rounded-md shadow-lg z-50">
+                    <div className="absolute right-0 mt-2 w-48 bg-[hsl(var(--surface))] border border-[hsl(var(--line))] rounded-md shadow-lg z-50">
                       <button
                         type="button"
                         onClick={() => {
@@ -219,14 +204,13 @@ const Header = () => {
               )}
             </div>
           </div>
-        </GlassSurface>
       </header>
 
       {/* Mobile/Tablet: Slide-out menu */}
       <div
         ref={menuRef}
         id="mobile-menu"
-        className={`lg:hidden fixed inset-y-0 right-0 z-50 w-80 max-w-[85vw] bg-[hsl(var(--surface)/.85)] backdrop-blur-md shadow-xl transform transition-transform duration-300 ease-in-out ${
+        className={`lg:hidden fixed inset-y-0 right-0 z-50 w-80 max-w-[85vw] bg-[hsl(var(--surface))] shadow-xl transform transition-transform duration-300 ease-in-out ${
           isMenuOpen ? 'translate-x-0' : 'translate-x-full'
         }`}
         aria-hidden={!isMenuOpen}
@@ -265,7 +249,7 @@ const Header = () => {
       {/* Backdrop overlay */}
       {isMenuOpen && (
         <div
-          className="fixed inset-0 bg-black/40 backdrop-blur-sm z-40 lg:hidden"
+          className="fixed inset-0 bg-black/40 z-40 lg:hidden"
           onClick={() => setIsMenuOpen(false)}
           aria-hidden="true"
         />

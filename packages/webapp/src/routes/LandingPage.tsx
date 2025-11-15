@@ -134,7 +134,7 @@ const PlayerSearchModal: React.FC<{
   if (!open) return null
   return (
     <div
-      className="fixed inset-0 z-50 flex items-start sm:items-center justify-center bg-black/40 backdrop-blur-sm"
+      className="fixed inset-0 z-50 flex items-start sm:items-center justify-center bg-black/40"
       role="dialog"
       aria-modal="true"
       aria-label="Søg spillere"
@@ -161,7 +161,7 @@ const PlayerSearchModal: React.FC<{
         }
       }}
     >
-      <div className="w-full max-w-lg mx-3 sm:mx-0 bg-[hsl(var(--surface)/.98)] backdrop-blur-md ring-1 ring-[hsl(var(--line)/.12)] rounded-lg shadow-[var(--shadow-md)]">
+      <div className="w-full max-w-lg mx-3 sm:mx-0 bg-[hsl(var(--surface))] ring-1 ring-[hsl(var(--line)/.12)] rounded-lg shadow-[var(--shadow-md)]">
         <div className="flex items-center gap-2 sm:gap-3 p-3 sm:p-4 border-b border-[hsl(var(--line)/.12)]">
           <Search className="w-4 h-4 sm:w-5 sm:h-5 text-[hsl(var(--muted))] flex-shrink-0" aria-hidden />
           <input

@@ -1,8 +1,6 @@
 import React from 'react'
 import { clsx } from 'clsx'
-import { useNavigation } from '../../contexts/NavigationContext'
-
-type Page = 'coach' | 'check-in' | 'rounds' | 'match-program' | 'players' | 'statistics'
+import { useNavigation, type Page } from '../../contexts/NavigationContext'
 
 type Props = {
   page: Page
