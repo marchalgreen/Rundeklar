@@ -6,7 +6,6 @@ import MatchProgramPage from './routes/MatchProgram'
 import StatisticsPage from './routes/Statistics'
 import LandingPage from './routes/LandingPage'
 import PrismTestPage from './routes/PrismTest'
-import Prism from './components/Prism'
 import GlassSurface from './components/GlassSurface'
 import LoginPage from './routes/auth/Login'
 import RegisterPage from './routes/auth/Register'
@@ -177,7 +176,7 @@ const Header = () => {
                     <span className="text-sm truncate max-w-[120px]">{club?.email}</span>
                   </button>
                   {isUserMenuOpen && (
-                    <div className="absolute right-0 mt-2 w-48 bg-[hsl(var(--surface))] border border-[hsl(var(--line))] rounded-md shadow-lg z-50">
+                    <div className="absolute right-0 mt-2 w-48 bg-[hsl(var(--surface)/.85)] backdrop-blur-md border border-[hsl(var(--line))] rounded-md shadow-lg z-50">
                       <Link
                         to={buildPath('/account')}
                         className="block px-4 py-2 hover:bg-[hsl(var(--surface-2))] text-sm"
@@ -217,7 +216,7 @@ const Header = () => {
       <div
         ref={menuRef}
         id="mobile-menu"
-        className={`lg:hidden fixed inset-y-0 right-0 z-50 w-80 max-w-[85vw] bg-[hsl(var(--surface))] shadow-xl transform transition-transform duration-300 ease-in-out ${
+        className={`lg:hidden fixed inset-y-0 right-0 z-50 w-80 max-w-[85vw] bg-[hsl(var(--surface)/.85)] backdrop-blur-md shadow-xl transform transition-transform duration-300 ease-in-out ${
           isMenuOpen ? 'translate-x-0' : 'translate-x-full'
         }`}
         aria-hidden={!isMenuOpen}
@@ -281,35 +280,11 @@ const AppInner = () => {
   // Check if current route is an auth route (should hide header)
   const isAuthRoute = /^\/([^/]+\/)?(login|register|verify-email|forgot-password|reset-password)(\/|$)/.test(actualPath)
   
-  // Check if current route is a key page (should show Prism background)
-  const isKeyPage = /^\/([^/]+\/)?(coach|check-in|match-program|players|statistics|prism-test)(\/|$)/.test(actualPath)
-  
-  // Feature flag: Set to false to disable Prism animated background
-  const ENABLE_PRISM_BACKGROUND = true
-
   return (
     <TenantProvider tenantId={tenantId}>
       <AuthProvider>
         <TenantTitleUpdater />
         <div className="flex min-h-screen flex-col text-[hsl(var(--foreground))] overflow-x-hidden max-w-full relative">
-          {/* Full-screen Prism background for key pages */}
-          {ENABLE_PRISM_BACKGROUND && isKeyPage && (
-            <div className="fixed inset-0 -z-10 opacity-50" style={{ willChange: 'transform' }}>
-              <Prism
-                animationType="3drotate"
-                timeScale={0.4}
-                height={3.5}
-                baseWidth={5.5}
-                scale={5}
-                hueShift={0}
-                colorFrequency={0.6}
-                noise={0}
-                glow={0.6}
-                bloom={0.7}
-                transparent={true}
-              />
-            </div>
-          )}
           {!isAuthRoute && <Header />}
           <main className="flex-1 overflow-y-auto overflow-x-hidden max-w-full relative z-0">
             <div className="flex w-full flex-col gap-4 sm:gap-6 px-4 sm:px-6 pb-6 sm:pb-10 pt-4 sm:pt-6 md:px-8 lg:px-12 max-w-full overflow-x-hidden">
