@@ -23,16 +23,13 @@ import { extractTenantId } from './lib/tenant'
 import { Button } from './components/ui'
 
 /**
- * Component that updates document title based on tenant config.
+ * Component that updates document title.
+ * Always sets title to "Rundeklar" for consistent branding.
  */
 const TenantTitleUpdater = () => {
-  const { config } = useTenant()
-  
   useEffect(() => {
-    if (config?.name) {
-      document.title = config.name
-    }
-  }, [config?.name])
+    document.title = 'Rundeklar'
+  }, [])
   
   return null
 }
