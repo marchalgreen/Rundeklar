@@ -104,7 +104,24 @@ const Header = () => {
 
   return (
     <>
-      <header className="relative z-10 fullscreen-hide bg-[hsl(var(--surface-2))] border-b border-[hsl(var(--line)/.12)] shadow-[0_1px_3px_rgba(0,0,0,0.08)]" style={{ willChange: 'transform' }}>
+      <header 
+        className="relative z-10 fullscreen-hide border-b" 
+        style={{ 
+          willChange: 'transform',
+          background: 'rgba(255, 255, 255, 0.15)',
+          backdropFilter: 'blur(20px) saturate(180%) brightness(105%)',
+          WebkitBackdropFilter: 'blur(20px) saturate(180%) brightness(105%)',
+          borderColor: 'rgba(255, 255, 255, 0.4)',
+          boxShadow: `
+            0 1px 3px rgba(0, 0, 0, 0.08),
+            0 4px 12px rgba(0, 0, 0, 0.04),
+            inset 0 1px 0 rgba(255, 255, 255, 0.5),
+            inset 0 -1px 0 rgba(255, 255, 255, 0.1)
+          `,
+          borderTop: '1px solid rgba(255, 255, 255, 0.6)',
+          borderBottom: '1px solid rgba(0, 0, 0, 0.06)'
+        }}
+      >
         <div className="relative flex items-center justify-between px-3 sm:px-6 py-3 sm:py-4 w-full" style={{ minHeight: '64px', position: 'relative' }}>
             {/* Left section: Logo */}
             <div className="flex items-center flex-shrink-0">
