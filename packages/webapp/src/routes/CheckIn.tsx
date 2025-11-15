@@ -271,11 +271,12 @@ const CheckInPage = () => {
   }
 
   return (
-    <section className="flex flex-col gap-4 sm:gap-6 pt-2 sm:pt-4">
-      <header className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between mb-2 sm:mb-3">
-        <div className="flex-1">
-          <h1 className="text-lg sm:text-xl font-semibold text-[hsl(var(--foreground))]">Indtjekning</h1>
-          <p className="text-base text-[hsl(var(--muted))] mt-1">
+    <section className="flex flex-col gap-4 sm:gap-6 pt-2 sm:pt-4 xl:pt-2">
+      <header className="flex flex-col gap-2 sm:gap-3 mb-2 lg:mb-1.5">
+        <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-2 sm:gap-3">
+          <div className="flex-1 min-w-0">
+            <h1 className="text-lg sm:text-xl font-semibold text-[hsl(var(--foreground))]">Indtjekning</h1>
+            <p className="text-xs sm:text-sm md:text-base text-[hsl(var(--muted))] mt-1">
             Aktiv træning: {formatDate(session.date, false)}
             {checkedIn.length > 0 && (
               <>
@@ -286,9 +287,9 @@ const CheckInPage = () => {
                 {genderBreakdown.female} Damer
               </>
             )}
-          </p>
+            </p>
+          </div>
         </div>
-        {/* Variant selector removed — only option A is kept */}
       </header>
 
       <div className="grid gap-4 lg:grid-cols-[35%_65%] lg:items-start">

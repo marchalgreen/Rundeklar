@@ -464,16 +464,17 @@ const PlayersPage = () => {
   )
 
   return (
-    <section className="flex flex-col gap-4 sm:gap-6 pt-4 sm:pt-6">
-      <header className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between mb-3 sm:mb-4">
-        <div className="flex-1">
-          <h1 className="text-xl sm:text-2xl font-semibold text-[hsl(var(--foreground))]">Spillere</h1>
-          <p className="text-base text-[hsl(var(--muted))] mt-1">Administrer medlemslisten og deres status.</p>
-          {error && (
-            <span className="mt-2 inline-block text-sm text-[hsl(var(--destructive))]">{error}</span>
-          )}
-        </div>
-        <div className="flex gap-2">
+    <section className="flex flex-col gap-4 sm:gap-6 pt-2 sm:pt-4 xl:pt-2">
+      <header className="flex flex-col gap-2 sm:gap-3 mb-2 lg:mb-1.5">
+        <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-2 sm:gap-3">
+          <div className="flex-1 min-w-0">
+            <h1 className="text-lg sm:text-xl font-semibold text-[hsl(var(--foreground))]">Spillere</h1>
+            <p className="text-xs sm:text-sm md:text-base text-[hsl(var(--muted))] mt-1">Administrer medlemslisten og deres status.</p>
+            {error && (
+              <span className="mt-2 inline-block text-sm text-[hsl(var(--destructive))]">{error}</span>
+            )}
+          </div>
+          <div className="flex flex-wrap gap-1.5 sm:gap-2">
           <label className="flex items-center gap-2 text-sm text-[hsl(var(--muted))] cursor-pointer">
             <input
               type="checkbox"
@@ -491,6 +492,7 @@ const PlayersPage = () => {
             <Plus size={16} />
             <span>Ny spiller</span>
           </button>
+          </div>
         </div>
       </header>
 
