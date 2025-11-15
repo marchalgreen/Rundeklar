@@ -1,20 +1,19 @@
 import React, { useEffect, useState } from 'react'
-import { useSearchParams, useNavigate } from 'react-router-dom'
-import { useTenant } from '../../contexts/TenantContext'
+import { useNavigation } from '../../contexts/NavigationContext'
 import { PageCard } from '../../components/ui'
 import { Button } from '../../components/ui'
 
 export default function VerifyEmailPage() {
-  const { buildPath } = useTenant()
-  const [searchParams] = useSearchParams()
-  const navigate = useNavigate()
+  const { navigateToAuth } = useNavigation()
   const [loading, setLoading] = useState(true)
   const [success, setSuccess] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
   useEffect(() => {
     const verifyEmail = async () => {
-      const token = searchParams.get('token')
+      // Extract token from URL query params
+      const params = new URLSearchParams(window.location.search)
+      const token = params.get('token')
       if (!token) {
         setError('Ingen verifikationstoken fundet')
         setLoading(false)
@@ -39,7 +38,7 @@ export default function VerifyEmailPage() {
         if (response.ok) {
           setSuccess(true)
           setTimeout(() => {
-            navigate(buildPath('/login'))
+            navigateToAuth('login')
           }, 3000)
         } else {
           setError(data.error || 'Email verifikation fejlede')
@@ -52,7 +51,7 @@ export default function VerifyEmailPage() {
     }
 
     verifyEmail()
-  }, [searchParams, navigate, buildPath])
+  }, [navigateToAuth])
 
   return (
     <div className="flex min-h-screen items-center justify-center px-4 py-12">
@@ -83,7 +82,7 @@ export default function VerifyEmailPage() {
               Verifikation fejlede
             </h1>
             <p className="text-[hsl(var(--muted))] mb-4">{error}</p>
-            <Button onClick={() => navigate(buildPath('/login'))}>
+            <Button onClick={() => navigateToAuth('login')}>
               Gå til login
             </Button>
           </div>

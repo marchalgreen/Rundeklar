@@ -1,14 +1,12 @@
 import React, { useState } from 'react'
-import { Link, useNavigate } from 'react-router-dom'
 import { useAuth } from '../../contexts/AuthContext'
-import { useTenant } from '../../contexts/TenantContext'
+import { useNavigation } from '../../contexts/NavigationContext'
 import { Button } from '../../components/ui'
 import { PageCard } from '../../components/ui'
 
 export default function LoginPage() {
   const { login } = useAuth()
-  const { buildPath } = useTenant()
-  const navigate = useNavigate()
+  const { navigate, navigateToAuth } = useNavigation()
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [totpCode, setTotpCode] = useState('')
@@ -23,7 +21,7 @@ export default function LoginPage() {
 
     try {
       await login(email, password, totpCode || undefined)
-      navigate(buildPath('/coach'))
+      navigate('coach')
     } catch (err) {
       if (err instanceof Error && err.message === '2FA_REQUIRED') {
         setRequires2FA(true)
@@ -103,20 +101,22 @@ export default function LoginPage() {
         </form>
 
         <div className="mt-6 text-center space-y-2">
-          <Link
-            to={buildPath('/forgot-password')}
+          <button
+            type="button"
+            onClick={() => navigateToAuth('forgot-password')}
             className="text-sm text-[hsl(var(--primary))] hover:underline"
           >
             Glemt adgangskode?
-          </Link>
+          </button>
           <div className="text-sm text-[hsl(var(--muted))]">
             Har du ikke en konto?{' '}
-            <Link
-              to={buildPath('/register')}
+            <button
+              type="button"
+              onClick={() => navigateToAuth('register')}
               className="text-[hsl(var(--primary))] hover:underline"
             >
               Registrer dig
-            </Link>
+            </button>
           </div>
         </div>
       </PageCard>

@@ -1,4 +1,3 @@
-import { HashRouter, Routes, Route, Navigate, useLocation, Link } from 'react-router-dom'
 import { useState, useEffect, useRef } from 'react'
 import PlayersPage from './routes/PlayersDB'
 import CheckInPage from './routes/CheckIn'
@@ -18,7 +17,8 @@ import { UserCheck, UsersRound, Grid2x2, BarChart3, Menu, X, PlayCircle, User, L
 import { TenantProvider, useTenant } from './contexts/TenantContext'
 import { AuthProvider, useAuth } from './contexts/AuthContext'
 import { ProtectedRoute } from './components/auth/ProtectedRoute'
-import { extractTenantId } from './lib/tenant'
+import { NavigationProvider, useNavigation } from './contexts/NavigationContext'
+import { getCurrentTenantId } from './lib/tenant'
 import { Button } from './components/ui'
 
 /**
@@ -41,8 +41,9 @@ const TenantTitleUpdater = () => {
  * Desktop: Horizontal navigation bar
  */
 const Header = () => {
-  const { config, buildPath } = useTenant()
+  const { config } = useTenant()
   const { isAuthenticated, club, logout } = useAuth()
+  const { navigate, navigateToAuth } = useNavigation()
   const logoPath = `${import.meta.env.BASE_URL}${config.logo}`
   const [isMenuOpen, setIsMenuOpen] = useState(false)
   const [isUserMenuOpen, setIsUserMenuOpen] = useState(false)
@@ -76,11 +77,11 @@ const Header = () => {
     return () => document.removeEventListener('mousedown', handleClickOutside)
   }, [isMenuOpen, isUserMenuOpen])
 
-  // Close menu when route changes (mobile)
-  const location = useLocation()
+  // Close menu when page changes (mobile)
+  const { currentPage } = useNavigation()
   useEffect(() => {
     setIsMenuOpen(false)
-  }, [location.pathname])
+  }, [currentPage])
 
   // Prevent body scroll when menu is open
   useEffect(() => {
@@ -95,16 +96,16 @@ const Header = () => {
   }, [isMenuOpen])
 
   const navItems = [
-    { to: buildPath('/coach'), icon: <PlayCircle />, label: 'Træner' },
-    { to: buildPath('/check-in'), icon: <UserCheck />, label: 'Indtjekning' },
-    { to: buildPath('/match-program'), icon: <Grid2x2 />, label: 'Kampprogram' },
-    { to: buildPath('/players'), icon: <UsersRound />, label: 'Spillere' },
-    { to: buildPath('/statistics'), icon: <BarChart3 />, label: 'Statistik' }
+    { page: 'coach' as const, icon: <PlayCircle />, label: 'Træner' },
+    { page: 'check-in' as const, icon: <UserCheck />, label: 'Indtjekning' },
+    { page: 'match-program' as const, icon: <Grid2x2 />, label: 'Kampprogram' },
+    { page: 'players' as const, icon: <UsersRound />, label: 'Spillere' },
+    { page: 'statistics' as const, icon: <BarChart3 />, label: 'Statistik' }
   ]
 
   return (
     <>
-      <header className="relative z-10" style={{ willChange: 'transform' }}>
+      <header className="relative z-10 fullscreen-hide" style={{ willChange: 'transform' }}>
         <GlassSurface
           width="100%"
           height="auto"
@@ -122,8 +123,9 @@ const Header = () => {
           <div className="flex items-center justify-between px-3 sm:px-6 py-3 sm:py-4 w-full">
             {/* Left section: Logo */}
             <div className="flex items-center flex-shrink-0">
-              <Link 
-                to={buildPath('/coach')}
+              <button
+                type="button"
+                onClick={() => navigate('coach')}
                 className="flex items-center flex-shrink-0 hover:opacity-80 transition-opacity cursor-pointer"
                 aria-label={`Gå til ${config.name} startside`}
               >
@@ -132,7 +134,7 @@ const Header = () => {
                   alt={config.name} 
                   className="h-10 sm:h-12 flex-shrink-0 object-contain" 
                 />
-              </Link>
+              </button>
             </div>
 
             {/* Desktop: Horizontal navigation - absolutely positioned and centered */}
@@ -146,7 +148,7 @@ const Header = () => {
               }}
             >
               {navItems.map((item) => (
-                <SidebarItem key={item.to} to={item.to} icon={item.icon} label={item.label} />
+                <SidebarItem key={item.page} page={item.page} icon={item.icon} label={item.label} />
               ))}
             </nav>
 
@@ -177,17 +179,21 @@ const Header = () => {
                   </button>
                   {isUserMenuOpen && (
                     <div className="absolute right-0 mt-2 w-48 bg-[hsl(var(--surface)/.85)] backdrop-blur-md border border-[hsl(var(--line))] rounded-md shadow-lg z-50">
-                      <Link
-                        to={buildPath('/account')}
-                        className="block px-4 py-2 hover:bg-[hsl(var(--surface-2))] text-sm"
-                        onClick={() => setIsUserMenuOpen(false)}
+                      <button
+                        type="button"
+                        onClick={() => {
+                          navigateToAuth('account')
+                          setIsUserMenuOpen(false)
+                        }}
+                        className="w-full text-left block px-4 py-2 hover:bg-[hsl(var(--surface-2))] text-sm"
                       >
                         <div className="flex items-center gap-2">
                           <User size={16} />
                           Kontoindstillinger
                         </div>
-                      </Link>
+                      </button>
                       <button
+                        type="button"
                         onClick={() => {
                           logout()
                           setIsUserMenuOpen(false)
@@ -203,9 +209,13 @@ const Header = () => {
                   )}
                 </div>
               ) : (
-                <Link to={buildPath('/login')} className="flex-shrink-0">
+                <button
+                  type="button"
+                  onClick={() => navigateToAuth('login')}
+                  className="flex-shrink-0"
+                >
                   <Button size="sm">Log ind</Button>
-                </Link>
+                </button>
               )}
             </div>
           </div>
@@ -240,8 +250,8 @@ const Header = () => {
             <div className="flex flex-col gap-2">
               {navItems.map((item) => (
                 <SidebarItem 
-                  key={item.to} 
-                  to={item.to} 
+                  key={item.page} 
+                  page={item.page} 
                   icon={item.icon} 
                   label={item.label}
                   className="w-full justify-start px-4 py-3 rounded-lg"
@@ -265,95 +275,67 @@ const Header = () => {
 }
 
 /**
- * Inner app component that uses tenant context.
- * @remarks Extracts tenant ID from URL and provides tenant context to routes.
+ * Inner app component that uses tenant context and navigation.
+ * @remarks Uses NavigationProvider for state-based navigation (URL stays at root).
  */
 const AppInner = () => {
-  const location = useLocation()
-  
-  // Extract tenant ID from hash (HashRouter) or pathname (BrowserRouter)
-  const hash = location.hash || ''
-  const pathname = location.pathname || ''
-  const actualPath = hash ? hash.replace(/^#/, '') : pathname
-  const tenantId = extractTenantId(actualPath)
-
-  // Check if current route is an auth route (should hide header)
-  const isAuthRoute = /^\/([^/]+\/)?(login|register|verify-email|forgot-password|reset-password)(\/|$)/.test(actualPath)
+  // Extract tenant ID from hostname (demo detection) or default to 'default'
+  const tenantId = getCurrentTenantId()
   
   return (
     <TenantProvider tenantId={tenantId}>
       <AuthProvider>
-        <TenantTitleUpdater />
-        <div className="flex min-h-screen flex-col text-[hsl(var(--foreground))] overflow-x-hidden max-w-full relative">
-          {!isAuthRoute && <Header />}
-          <main className="flex-1 overflow-y-auto overflow-x-hidden max-w-full relative z-0">
-            <div className="flex w-full flex-col gap-4 sm:gap-6 px-4 sm:px-6 pb-6 sm:pb-10 pt-4 sm:pt-6 md:px-8 lg:px-12 max-w-full overflow-x-hidden">
-              <Routes>
-                {/* Auth routes */}
-                <Route path="/login" element={<LoginPage />} />
-                <Route path="/register" element={<RegisterPage />} />
-                <Route path="/verify-email" element={<VerifyEmailPage />} />
-                <Route path="/forgot-password" element={<ForgotPasswordPage />} />
-                <Route path="/reset-password" element={<ResetPasswordPage />} />
-                <Route path="/account" element={<ProtectedRoute><AccountSettingsPage /></ProtectedRoute>} />
-                
-                {/* Tenant-prefixed auth routes */}
-                <Route path="/:tenantId/login" element={<LoginPage />} />
-                <Route path="/:tenantId/register" element={<RegisterPage />} />
-                <Route path="/:tenantId/verify-email" element={<VerifyEmailPage />} />
-                <Route path="/:tenantId/forgot-password" element={<ForgotPasswordPage />} />
-                <Route path="/:tenantId/reset-password" element={<ResetPasswordPage />} />
-                <Route path="/:tenantId/account" element={<ProtectedRoute><AccountSettingsPage /></ProtectedRoute>} />
-
-                {/* Main app routes */}
-                <Route path="/coach" element={<LandingPage onRedirectToCheckin={() => {
-                  const target = tenantId && tenantId !== 'default' ? `#/${tenantId}/check-in` : '#/check-in'
-                  window.location.hash = target
-                }} />} />
-                <Route path="/players" element={<PlayersPage />} />
-                <Route path="/check-in" element={<CheckInPage />} />
-                <Route path="/match-program" element={<MatchProgramPage />} />
-                <Route path="/statistics" element={<StatisticsPage />} />
-                <Route path="/prism-test" element={<PrismTestPage />} />
-                
-                {/* Tenant-prefixed routes */}
-                <Route path="/:tenantId/coach" element={<LandingPage onRedirectToCheckin={() => {
-                  const id = tenantId && tenantId !== 'default' ? tenantId : 'default'
-                  window.location.hash = id === 'default' ? '#/check-in' : `#/${id}/check-in`
-                }} />} />
-                <Route path="/:tenantId/players" element={<PlayersPage />} />
-                <Route path="/:tenantId/check-in" element={<CheckInPage />} />
-                <Route path="/:tenantId/match-program" element={<MatchProgramPage />} />
-                <Route path="/:tenantId/statistics" element={<StatisticsPage />} />
-                
-                {/* Root route - redirect to coach to ensure clean home screen URL */}
-                <Route path="/" element={<Navigate to={tenantId === 'demo' ? '/demo/coach' : '/coach'} replace />} />
-                
-                <Route path="*" element={<Navigate to={tenantId === 'demo' ? '/demo/coach' : '/coach'} replace />} />
-              </Routes>
-            </div>
-          </main>
-        </div>
+        <NavigationProvider>
+          <AppContent />
+        </NavigationProvider>
       </AuthProvider>
     </TenantProvider>
   )
 }
 
 /**
- * Main app component — router and layout wrapper.
- * @remarks Sets up HashRouter and renders header + main content area with tenant support.
+ * Main app content component that renders based on navigation state.
+ */
+const AppContent = () => {
+  const { currentPage, authPage, isAuthRoute, navigate } = useNavigation()
+  
+  return (
+    <>
+      <TenantTitleUpdater />
+      <div className="flex min-h-screen flex-col text-[hsl(var(--foreground))] overflow-x-hidden max-w-full relative">
+        {!isAuthRoute && <Header />}
+        <main className="flex-1 overflow-y-auto overflow-x-hidden max-w-full relative z-0">
+          <div className="flex w-full flex-col gap-4 sm:gap-6 px-4 sm:px-6 pb-6 sm:pb-10 pt-4 sm:pt-6 md:px-8 lg:px-12 max-w-full overflow-x-hidden">
+            {/* Auth pages */}
+            {authPage === 'login' && <LoginPage />}
+            {authPage === 'register' && <RegisterPage />}
+            {authPage === 'verify-email' && <VerifyEmailPage />}
+            {authPage === 'forgot-password' && <ForgotPasswordPage />}
+            {authPage === 'reset-password' && <ResetPasswordPage />}
+            {authPage === 'account' && <ProtectedRoute><AccountSettingsPage /></ProtectedRoute>}
+            
+            {/* Main app pages */}
+            {!isAuthRoute && currentPage === 'coach' && (
+              <LandingPage onRedirectToCheckin={() => navigate('check-in')} />
+            )}
+            {!isAuthRoute && currentPage === 'check-in' && <CheckInPage />}
+            {!isAuthRoute && currentPage === 'match-program' && <MatchProgramPage />}
+            {!isAuthRoute && currentPage === 'players' && <PlayersPage />}
+            {!isAuthRoute && currentPage === 'statistics' && <StatisticsPage />}
+            {!isAuthRoute && currentPage === 'prism-test' && <PrismTestPage />}
+          </div>
+        </main>
+      </div>
+    </>
+  )
+}
+
+/**
+ * Main app component — layout wrapper.
+ * @remarks Uses state-based navigation (URL stays at root) with tenant support.
  */
 const App = () => {
-  return (
-    <HashRouter
-      future={{
-        v7_startTransition: true,
-        v7_relativeSplatPath: true
-      }}
-    >
-      <AppInner />
-    </HashRouter>
-  )
+  return <AppInner />
 }
 
 export default App

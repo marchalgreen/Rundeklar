@@ -27,7 +27,7 @@ export const getCategoryLetter = (
  * @returns CSS class string for player slot background
  */
 export const getPlayerSlotBgColor = (): string => {
-  return 'bg-[hsl(var(--surface-2))]'
+  return 'bg-[hsl(var(--surface-2)/.5)]'
 }
 
 /**

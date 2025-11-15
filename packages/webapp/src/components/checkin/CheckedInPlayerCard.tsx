@@ -98,7 +98,7 @@ export const CheckedInPlayerCard: React.FC<CheckedInPlayerCardProps> = ({
       className={clsx(
         'flex items-center justify-between gap-2 sm:gap-3 rounded-md border-hair px-2 py-1.5 sm:py-2 md:px-3 md:py-3 min-h-[56px] sm:min-h-[64px]',
         'hover:shadow-sm transition-all duration-300 ease-[cubic-bezier(.2,.8,.2,1)]',
-        'motion-reduce:transition-none bg-[hsl(var(--success)/.08)] backdrop-blur-sm',
+        'motion-reduce:transition-none bg-[hsl(var(--success)/.04)] backdrop-blur-sm',
         'avatar-rail',
         isAnimatingOut && 'opacity-0 scale-95 translate-x-4 pointer-events-none',
         isAnimatingIn && 'opacity-0 scale-95 -translate-x-4'

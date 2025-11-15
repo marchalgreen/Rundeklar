@@ -127,6 +127,18 @@ const MatchProgramPage = () => {
   } = matchProgram
 
 
+  // Handle fullscreen body class - must be before any conditional returns
+  React.useEffect(() => {
+    if (isFullScreen) {
+      document.body.classList.add('fullscreen-active')
+    } else {
+      document.body.classList.remove('fullscreen-active')
+    }
+    return () => {
+      document.body.classList.remove('fullscreen-active')
+    }
+  }, [isFullScreen])
+
   if (loading) {
     return (
       <section className="mx-auto flex h-full max-w-5xl items-center justify-center pt-2 sm:pt-4 xl:pt-2">

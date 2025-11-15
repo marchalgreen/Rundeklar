@@ -208,7 +208,7 @@
   }
 
   .card-glass-active {
-    background: hsl(0 0% 100% / 0.35) !important;
+    background: hsl(0 0% 100% / 0.7) !important;
     backdrop-filter: blur(8px) !important;
     -webkit-backdrop-filter: blur(8px) !important;
   }
@@ -374,5 +374,10 @@
     .scrollbar-thin::-webkit-scrollbar-thumb {
       transition: none;
     }
+  }
+
+  /* Hide header when fullscreen is active */
+  body.fullscreen-active .fullscreen-hide {
+    display: none !important;
   }
 }

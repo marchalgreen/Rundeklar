@@ -1,12 +1,14 @@
 import React from 'react'
-import { NavLink, useLocation } from 'react-router-dom'
 import { clsx } from 'clsx'
+import { useNavigation } from '../../contexts/NavigationContext'
+
+type Page = 'coach' | 'check-in' | 'match-program' | 'players' | 'statistics'
 
 type Props = {
-  to: string
+  page: Page
   icon: React.ReactNode
   label: string
-  /** Optional explicit active override. Otherwise inferred from route. */
+  /** Optional explicit active override. Otherwise inferred from current page. */
   active?: boolean
   className?: string
 }
@@ -14,25 +16,31 @@ type Props = {
 /**
  * SidebarItem component — navigation link with active state.
  * @remarks A11y: Uses aria-current="page" when active.
- * Active state inferred from route if not explicitly provided.
+ * Active state inferred from current page if not explicitly provided.
  */
-export function SidebarItem({ to, icon, label, active, className }: Props) {
-  const location = useLocation()
+export function SidebarItem({ page, icon, label, active, className }: Props) {
+  const { currentPage, navigate } = useNavigation()
   
-  // Inferred from route if not explicitly provided
-  const inferred = location.pathname === to || location.pathname.startsWith(to + '/')
+  // Inferred from current page if not explicitly provided
+  const inferred = currentPage === page
   const isActive = typeof active === 'boolean' ? active : inferred
 
+  const handleClick = (e: React.MouseEvent) => {
+    e.preventDefault()
+    navigate(page)
+  }
+
   return (
-    <NavLink
-      to={to}
+    <button
+      type="button"
+      onClick={handleClick}
       className={clsx('nav-item', className)}
       data-active={isActive ? 'true' : 'false'}
       aria-current={isActive ? 'page' : undefined}
     >
       {icon}
       <span>{label}</span>
-    </NavLink>
+    </button>
   )
 }
 

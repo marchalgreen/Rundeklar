@@ -1,11 +1,12 @@
 import React, { useState } from 'react'
-import { Link } from 'react-router-dom'
 import { useTenant } from '../../contexts/TenantContext'
+import { useNavigation } from '../../contexts/NavigationContext'
 import { Button } from '../../components/ui'
 import { PageCard } from '../../components/ui'
 
 export default function ForgotPasswordPage() {
-  const { buildPath, tenantId } = useTenant()
+  const { tenantId } = useTenant()
+  const { navigateToAuth } = useNavigation()
   const [email, setEmail] = useState('')
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -55,12 +56,13 @@ export default function ForgotPasswordPage() {
             <p className="text-[hsl(var(--muted))] mb-4">
               Hvis en konto med denne email findes, har vi sendt et link til nulstilling af adgangskode.
             </p>
-            <Link
-              to={buildPath('/login')}
+            <button
+              type="button"
+              onClick={() => navigateToAuth('login')}
               className="text-[hsl(var(--primary))] hover:underline"
             >
               Tilbage til login
-            </Link>
+            </button>
           </div>
         </PageCard>
       </div>
@@ -100,12 +102,13 @@ export default function ForgotPasswordPage() {
         </form>
 
         <div className="mt-6 text-center">
-          <Link
-            to={buildPath('/login')}
+          <button
+            type="button"
+            onClick={() => navigateToAuth('login')}
             className="text-sm text-[hsl(var(--primary))] hover:underline"
           >
             Tilbage til login
-          </Link>
+          </button>
         </div>
       </PageCard>
     </div>

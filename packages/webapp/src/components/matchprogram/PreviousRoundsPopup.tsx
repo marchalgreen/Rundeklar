@@ -176,7 +176,7 @@ export const PreviousRoundsPopup: React.FC<PreviousRoundsPopupProps> = ({
                               className={`flex min-h-[32px] sm:min-h-[36px] items-center rounded-md px-1.5 py-0.5 sm:px-2 sm:py-1 text-[10px] sm:text-xs ring-1 ${
                                 player
                                   ? `${getPlayerSlotBgColor()} ${catLetter ? 'cat-rail' : ''} ring-[hsl(var(--line)/.12)]`
-                                  : 'bg-[hsl(var(--surface-2))] ring-[hsl(var(--line)/.12)]'
+                                  : 'bg-[hsl(var(--surface-2)/.35)] ring-[hsl(var(--line)/.12)]'
                               }`}
                               data-cat={catLetter || undefined}
                             >

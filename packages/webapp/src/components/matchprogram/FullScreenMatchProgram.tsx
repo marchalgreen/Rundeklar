@@ -194,8 +194,31 @@ export const FullScreenMatchProgram: React.FC<FullScreenMatchProgramProps> = ({
   }
   
   return (
-    <div className="fixed inset-0 z-50 bg-[hsl(var(--bg-canvas))] flex flex-col">
-      <header className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 sm:gap-4 p-3 sm:p-4 border-b border-[hsl(var(--line)/.12)]">
+    <div className="fixed inset-0 z-50 bg-[hsl(var(--bg-canvas))] flex flex-col relative">
+      {/* Gradient background overlay */}
+      <div 
+        className="fixed inset-0 z-[-1] pointer-events-none"
+        style={{
+          opacity: 0.6,
+          background: `
+            radial-gradient(circle at 15% 25%, rgba(147, 197, 253, 0.28) 0%, transparent 45%),
+            radial-gradient(circle at 85% 75%, rgba(134, 239, 172, 0.25) 0%, transparent 50%),
+            radial-gradient(circle at 50% 50%, rgba(187, 247, 208, 0.22) 0%, transparent 55%),
+            radial-gradient(circle at 70% 30%, rgba(191, 219, 254, 0.24) 0%, transparent 48%),
+            radial-gradient(circle at 30% 70%, rgba(167, 243, 208, 0.2) 0%, transparent 52%),
+            conic-gradient(from 45deg at 50% 50%, 
+              rgba(187, 247, 208, 0.18) 0deg,
+              rgba(147, 197, 253, 0.18) 60deg,
+              rgba(134, 239, 172, 0.18) 120deg,
+              rgba(191, 219, 254, 0.18) 180deg,
+              rgba(187, 247, 208, 0.18) 240deg,
+              rgba(147, 197, 253, 0.18) 300deg,
+              rgba(187, 247, 208, 0.18) 360deg
+            )
+          `
+        }}
+      />
+      <header className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 sm:gap-4 p-3 sm:p-4 border-b border-[hsl(var(--line)/.12)] bg-[hsl(var(--surface))] backdrop-filter-none" style={{ backdropFilter: 'none', WebkitBackdropFilter: 'none' }}>
         <div className="flex flex-col sm:flex-row items-start sm:items-center gap-2 sm:gap-4 w-full sm:w-auto">
           <select
             value={selectedRound}
@@ -207,7 +230,7 @@ export const FullScreenMatchProgram: React.FC<FullScreenMatchProgramProps> = ({
             <option value={3}>Runde 3</option>
             <option value={4}>Runde 4</option>
           </select>
-          <h1 className="text-lg sm:text-xl md:text-2xl font-semibold text-[hsl(var(--foreground))]">Kampprogram</h1>
+          <h1 className="text-xl sm:text-2xl md:text-3xl font-semibold text-[hsl(var(--foreground))]">Kampprogram</h1>
         </div>
         <button
           type="button"
@@ -227,10 +250,9 @@ export const FullScreenMatchProgram: React.FC<FullScreenMatchProgramProps> = ({
           }}
         >
           {courtsWithPlayers.map((court) => (
-            <PageCard
+            <div
               key={court.courtIdx}
-              hover={false}
-              className={`space-y-2 sm:space-y-3 hover:shadow-md p-3 sm:p-5 transition-all duration-200 relative h-full flex flex-col ${
+              className={`space-y-2 sm:space-y-3 hover:shadow-md p-3 sm:p-5 transition-all duration-200 relative h-full flex flex-col card-glass-active ring-1 ring-[hsl(var(--line)/.12)] rounded-lg shadow-sm ${
                 courtsWithDuplicatesSet.has(court.courtIdx)
                   ? 'ring-2 ring-[hsl(var(--destructive)/.45)] border border-[hsl(var(--destructive)/.3)] bg-[hsl(var(--destructive)/.03)]'
                   : ''
@@ -255,7 +277,7 @@ export const FullScreenMatchProgram: React.FC<FullScreenMatchProgramProps> = ({
               <div className="flex flex-col gap-2 flex-1 min-h-0">
                 {renderCourtSlots(court)}
               </div>
-            </PageCard>
+            </div>
           ))}
         </section>
       </div>

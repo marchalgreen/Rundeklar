@@ -1,7 +1,6 @@
-import React from 'react'
-import { Navigate, useLocation } from 'react-router-dom'
+import React, { useEffect } from 'react'
 import { useAuth } from '../../contexts/AuthContext'
-import { useTenant } from '../../contexts/TenantContext'
+import { useNavigation } from '../../contexts/NavigationContext'
 
 interface ProtectedRouteProps {
   children: React.ReactNode
@@ -9,12 +8,17 @@ interface ProtectedRouteProps {
 
 /**
  * Protected route component that requires authentication
- * Redirects to login if not authenticated, preserving the intended destination
+ * Redirects to login if not authenticated
  */
 export const ProtectedRoute: React.FC<ProtectedRouteProps> = ({ children }) => {
   const { isAuthenticated, loading } = useAuth()
-  const { buildPath } = useTenant()
-  const location = useLocation()
+  const { navigateToAuth } = useNavigation()
+
+  useEffect(() => {
+    if (!loading && !isAuthenticated) {
+      navigateToAuth('login')
+    }
+  }, [loading, isAuthenticated, navigateToAuth])
 
   if (loading) {
     return (
@@ -27,10 +31,7 @@ export const ProtectedRoute: React.FC<ProtectedRouteProps> = ({ children }) => {
   }
 
   if (!isAuthenticated) {
-    // Redirect to login, preserving the intended destination
-    const loginPath = buildPath('/login')
-    const returnTo = location.pathname + location.search
-    return <Navigate to={loginPath} state={{ from: returnTo }} replace />
+    return null // Will redirect via useEffect
   }
 
   return <>{children}</>

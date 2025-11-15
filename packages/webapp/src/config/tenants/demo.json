@@ -3,8 +3,6 @@
   "name": "DEMO",
   "logo": "fulllogo_transparent_nobuffer_horizontal.png",
   "maxCourts": 5,
-  "supabaseUrl": "",
-  "supabaseKey": "",
   "features": {}
 }
 

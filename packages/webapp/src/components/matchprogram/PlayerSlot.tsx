@@ -118,7 +118,7 @@ export const PlayerSlot: React.FC<PlayerSlotProps> = ({
           ? 'bg-[hsl(var(--primary)/.15)] ring-2 ring-[hsl(var(--primary)/.5)] shadow-md ring-1 ring-[hsl(var(--line)/.12)]'
           : isCourtHovered
           ? 'bg-[hsl(var(--primary)/.08)] ring-1 ring-[hsl(var(--primary)/.3)]'
-          : 'bg-[hsl(var(--surface-2))] text-[hsl(var(--muted))] ring-1 ring-[hsl(var(--line)/.12)]'
+          : 'bg-[hsl(var(--surface-2)/.75)] text-[hsl(var(--muted))] ring-1 ring-[hsl(var(--line)/.12)]'
       }`}
       data-cat={undefined}
       onDragOver={onDragOver}

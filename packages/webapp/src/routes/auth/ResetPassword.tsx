@@ -1,13 +1,12 @@
 import React, { useState, useEffect } from 'react'
-import { useSearchParams, useNavigate } from 'react-router-dom'
-import { useTenant } from '../../contexts/TenantContext'
+import { useNavigation } from '../../contexts/NavigationContext'
 import { Button } from '../../components/ui'
 import { PageCard } from '../../components/ui'
 
 export default function ResetPasswordPage() {
-  const { buildPath } = useTenant()
-  const [searchParams] = useSearchParams()
-  const navigate = useNavigate()
+  const { navigateToAuth } = useNavigation()
+  // Get token from URL query params
+  const [token, setToken] = useState<string | null>(null)
   const [password, setPassword] = useState('')
   const [confirmPassword, setConfirmPassword] = useState('')
   const [loading, setLoading] = useState(false)
@@ -15,13 +14,15 @@ export default function ResetPasswordPage() {
   const [success, setSuccess] = useState(false)
   const [passwordErrors, setPasswordErrors] = useState<string[]>([])
 
-  const token = searchParams.get('token')
-
   useEffect(() => {
-    if (!token) {
+    // Extract token from URL query params
+    const params = new URLSearchParams(window.location.search)
+    const tokenParam = params.get('token')
+    setToken(tokenParam)
+    if (!tokenParam) {
       setError('Ingen nulstillings-token fundet')
     }
-  }, [token])
+  }, [])
 
   const validatePassword = (pwd: string): string[] => {
     const errors: string[] = []
@@ -82,7 +83,7 @@ export default function ResetPasswordPage() {
       if (response.ok) {
         setSuccess(true)
         setTimeout(() => {
-          navigate(buildPath('/login'))
+          navigateToAuth('login')
         }, 3000)
       } else {
         setError(data.error || 'Nulstilling fejlede')

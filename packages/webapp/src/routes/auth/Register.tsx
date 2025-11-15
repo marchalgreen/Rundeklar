@@ -1,14 +1,12 @@
 import React, { useState } from 'react'
-import { Link, useNavigate } from 'react-router-dom'
 import { useAuth } from '../../contexts/AuthContext'
-import { useTenant } from '../../contexts/TenantContext'
+import { useNavigation } from '../../contexts/NavigationContext'
 import { Button } from '../../components/ui'
 import { PageCard } from '../../components/ui'
 
 export default function RegisterPage() {
   const { register } = useAuth()
-  const { buildPath } = useTenant()
-  const navigate = useNavigate()
+  const { navigateToAuth } = useNavigation()
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [confirmPassword, setConfirmPassword] = useState('')
@@ -54,7 +52,7 @@ export default function RegisterPage() {
       await register(email, password)
       setSuccess(true)
       setTimeout(() => {
-        navigate(buildPath('/login'))
+        navigateToAuth('login')
       }, 3000)
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Registrering fejlede')
@@ -157,12 +155,13 @@ export default function RegisterPage() {
 
         <div className="mt-6 text-center text-sm text-[hsl(var(--muted))]">
           Har du allerede en konto?{' '}
-          <Link
-            to={buildPath('/login')}
+          <button
+            type="button"
+            onClick={() => navigateToAuth('login')}
             className="text-[hsl(var(--primary))] hover:underline"
           >
             Log ind
-          </Link>
+          </button>
         </div>
       </PageCard>
     </div>
