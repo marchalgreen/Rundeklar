@@ -254,16 +254,16 @@ const CheckInPage = () => {
 
   if (loading) {
     return (
-      <section className="mx-auto flex h-full max-w-4xl items-center justify-center">
-        <p className="text-lg text-[hsl(var(--muted))]">Loader...</p>
+      <section className="mx-auto flex h-full max-w-4xl items-center justify-center p-3 sm:p-4">
+        <p className="text-sm sm:text-base md:text-lg text-[hsl(var(--muted))]">Loader...</p>
       </section>
     )
   }
 
   if (!session) {
     return (
-      <section className="mx-auto flex h-full max-w-4xl items-center justify-center p-4 sm:p-6">
-        <PageCard className="rounded-full px-6 py-3 text-center text-[hsl(var(--muted))]">
+      <section className="mx-auto flex h-full max-w-4xl items-center justify-center p-3 sm:p-4 md:p-6">
+        <PageCard className="rounded-full px-4 sm:px-6 py-2.5 sm:py-3 text-center text-xs sm:text-sm text-[hsl(var(--muted))]">
           Ingen aktiv træning. Gå til Træner-siden for at starte en træning.
         </PageCard>
       </section>
@@ -292,16 +292,16 @@ const CheckInPage = () => {
         </div>
       </header>
 
-      <div className="grid gap-4 lg:grid-cols-[35%_65%] lg:items-start">
+      <div className="grid gap-3 sm:gap-4 lg:grid-cols-[35%_65%] lg:items-start">
         {/* Checked-in players section */}
-        <PageCard className="space-y-2 flex flex-col">
-          <header className="flex items-center justify-between">
-            <h3 className="text-sm font-semibold">Tjekket ind</h3>
-            <span className="rounded-full bg-[hsl(var(--surface-2)/.7)] backdrop-blur-sm px-2 py-0.5 text-xs font-medium">
+        <PageCard className="space-y-2 sm:space-y-3 flex flex-col">
+          <header className="flex items-center justify-between gap-2">
+            <h3 className="text-xs sm:text-sm font-semibold">Tjekket ind</h3>
+            <span className="rounded-full bg-[hsl(var(--surface-2)/.7)] backdrop-blur-sm px-2 py-0.5 text-xs font-medium flex-shrink-0">
               {checkedIn.length}
             </span>
           </header>
-          <div className="flex flex-col space-y-2 pr-2">
+          <div className="flex flex-col space-y-1.5 sm:space-y-2 pr-1 sm:pr-2">
             {checkedIn.length === 0 ? (
               <p className="text-xs text-[hsl(var(--muted))] text-center py-4">Ingen spillere tjekket ind</p>
             ) : (
@@ -319,10 +319,10 @@ const CheckInPage = () => {
         </PageCard>
 
         {/* Players overview */}
-        <PageCard className="space-y-6">
-          <div className="flex flex-col gap-3">
-            <div className="flex items-center gap-2">
-              <div className="flex-1">
+        <PageCard className="space-y-4 sm:space-y-6">
+          <div className="flex flex-col gap-2 sm:gap-3">
+            <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2 sm:gap-2">
+              <div className="flex-1 min-w-0">
                 <TableSearch value={search} onChange={setSearch} placeholder="Søg efter spiller" />
               </div>
               <Button
@@ -332,6 +332,7 @@ const CheckInPage = () => {
                   setSearchOpen(true)
                 }}
                 title="Tillad spiller fra anden gruppe i denne træning"
+                className="w-full sm:w-auto text-xs sm:text-sm whitespace-nowrap"
               >
                 Tilføj fra anden gruppe
               </Button>
@@ -406,11 +407,11 @@ const CheckInPage = () => {
               className="w-full max-w-md mx-4 bg-[hsl(var(--surface)/.98)] backdrop-blur-md ring-1 ring-[hsl(var(--line)/.12)] rounded-lg shadow-[var(--shadow-md)] p-4 sm:p-6"
               onClick={(e) => e.stopPropagation()}
             >
-              <h3 className="text-lg font-semibold text-[hsl(var(--foreground))]">Tillad {picked.name}</h3>
-              <p className="text-sm text-[hsl(var(--muted))] mt-1">
+              <h3 className="text-base sm:text-lg font-semibold text-[hsl(var(--foreground))]">Tillad {picked.name}</h3>
+              <p className="text-xs sm:text-sm text-[hsl(var(--muted))] mt-1.5 sm:mt-1">
                 Vælg hvad du vil gøre med denne spiller.
               </p>
-              <div className="mt-4 grid gap-2">
+              <div className="mt-3 sm:mt-4 grid gap-2">
                 <Button
                   onClick={() => {
                     void (async () => {

@@ -24,12 +24,12 @@ const CourtsControl: React.FC<{
   const dec = () => onChange(Math.max(min, value - 1))
   const inc = () => onChange(value + 1)
   return (
-    <div className="flex items-center gap-3" aria-label="Antal baner">
-      <span className="text-sm text-[hsl(var(--muted))]">Antal baner</span>
+    <div className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-3" aria-label="Antal baner">
+      <span className="text-xs sm:text-sm text-[hsl(var(--muted))]">Antal baner</span>
       <div className="flex items-center gap-1" role="group" aria-label="Justér antal baner">
         <Button variant="secondary" size="sm" onClick={dec} aria-label="Færre baner">-</Button>
         <div
-          className={`w-16 h-9 inline-flex items-center justify-center text-base rounded-md bg-[hsl(var(--surface))] ring-1 ring-[hsl(var(--line)/.14)] select-none`}
+          className={`w-14 sm:w-16 h-8 sm:h-9 inline-flex items-center justify-center text-sm sm:text-base rounded-md bg-[hsl(var(--surface))] ring-1 ring-[hsl(var(--line)/.14)] select-none`}
           aria-live="polite"
         >
           {value}
@@ -162,27 +162,27 @@ const PlayerSearchModal: React.FC<{
       }}
     >
       <div className="w-full max-w-lg mx-3 sm:mx-0 bg-[hsl(var(--surface)/.98)] backdrop-blur-md ring-1 ring-[hsl(var(--line)/.12)] rounded-lg shadow-[var(--shadow-md)]">
-        <div className="flex items-center gap-3 p-4 border-b border-[hsl(var(--line)/.12)]">
-          <Search className="w-5 h-5 text-[hsl(var(--muted))]" aria-hidden />
+        <div className="flex items-center gap-2 sm:gap-3 p-3 sm:p-4 border-b border-[hsl(var(--line)/.12)]">
+          <Search className="w-4 h-4 sm:w-5 sm:h-5 text-[hsl(var(--muted))] flex-shrink-0" aria-hidden />
           <input
             ref={inputRef}
             autoFocus
             value={term}
             onChange={(e) => setTerm(e.target.value)}
             placeholder="Søg spillere på tværs af grupper"
-            className={`flex-1 bg-transparent outline-none text-[hsl(var(--foreground))] placeholder-[hsl(var(--muted))] ${ringFocus}`}
+            className={`flex-1 bg-transparent outline-none text-sm sm:text-base text-[hsl(var(--foreground))] placeholder-[hsl(var(--muted))] ${ringFocus}`}
           />
-          <Button variant="ghost" size="sm" onClick={() => { onClose(); setTimeout(() => returnFocusTo?.focus(), 0) }}>Luk</Button>
+          <Button variant="ghost" size="sm" onClick={() => { onClose(); setTimeout(() => returnFocusTo?.focus(), 0) }} className="flex-shrink-0 text-xs sm:text-sm">Luk</Button>
         </div>
-        <div className="max-h-[60vh] overflow-y-auto p-2 sm:p-3 scrollbar-thin">
+        <div className="max-h-[60vh] overflow-y-auto p-2 sm:p-3 md:p-4 scrollbar-thin">
           {results.length === 0 ? (
             <div className="text-sm text-[hsl(var(--muted))] p-4">Ingen resultater endnu.</div>
           ) : (
             <ul className="divide-y divide-[hsl(var(--line)/.12)]">
               {results.map((p) => (
-                <li key={p.id} className="flex items-center justify-between gap-3 p-3">
-                  <div className="min-w-0">
-                    <div className="text-[hsl(var(--foreground))] truncate">{p.displayName}</div>
+                <li key={p.id} className="flex items-center justify-between gap-2 sm:gap-3 p-2 sm:p-3">
+                  <div className="min-w-0 flex-1">
+                    <div className="text-sm sm:text-base text-[hsl(var(--foreground))] truncate">{p.displayName}</div>
                     <div className="text-xs text-[hsl(var(--muted))]">{p.groupId ?? 'Ingen gruppe'}</div>
                   </div>
                   <Button
@@ -191,6 +191,7 @@ const PlayerSearchModal: React.FC<{
                     onClick={() => onPick(p.id)}
                     aria-label={`Tilføj ${p.displayName}`}
                     disabled={pickedIds.has(p.id)}
+                    className="flex-shrink-0 text-xs sm:text-sm"
                   >
                     Tilføj
                   </Button>
@@ -212,21 +213,21 @@ const StartSessionControls: React.FC<{
   onRemovePlayer: (id: string) => void
 }> = ({ disabled, starting, onStart, addedPlayers, onRemovePlayer }) => {
   return (
-    <PageCard className="mt-4">
-      <div className="flex flex-col gap-3">
+    <PageCard className="mt-3 sm:mt-4">
+      <div className="flex flex-col gap-2 sm:gap-3">
         <div className="flex flex-wrap items-center gap-2">
-          <Button onClick={onStart} disabled={disabled} loading={starting}>
+          <Button onClick={onStart} disabled={disabled} loading={starting} className="w-full sm:w-auto">
             <Play className="w-4 h-4" aria-hidden />
-            Start session
+            <span className="text-xs sm:text-sm">Start session</span>
           </Button>
         </div>
         {addedPlayers.length > 0 && (
-          <div className="flex flex-wrap gap-2 mt-1">
+          <div className="flex flex-wrap gap-1.5 sm:gap-2 mt-1">
             {addedPlayers.map((p) => (
               <button
                 key={p.id}
                 onClick={() => onRemovePlayer(p.id)}
-                className={`px-2.5 py-1 rounded-md text-xs bg-[hsl(var(--surface-2))] ring-1 ring-[hsl(var(--line)/.12)] ${ringFocus}`}
+                className={`px-2 sm:px-2.5 py-1 rounded-md text-xs bg-[hsl(var(--surface-2))] ring-1 ring-[hsl(var(--line)/.12)] ${ringFocus}`}
                 aria-label={`Fjern ${p.displayName}`}
               >
                 {p.displayName}
@@ -236,7 +237,7 @@ const StartSessionControls: React.FC<{
         )}
         <div>
           <button
-            className={`text-sm text-[hsl(var(--muted))] underline underline-offset-2 hover:text-[hsl(var(--foreground))] ${ringFocus}`}
+            className={`text-xs sm:text-sm text-[hsl(var(--muted))] underline underline-offset-2 hover:text-[hsl(var(--foreground))] ${ringFocus}`}
             onClick={(e) => {
               e.preventDefault()
               // Start without a group
@@ -282,7 +283,7 @@ const LandingPage: React.FC<LandingPageProps> = ({ coach, onRedirectToCheckin })
 
   if (state.loading) {
     return (
-      <div className="p-4 sm:p-6">
+      <div className="p-3 sm:p-4 md:p-6">
         <WelcomeHeader coachName={coach?.displayName} />
         <PageCard>
           <div className="text-[hsl(var(--muted))]">Indlæser…</div>
@@ -292,12 +293,12 @@ const LandingPage: React.FC<LandingPageProps> = ({ coach, onRedirectToCheckin })
   }
 
   return (
-    <div className="p-4 sm:p-6">
+    <div className="p-3 sm:p-4 md:p-6">
       <WelcomeHeader coachName={coach?.displayName} />
 
       {state.activeSession ? (
-        <PageCard className="mb-4">
-          <div className="flex flex-col sm:flex-row sm:items-center gap-3 justify-between">
+        <PageCard className="mb-3 sm:mb-4">
+          <div className="flex flex-col sm:flex-row sm:items-center gap-3 sm:gap-4 justify-between">
             <div>
               <div className="text-base sm:text-lg font-medium text-[hsl(var(--foreground))]">Aktiv træning</div>
               <div className="text-sm text-[hsl(var(--muted))] mt-1">Startet: {formatDate(state.activeSession.startedAt)}</div>
@@ -310,20 +311,20 @@ const LandingPage: React.FC<LandingPageProps> = ({ coach, onRedirectToCheckin })
                 </div>
               )}
             </div>
-            <div className="flex gap-2">
-              <Button onClick={state.goToCheckIn}>
+            <div className="flex flex-col sm:flex-row gap-2 w-full sm:w-auto">
+              <Button onClick={state.goToCheckIn} className="w-full sm:w-auto">
                 <UserCheck className="w-4 h-4" aria-hidden />
-                Åbn indtjekning
+                <span className="text-xs sm:text-sm">Åbn indtjekning</span>
               </Button>
-              <Button variant="secondary" loading={state.ending} onClick={state.endSession}>
+              <Button variant="secondary" loading={state.ending} onClick={state.endSession} className="w-full sm:w-auto">
                 <Square className="w-4 h-4" aria-hidden />
-                Afslut træning
+                <span className="text-xs sm:text-sm">Afslut træning</span>
               </Button>
             </div>
           </div>
-          <div className="mt-4">
+          <div className="mt-3 sm:mt-4">
             <CourtsControl value={courtsInUse} min={1} onChange={setCourtsInUse} />
-            <p className="text-xs text-[hsl(var(--muted))] mt-1">Kan ændres undervejs uden at påvirke indtjekninger.</p>
+            <p className="text-xs text-[hsl(var(--muted))] mt-1.5 sm:mt-1">Kan ændres undervejs uden at påvirke indtjekninger.</p>
           </div>
           {extraPlayersCount > 0 && (
             <div className="mt-3 text-sm text-[hsl(var(--muted))] flex items-center gap-2">
@@ -352,9 +353,9 @@ const LandingPage: React.FC<LandingPageProps> = ({ coach, onRedirectToCheckin })
             addedPlayers={state.crossGroupPlayers}
             onRemovePlayer={state.removeCrossGroupPlayer}
           />
-          <div className="mt-3">
+          <div className="mt-3 sm:mt-4">
             <PageCard>
-              <div className="flex items-center justify-between gap-3 flex-wrap">
+              <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
                 <CourtsControl value={courtsInUse} min={1} onChange={setCourtsInUse} />
                 <div className="text-xs text-[hsl(var(--muted))]">Huskes til næste træning.</div>
               </div>

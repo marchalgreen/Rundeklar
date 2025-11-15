@@ -117,7 +117,7 @@ export const PlayerCard: React.FC<PlayerCardProps> = ({
         onOneRoundOnlyChange(player.id, false)
       }}
       className={clsx(
-        'border-hair flex min-h-[64px] items-center justify-between gap-3 rounded-lg px-2 py-2 sm:px-3 sm:py-3',
+        'border-hair flex min-h-[56px] sm:min-h-[64px] items-center justify-between gap-2 sm:gap-3 rounded-lg px-2 py-1.5 sm:py-2 md:px-3 md:py-3',
         'transition-all duration-300 ease-[cubic-bezier(.2,.8,.2,1)] motion-reduce:transition-none',
         'cursor-pointer hover:shadow-sm ring-0 hover:ring-2 hover:ring-[hsl(var(--accent)/.15)]',
         'bg-[hsl(var(--surface-2)/.7)] backdrop-blur-sm',
@@ -137,14 +137,14 @@ export const PlayerCard: React.FC<PlayerCardProps> = ({
       <div className="flex items-center gap-1.5 sm:gap-2 min-w-0 flex-1">
         <InitialsAvatar seed={player.id} name={player.name} gender={player.gender ?? null} />
         <div className="min-w-0 flex-1">
-          <p className={`font-semibold text-[hsl(var(--foreground))] truncate text-base sm:text-lg`}>
+          <p className={`font-semibold text-[hsl(var(--foreground))] truncate text-sm sm:text-base md:text-lg`}>
             {formatPlayerCardName(player.name, player.alias)}
           </p>
         </div>
       </div>
-      <div className="flex items-center gap-1.5 sm:gap-2 flex-shrink-0">
+      <div className="flex items-center gap-1 sm:gap-1.5 sm:gap-2 flex-shrink-0">
         <label
-          className="flex items-center gap-2 cursor-pointer px-2 py-1.5 rounded hover:bg-[hsl(var(--surface-2)/.5)] transition-colors"
+          className="flex items-center gap-1 sm:gap-2 cursor-pointer px-1.5 sm:px-2 py-1 sm:py-1.5 rounded hover:bg-[hsl(var(--surface-2)/.5)] transition-colors"
           onClick={(e) => e.stopPropagation()}
         >
           <input
@@ -153,9 +153,9 @@ export const PlayerCard: React.FC<PlayerCardProps> = ({
             onChange={(e) => {
               onOneRoundOnlyChange(player.id, e.target.checked)
             }}
-            className="w-4 h-4 rounded ring-1 ring-[hsl(var(--line)/.12)] focus:ring-2 focus:ring-[hsl(var(--ring))] outline-none transition-all duration-200 motion-reduce:transition-none cursor-pointer flex-shrink-0"
+            className="w-3.5 h-3.5 sm:w-4 sm:h-4 rounded ring-1 ring-[hsl(var(--line)/.12)] focus:ring-2 focus:ring-[hsl(var(--ring))] outline-none transition-all duration-200 motion-reduce:transition-none cursor-pointer flex-shrink-0"
           />
-          <span className="inline-flex items-center rounded-full bg-[hsl(var(--surface-2))] text-[hsl(var(--muted))] border-hair px-2 py-1 text-xs whitespace-nowrap">
+          <span className="inline-flex items-center rounded-full bg-[hsl(var(--surface-2))] text-[hsl(var(--muted))] border-hair px-1.5 sm:px-2 py-0.5 sm:py-1 text-[10px] sm:text-xs whitespace-nowrap">
             Kun 1 runde
           </span>
         </label>
@@ -167,7 +167,7 @@ export const PlayerCard: React.FC<PlayerCardProps> = ({
             onCheckIn(player, oneRoundOnly ? 1 : undefined)
             onOneRoundOnlyChange(player.id, false)
           }}
-          className={clsx('ring-2 ring-[hsl(var(--accent)/.2)]', 'text-xs px-3 py-1.5')}
+          className={clsx('ring-2 ring-[hsl(var(--accent)/.2)]', 'text-[10px] sm:text-xs px-2 sm:px-3 py-1 sm:py-1.5')}
         >
           Tjek ind
         </Button>

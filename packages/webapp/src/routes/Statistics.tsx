@@ -150,8 +150,8 @@ const StatisticsPage = () => {
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center min-h-[400px]">
-        <p className="text-[hsl(var(--muted))]">Indlæser...</p>
+      <div className="flex items-center justify-center min-h-[400px] p-3 sm:p-4">
+        <p className="text-sm sm:text-base text-[hsl(var(--muted))]">Indlæser...</p>
       </div>
     )
   }
@@ -169,10 +169,10 @@ const StatisticsPage = () => {
 
       {/* FilterBar */}
       {selectedPlayer ? (
-        <div className="card-glass-active border-hair rounded-lg p-4 md:p-5 shadow-sm">
-          <div className="flex items-center justify-between gap-4">
-            <div className="flex items-center gap-3 flex-1 min-w-0">
-              <div className="flex items-center justify-center w-10 h-10 rounded-full bg-[hsl(var(--primary)/.1)] text-[hsl(var(--primary))] font-semibold text-sm flex-shrink-0">
+        <div className="card-glass-active border-hair rounded-lg p-3 sm:p-4 md:p-5 shadow-sm">
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 sm:gap-4">
+            <div className="flex items-center gap-2 sm:gap-3 flex-1 min-w-0">
+              <div className="flex items-center justify-center w-8 h-8 sm:w-10 sm:h-10 rounded-full bg-[hsl(var(--primary)/.1)] text-[hsl(var(--primary))] font-semibold text-xs sm:text-sm flex-shrink-0">
                 {selectedPlayer.name
                   .split(' ')
                   .map((n) => n[0])
@@ -181,10 +181,10 @@ const StatisticsPage = () => {
                   .slice(0, 2)}
               </div>
               <div className="flex flex-col min-w-0 flex-1">
-                <span className="text-sm font-semibold text-[hsl(var(--foreground))] truncate">{selectedPlayer.name}</span>
+                <span className="text-xs sm:text-sm font-semibold text-[hsl(var(--foreground))] truncate">{selectedPlayer.name}</span>
               </div>
             </div>
-            <div className="flex items-center gap-2 flex-shrink-0">
+            <div className="flex items-center gap-1.5 sm:gap-2 flex-shrink-0">
               <button
                 type="button"
                 onClick={() => setShowSearch(!showSearch)}
@@ -192,7 +192,7 @@ const StatisticsPage = () => {
                 title="Skift spiller"
               >
                 <Search className="w-3 h-3" />
-                Skift
+                <span className="hidden sm:inline">Skift</span>
               </button>
               <button
                 type="button"
@@ -204,13 +204,14 @@ const StatisticsPage = () => {
                 }`}
                 title="Sammenlign med anden spiller"
               >
-                Sammenlign
+                <span className="hidden sm:inline">Sammenlign</span>
+                <span className="sm:hidden">Sml.</span>
               </button>
             </div>
           </div>
           {showSearch && (
-            <div className="mt-4 pt-4 border-t border-hair">
-              <div className="flex flex-col gap-3">
+            <div className="mt-3 sm:mt-4 pt-3 sm:pt-4 border-t border-hair">
+              <div className="flex flex-col gap-2 sm:gap-3">
                 <TableSearch
                   value={search}
                   onChange={(value) => setSearch(value)}
@@ -218,7 +219,7 @@ const StatisticsPage = () => {
                 />
                 <div className="max-h-[200px] overflow-y-auto border-hair rounded-lg">
                   {filteredPlayers.length === 0 ? (
-                    <div className="p-3 text-center text-sm text-[hsl(var(--muted))]">Ingen spillere fundet</div>
+                    <div className="p-2 sm:p-3 text-center text-xs sm:text-sm text-[hsl(var(--muted))]">Ingen spillere fundet</div>
                   ) : (
                     <div className="divide-y divide-[hsl(var(--line)/.12)]">
                       {filteredPlayers.map((player) => (
@@ -230,11 +231,11 @@ const StatisticsPage = () => {
                             setShowSearch(false)
                             setSearch('')
                           }}
-                          className={`w-full px-3 py-2 text-left hover:bg-[hsl(var(--surface-2))] transition-colors motion-reduce:transition-none focus-visible:ring-focus ${
+                          className={`w-full px-2 sm:px-3 py-1.5 sm:py-2 text-left hover:bg-[hsl(var(--surface-2))] transition-colors motion-reduce:transition-none focus-visible:ring-focus ${
                             selectedPlayerId === player.id ? 'bg-[hsl(var(--primary)/.1)]' : ''
                           }`}
                         >
-                          <span className="text-sm font-medium text-[hsl(var(--foreground))]">{player.name}</span>
+                          <span className="text-xs sm:text-sm font-medium text-[hsl(var(--foreground))]">{player.name}</span>
                         </button>
                       ))}
                     </div>
@@ -244,9 +245,9 @@ const StatisticsPage = () => {
             </div>
           )}
           {(showComparisonSearch || comparisonPlayer) && (
-            <div className="mt-4 pt-4 border-t border-hair">
+            <div className="mt-3 sm:mt-4 pt-3 sm:pt-4 border-t border-hair">
               {!comparisonPlayer ? (
-                <div className="space-y-3">
+                <div className="space-y-2 sm:space-y-3">
                   <TableSearch
                     value={comparisonSearch}
                     onChange={(value) => {
@@ -269,9 +270,9 @@ const StatisticsPage = () => {
                               setComparisonSearch('')
                               setShowComparisonSearch(false)
                             }}
-                            className="w-full px-3 py-2 text-left hover:bg-[hsl(var(--surface-2))] transition-colors motion-reduce:transition-none focus-visible:ring-focus"
+                            className="w-full px-2 sm:px-3 py-1.5 sm:py-2 text-left hover:bg-[hsl(var(--surface-2))] transition-colors motion-reduce:transition-none focus-visible:ring-focus"
                           >
-                            <span className="text-sm font-medium text-[hsl(var(--foreground))]">{player.name}</span>
+                            <span className="text-xs sm:text-sm font-medium text-[hsl(var(--foreground))]">{player.name}</span>
                           </button>
                         ))}
                       </div>
@@ -279,10 +280,10 @@ const StatisticsPage = () => {
                   )}
                 </div>
               ) : (
-                <div className="space-y-4">
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-3">
-                      <div className="flex items-center justify-center w-10 h-10 rounded-full bg-[hsl(var(--primary)/.1)] text-[hsl(var(--primary))] font-semibold text-sm flex-shrink-0">
+                <div className="space-y-3 sm:space-y-4">
+                  <div className="flex items-center justify-between gap-2">
+                    <div className="flex items-center gap-2 sm:gap-3 min-w-0 flex-1">
+                      <div className="flex items-center justify-center w-8 h-8 sm:w-10 sm:h-10 rounded-full bg-[hsl(var(--primary)/.1)] text-[hsl(var(--primary))] font-semibold text-xs sm:text-sm flex-shrink-0">
                         {comparisonPlayer.name
                           .split(' ')
                           .map((n) => n[0])
@@ -291,8 +292,8 @@ const StatisticsPage = () => {
                           .slice(0, 2)}
                       </div>
                       <div className="flex flex-col min-w-0 flex-1">
-                        <span className="text-sm text-[hsl(var(--muted))]">Sammenlignet med</span>
-                        <span className="font-semibold text-[hsl(var(--foreground))] truncate">{comparisonPlayer.name}</span>
+                        <span className="text-xs sm:text-sm text-[hsl(var(--muted))]">Sammenlignet med</span>
+                        <span className="text-xs sm:text-sm font-semibold text-[hsl(var(--foreground))] truncate">{comparisonPlayer.name}</span>
                       </div>
                     </div>
                     <button
@@ -302,7 +303,7 @@ const StatisticsPage = () => {
                         setComparisonSearch('')
                         setShowComparisonSearch(false)
                       }}
-                      className="h-6 w-6 rounded-full bg-[hsl(var(--surface-2))] text-[hsl(var(--muted))] hover:text-[hsl(var(--foreground))] border-hair transition-colors motion-reduce:transition-none flex items-center justify-center focus-visible:ring-focus"
+                      className="h-6 w-6 rounded-full bg-[hsl(var(--surface-2))] text-[hsl(var(--muted))] hover:text-[hsl(var(--foreground))] border-hair transition-colors motion-reduce:transition-none flex items-center justify-center focus-visible:ring-focus flex-shrink-0"
                       title="Fjern sammenligning"
                     >
                       <X className="w-3 h-3" />
@@ -310,28 +311,28 @@ const StatisticsPage = () => {
                   </div>
                   
                   {loadingComparison ? (
-                    <div className="flex items-center justify-center py-4">
-                      <p className="text-sm text-[hsl(var(--muted))]">Indlæser sammenligning...</p>
+                    <div className="flex items-center justify-center py-3 sm:py-4">
+                      <p className="text-xs sm:text-sm text-[hsl(var(--muted))]">Indlæser sammenligning...</p>
                     </div>
                   ) : comparisonStats ? (
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                      <div className="flex items-center justify-between rounded-md bg-[hsl(var(--surface))] border-hair px-3 py-2">
-                        <div className="flex items-center gap-3">
-                          <Users className="w-5 h-5 text-[hsl(var(--primary))]" />
-                          <div className="flex flex-col">
-                            <span className="text-sm text-[hsl(var(--muted))]">Spillet sammen</span>
-                            <span className="text-xl font-semibold text-[hsl(var(--foreground))]">
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-2 sm:gap-3 md:gap-4">
+                      <div className="flex items-center justify-between rounded-md bg-[hsl(var(--surface))] border-hair px-2 sm:px-3 py-1.5 sm:py-2">
+                        <div className="flex items-center gap-2 sm:gap-3">
+                          <Users className="w-4 h-4 sm:w-5 sm:h-5 text-[hsl(var(--primary))] flex-shrink-0" />
+                          <div className="flex flex-col min-w-0">
+                            <span className="text-xs sm:text-sm text-[hsl(var(--muted))]">Spillet sammen</span>
+                            <span className="text-lg sm:text-xl font-semibold text-[hsl(var(--foreground))]">
                               {comparisonStats.partnerCount} {comparisonStats.partnerCount === 1 ? 'gang' : 'gange'}
                             </span>
                           </div>
                         </div>
                       </div>
-                      <div className="flex items-center justify-between rounded-md bg-[hsl(var(--surface))] border-hair px-3 py-2">
-                        <div className="flex items-center gap-3">
-                          <Target className="w-5 h-5 text-[hsl(var(--danger))]" />
-                          <div className="flex flex-col">
-                            <span className="text-sm text-[hsl(var(--muted))]">Spillet mod</span>
-                            <span className="text-xl font-semibold text-[hsl(var(--foreground))]">
+                      <div className="flex items-center justify-between rounded-md bg-[hsl(var(--surface))] border-hair px-2 sm:px-3 py-1.5 sm:py-2">
+                        <div className="flex items-center gap-2 sm:gap-3">
+                          <Target className="w-4 h-4 sm:w-5 sm:h-5 text-[hsl(var(--danger))] flex-shrink-0" />
+                          <div className="flex flex-col min-w-0">
+                            <span className="text-xs sm:text-sm text-[hsl(var(--muted))]">Spillet mod</span>
+                            <span className="text-lg sm:text-xl font-semibold text-[hsl(var(--foreground))]">
                               {comparisonStats.opponentCount} {comparisonStats.opponentCount === 1 ? 'gang' : 'gange'}
                             </span>
                           </div>
@@ -346,9 +347,9 @@ const StatisticsPage = () => {
         </div>
       ) : (
         <PageCard>
-          <div className="flex flex-col gap-4">
+          <div className="flex flex-col gap-3 sm:gap-4">
             <div>
-              <label className="block text-sm font-medium text-[hsl(var(--foreground))] mb-2">
+              <label className="block text-xs sm:text-sm font-medium text-[hsl(var(--foreground))] mb-1.5 sm:mb-2">
                 Vælg spiller
               </label>
               <TableSearch
@@ -359,7 +360,7 @@ const StatisticsPage = () => {
             </div>
             <div className="max-h-[300px] overflow-y-auto border-hair rounded-lg">
               {filteredPlayers.length === 0 ? (
-                <div className="p-4 text-center text-sm text-[hsl(var(--muted))]">Ingen spillere fundet</div>
+                <div className="p-3 sm:p-4 text-center text-xs sm:text-sm text-[hsl(var(--muted))]">Ingen spillere fundet</div>
               ) : (
                 <div className="divide-y divide-[hsl(var(--line)/.12)]">
                   {filteredPlayers.map((player) => (
@@ -367,9 +368,9 @@ const StatisticsPage = () => {
                       key={player.id}
                       type="button"
                       onClick={() => setSelectedPlayerId(player.id)}
-                      className="w-full px-4 py-3 text-left hover:bg-[hsl(var(--surface-2))] transition-colors motion-reduce:transition-none focus-visible:ring-focus"
+                      className="w-full px-3 sm:px-4 py-2 sm:py-3 text-left hover:bg-[hsl(var(--surface-2))] transition-colors motion-reduce:transition-none focus-visible:ring-focus"
                     >
-                      <span className="font-medium text-[hsl(var(--foreground))]">{player.name}</span>
+                      <span className="text-sm sm:text-base font-medium text-[hsl(var(--foreground))]">{player.name}</span>
                     </button>
                   ))}
                 </div>
@@ -381,16 +382,16 @@ const StatisticsPage = () => {
 
       {/* Statistics Display */}
       {selectedPlayer && (
-        <div className="space-y-6">
+        <div className="space-y-4 sm:space-y-6">
           {loadingStats ? (
             <>
               {/* KPI Skeletons */}
-              <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
+              <div className="grid gap-3 sm:gap-4 md:grid-cols-2 xl:grid-cols-4">
                 {[1, 2, 3, 4].map((i) => (
-                  <div key={i} className="card-glass-active border-hair rounded-lg p-4 md:p-5 shadow-sm">
+                  <div key={i} className="card-glass-active border-hair rounded-lg p-3 sm:p-4 md:p-5 shadow-sm">
                     <div className="flex flex-col justify-between gap-1">
-                      <div className="h-4 w-24 bg-[hsl(var(--surface-2))] rounded animate-pulse" />
-                      <div className="h-8 w-16 bg-[hsl(var(--surface-2))] rounded animate-pulse" />
+                      <div className="h-3 sm:h-4 w-20 sm:w-24 bg-[hsl(var(--surface-2))] rounded animate-pulse" />
+                      <div className="h-6 sm:h-8 w-12 sm:w-16 bg-[hsl(var(--surface-2))] rounded animate-pulse" />
                     </div>
                   </div>
                 ))}
@@ -425,33 +426,33 @@ const StatisticsPage = () => {
           ) : statistics ? (
             <>
               {/* KPI Tiles */}
-              <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
-            <div className="card-glass-active border-hair rounded-lg p-4 md:p-5 shadow-sm">
+              <div className="grid gap-3 sm:gap-4 md:grid-cols-2 xl:grid-cols-4">
+            <div className="card-glass-active border-hair rounded-lg p-3 sm:p-4 md:p-5 shadow-sm">
               <div className="flex flex-col justify-between gap-1">
-                <span className="text-sm text-[hsl(var(--muted))]">Indtjekninger</span>
-                <span className="text-2xl font-semibold text-[hsl(var(--foreground))]">{statistics.totalCheckIns}</span>
-                <span className="text-sm text-[hsl(var(--muted))]">Total</span>
+                <span className="text-xs sm:text-sm text-[hsl(var(--muted))]">Indtjekninger</span>
+                <span className="text-xl sm:text-2xl font-semibold text-[hsl(var(--foreground))]">{statistics.totalCheckIns}</span>
+                <span className="text-xs sm:text-sm text-[hsl(var(--muted))]">Total</span>
               </div>
             </div>
-            <div className="card-glass-active border-hair rounded-lg p-4 md:p-5 shadow-sm">
+            <div className="card-glass-active border-hair rounded-lg p-3 sm:p-4 md:p-5 shadow-sm">
               <div className="flex flex-col justify-between gap-1">
-                <span className="text-sm text-[hsl(var(--muted))]">Kampe</span>
-                <span className="text-2xl font-semibold text-[hsl(var(--foreground))]">{statistics.totalMatches}</span>
-                <span className="text-sm text-[hsl(var(--muted))]">Total</span>
+                <span className="text-xs sm:text-sm text-[hsl(var(--muted))]">Kampe</span>
+                <span className="text-xl sm:text-2xl font-semibold text-[hsl(var(--foreground))]">{statistics.totalMatches}</span>
+                <span className="text-xs sm:text-sm text-[hsl(var(--muted))]">Total</span>
               </div>
             </div>
-            <div className="card-glass-active border-hair rounded-lg p-4 md:p-5 shadow-sm">
+            <div className="card-glass-active border-hair rounded-lg p-3 sm:p-4 md:p-5 shadow-sm">
               <div className="flex flex-col justify-between gap-1">
-                <span className="text-sm text-[hsl(var(--muted))]">Sidst spillet</span>
-                <span className="text-2xl font-semibold text-[hsl(var(--foreground))]">
+                <span className="text-xs sm:text-sm text-[hsl(var(--muted))]">Sidst spillet</span>
+                <span className="text-lg sm:text-xl md:text-2xl font-semibold text-[hsl(var(--foreground))]">
                   {formatDate(statistics.lastPlayedDate)}
                 </span>
               </div>
             </div>
-            <div className="card-glass-active border-hair rounded-lg p-4 md:p-5 shadow-sm">
+            <div className="card-glass-active border-hair rounded-lg p-3 sm:p-4 md:p-5 shadow-sm">
               <div className="flex flex-col justify-between gap-1">
-                <span className="text-sm text-[hsl(var(--muted))]">Mest spillede kategori</span>
-                <span className="text-2xl font-semibold text-[hsl(var(--foreground))]">
+                <span className="text-xs sm:text-sm text-[hsl(var(--muted))]">Mest spillede kategori</span>
+                <span className="text-lg sm:text-xl md:text-2xl font-semibold text-[hsl(var(--foreground))]">
                   {statistics.preferredCategory ?? 'Ingen'}
                 </span>
               </div>
@@ -460,16 +461,16 @@ const StatisticsPage = () => {
 
           {/* Check-ins by Season */}
           {Object.keys(statistics.checkInsBySeason).length > 0 && (
-            <div className="card-glass-active border-hair rounded-lg p-4 md:p-5 shadow-sm">
-              <div className="space-y-3">
-                <h3 className="text-base font-semibold text-[hsl(var(--foreground))]">Indtjekninger pr. sæson</h3>
-                <div className="space-y-2">
+            <div className="card-glass-active border-hair rounded-lg p-3 sm:p-4 md:p-5 shadow-sm">
+              <div className="space-y-2 sm:space-y-3">
+                <h3 className="text-sm sm:text-base font-semibold text-[hsl(var(--foreground))]">Indtjekninger pr. sæson</h3>
+                <div className="space-y-1.5 sm:space-y-2">
                   {Object.entries(statistics.checkInsBySeason)
                     .sort(([a], [b]) => b.localeCompare(a))
                     .map(([season, count]) => (
-                      <div key={season} className="flex items-center justify-between rounded-md bg-[hsl(var(--surface))] border-hair px-3 py-2 hover:shadow-sm transition-shadow motion-reduce:transition-none">
-                        <span className="text-sm text-[hsl(var(--foreground))]">Sæson {season}</span>
-                        <span className="rounded-full bg-[hsl(var(--surface-2))] text-[hsl(var(--muted))] border-hair px-2 py-1 text-xs">
+                      <div key={season} className="flex items-center justify-between rounded-md bg-[hsl(var(--surface))] border-hair px-2 sm:px-3 py-1.5 sm:py-2 hover:shadow-sm transition-shadow motion-reduce:transition-none">
+                        <span className="text-xs sm:text-sm text-[hsl(var(--foreground))]">Sæson {season}</span>
+                        <span className="rounded-full bg-[hsl(var(--surface-2))] text-[hsl(var(--muted))] border-hair px-2 py-0.5 sm:py-1 text-xs">
                           {String(count)} {Number(count) === 1 ? 'gang' : 'gange'}
                         </span>
                       </div>
@@ -480,27 +481,27 @@ const StatisticsPage = () => {
           )}
 
           {/* Top Partners and Opponents Section - Side by Side */}
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 sm:gap-5 md:gap-6">
             {/* Top Partners Section */}
-            <div className="card-glass-active border-hair rounded-lg p-4 md:p-5 shadow-sm">
-              <div className="space-y-3">
-                <h2 className="text-base font-semibold text-[hsl(var(--foreground))]">Top 5 makkere</h2>
+            <div className="card-glass-active border-hair rounded-lg p-3 sm:p-4 md:p-5 shadow-sm">
+              <div className="space-y-2 sm:space-y-3">
+                <h2 className="text-sm sm:text-base font-semibold text-[hsl(var(--foreground))]">Top 5 makkere</h2>
                 {statistics.partners.length === 0 ? (
-                  <p className="text-sm text-[hsl(var(--muted))]">Ingen partnerdata tilgængelig</p>
+                  <p className="text-xs sm:text-sm text-[hsl(var(--muted))]">Ingen partnerdata tilgængelig</p>
                 ) : (
-                  <div className="space-y-2">
+                  <div className="space-y-1.5 sm:space-y-2">
                     {statistics.partners.map((partner, index) => (
                       <div
                         key={partner.playerId}
-                        className="flex items-center justify-between rounded-md bg-[hsl(var(--surface))] border-hair px-3 py-2"
+                        className="flex items-center justify-between rounded-md bg-[hsl(var(--surface))] border-hair px-2 sm:px-3 py-1.5 sm:py-2"
                       >
-                        <div className="flex items-center gap-3 min-w-0 flex-1">
-                          <div className="h-6 w-6 grid place-items-center rounded-full bg-[hsl(var(--surface-2))] text-[hsl(var(--muted))] border-hair text-xs font-semibold flex-shrink-0">
+                        <div className="flex items-center gap-2 sm:gap-3 min-w-0 flex-1">
+                          <div className="h-5 w-5 sm:h-6 sm:w-6 grid place-items-center rounded-full bg-[hsl(var(--surface-2))] text-[hsl(var(--muted))] border-hair text-xs font-semibold flex-shrink-0">
                             {index + 1}
                           </div>
-                          <span className="font-medium text-[hsl(var(--foreground))] truncate">{partner.names}</span>
+                          <span className="text-xs sm:text-sm font-medium text-[hsl(var(--foreground))] truncate">{partner.names}</span>
                         </div>
-                        <span className="rounded-full bg-[hsl(var(--surface-2))] text-[hsl(var(--muted))] border-hair px-2 py-1 text-xs flex-shrink-0 ml-2">
+                        <span className="rounded-full bg-[hsl(var(--surface-2))] text-[hsl(var(--muted))] border-hair px-1.5 sm:px-2 py-0.5 sm:py-1 text-xs flex-shrink-0 ml-1 sm:ml-2">
                           {partner.count} {partner.count === 1 ? 'gang' : 'gange'}
                         </span>
                       </div>
@@ -511,25 +512,25 @@ const StatisticsPage = () => {
             </div>
 
             {/* Top Opponents Section */}
-            <div className="card-glass-active border-hair rounded-lg p-4 md:p-5 shadow-sm">
-              <div className="space-y-3">
-                <h2 className="text-base font-semibold text-[hsl(var(--foreground))]">Top 5 modstandere</h2>
+            <div className="card-glass-active border-hair rounded-lg p-3 sm:p-4 md:p-5 shadow-sm">
+              <div className="space-y-2 sm:space-y-3">
+                <h2 className="text-sm sm:text-base font-semibold text-[hsl(var(--foreground))]">Top 5 modstandere</h2>
                 {statistics.opponents.length === 0 ? (
-                  <p className="text-sm text-[hsl(var(--muted))]">Ingen modstanderdata tilgængelig</p>
+                  <p className="text-xs sm:text-sm text-[hsl(var(--muted))]">Ingen modstanderdata tilgængelig</p>
                 ) : (
-                  <div className="space-y-2">
+                  <div className="space-y-1.5 sm:space-y-2">
                     {statistics.opponents.map((opponent, index) => (
                       <div
                         key={opponent.playerId}
-                        className="flex items-center justify-between rounded-md bg-[hsl(var(--surface))] border-hair px-3 py-2"
+                        className="flex items-center justify-between rounded-md bg-[hsl(var(--surface))] border-hair px-2 sm:px-3 py-1.5 sm:py-2"
                       >
-                        <div className="flex items-center gap-3 min-w-0 flex-1">
-                          <div className="h-6 w-6 grid place-items-center rounded-full bg-[hsl(var(--surface-2))] text-[hsl(var(--muted))] border-hair text-xs font-semibold flex-shrink-0">
+                        <div className="flex items-center gap-2 sm:gap-3 min-w-0 flex-1">
+                          <div className="h-5 w-5 sm:h-6 sm:w-6 grid place-items-center rounded-full bg-[hsl(var(--surface-2))] text-[hsl(var(--muted))] border-hair text-xs font-semibold flex-shrink-0">
                             {index + 1}
                           </div>
-                          <span className="font-medium text-[hsl(var(--foreground))] truncate">{opponent.names}</span>
+                          <span className="text-xs sm:text-sm font-medium text-[hsl(var(--foreground))] truncate">{opponent.names}</span>
                         </div>
-                        <span className="rounded-full bg-[hsl(var(--surface-2))] text-[hsl(var(--muted))] border-hair px-2 py-1 text-xs flex-shrink-0 ml-2">
+                        <span className="rounded-full bg-[hsl(var(--surface-2))] text-[hsl(var(--muted))] border-hair px-1.5 sm:px-2 py-0.5 sm:py-1 text-xs flex-shrink-0 ml-1 sm:ml-2">
                           {opponent.count} {opponent.count === 1 ? 'gang' : 'gange'}
                         </span>
                       </div>
@@ -548,10 +549,10 @@ const StatisticsPage = () => {
       {/* Empty State */}
       {!selectedPlayer && !loading && (
         <PageCard>
-          <div className="flex flex-col items-center justify-center py-12 text-center">
-            <BarChart3 className="w-12 h-12 text-[hsl(var(--muted))] mb-4" />
-            <p className="text-lg font-medium text-[hsl(var(--foreground))] mb-2">Vælg en spiller</p>
-            <p className="text-sm text-[hsl(var(--muted))]">Vælg en spiller fra listen ovenfor for at se deres statistik</p>
+          <div className="flex flex-col items-center justify-center py-8 sm:py-12 text-center">
+            <BarChart3 className="w-10 h-10 sm:w-12 sm:h-12 text-[hsl(var(--muted))] mb-3 sm:mb-4" />
+            <p className="text-base sm:text-lg font-medium text-[hsl(var(--foreground))] mb-1.5 sm:mb-2">Vælg en spiller</p>
+            <p className="text-xs sm:text-sm text-[hsl(var(--muted))] px-4">Vælg en spiller fra listen ovenfor for at se deres statistik</p>
           </div>
         </PageCard>
       )}
@@ -559,8 +560,8 @@ const StatisticsPage = () => {
       {/* Error Display */}
       {error && (
         <PageCard>
-          <div className="p-4 bg-[hsl(var(--destructive)/.1)] border border-[hsl(var(--destructive)/.2)] rounded-lg">
-            <p className="text-sm text-[hsl(var(--destructive))]">{error}</p>
+          <div className="p-3 sm:p-4 bg-[hsl(var(--destructive)/.1)] ring-1 ring-[hsl(var(--destructive)/.2)] rounded-lg">
+            <p className="text-xs sm:text-sm text-[hsl(var(--destructive))]">{error}</p>
           </div>
         </PageCard>
       )}

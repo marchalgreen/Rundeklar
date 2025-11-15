@@ -168,16 +168,16 @@ export const PlayerForm: React.FC<PlayerFormProps> = ({
       role="dialog"
       aria-modal="true"
     >
-      <div className="h-full w-full max-w-md mx-4 sm:mx-0 ring-1 ring-[hsl(var(--line)/.12)] bg-[hsl(var(--surface)/.98)] backdrop-blur-md shadow-[0_2px_8px_hsl(var(--line)/.12)] flex flex-col">
+      <div className="h-full w-full max-w-md mx-3 sm:mx-4 md:mx-0 ring-1 ring-[hsl(var(--line)/.12)] bg-[hsl(var(--surface)/.98)] backdrop-blur-md shadow-[0_2px_8px_hsl(var(--line)/.12)] flex flex-col">
         {/* Header */}
-        <div className="flex items-start justify-between p-4 sm:p-6 border-b border-[hsl(var(--line)/.12)] flex-shrink-0">
-          <div>
-            <h3 className="text-lg font-medium text-[hsl(var(--foreground))]">
+        <div className="flex items-start justify-between p-3 sm:p-4 md:p-6 border-b border-[hsl(var(--line)/.12)] flex-shrink-0 gap-2">
+          <div className="min-w-0 flex-1">
+            <h3 className="text-base sm:text-lg font-medium text-[hsl(var(--foreground))]">
               {mode === 'create' ? 'Ny spiller' : 'Rediger spiller'}
             </h3>
-            <p className="text-sm text-[hsl(var(--muted))] mt-1">Udfyld oplysningerne og gem.</p>
+            <p className="text-xs sm:text-sm text-[hsl(var(--muted))] mt-1">Udfyld oplysningerne og gem.</p>
           </div>
-          <Button variant="ghost" size="sm" onClick={onClose}>
+          <Button variant="ghost" size="sm" onClick={onClose} className="flex-shrink-0 text-xs sm:text-sm">
             Luk
           </Button>
         </div>
@@ -368,11 +368,11 @@ export const PlayerForm: React.FC<PlayerFormProps> = ({
           </div>
         </form>
         {/* Sticky footer actions */}
-        <div className="sticky bottom-0 border-t border-[hsl(var(--line)/.12)] bg-[hsl(var(--surface)/.98)]/95 backdrop-blur p-4 sm:p-6 flex justify-end gap-3">
-          <Button variant="ghost" type="button" onClick={onClose}>
+        <div className="sticky bottom-0 border-t border-[hsl(var(--line)/.12)] bg-[hsl(var(--surface)/.98)]/95 backdrop-blur p-3 sm:p-4 md:p-6 flex flex-col sm:flex-row justify-end gap-2 sm:gap-3">
+          <Button variant="ghost" type="button" onClick={onClose} className="w-full sm:w-auto text-xs sm:text-sm">
             Annuller
           </Button>
-          <Button type="submit" className="ring-2 ring-[hsl(var(--accent)/.2)]" onClick={(e) => { e.preventDefault(); /* submit via form */ const form = (e.currentTarget.closest('div')?.previousElementSibling as HTMLFormElement | null); form?.requestSubmit?.() }}>
+          <Button type="submit" className="ring-2 ring-[hsl(var(--accent)/.2)] w-full sm:w-auto text-xs sm:text-sm" onClick={(e) => { e.preventDefault(); /* submit via form */ const form = (e.currentTarget.closest('div')?.previousElementSibling as HTMLFormElement | null); form?.requestSubmit?.() }}>
             Gem spiller
           </Button>
         </div>
