@@ -687,23 +687,66 @@ export const getCheckIns = async (): Promise<CheckIn[]> => {
 
 /**
  * Creates a check-in in Postgres.
+ * Uses INSERT ... ON CONFLICT DO NOTHING to handle race conditions gracefully.
  */
 export const createCheckIn = async (checkIn: Omit<CheckIn, 'id' | 'createdAt'>): Promise<CheckIn> => {
   const sql = getPostgres()
   const tenantId = getTenantId()
-  const [created] = await sql`
+  
+  // Try to insert, but if it already exists (duplicate key), return the existing one
+  // Uses the unique constraint on (session_id, player_id, tenant_id)
+  const result = await sql`
     INSERT INTO check_ins (session_id, player_id, max_rounds, tenant_id)
     VALUES (${checkIn.sessionId}, ${checkIn.playerId}, ${checkIn.maxRounds ?? null}, ${tenantId})
+    ON CONFLICT ON CONSTRAINT check_ins_session_id_player_id_tenant_id_key DO NOTHING
     RETURNING *
   `
-  const converted = rowToCheckIn(created)
+  
+  // If no row was inserted (conflict), fetch the existing one
+  if (result.length === 0) {
+    const existing = await sql`
+      SELECT * FROM check_ins 
+      WHERE session_id = ${checkIn.sessionId} 
+        AND player_id = ${checkIn.playerId} 
+        AND tenant_id = ${tenantId}
+      LIMIT 1
+    `
+    if (existing.length === 0) {
+      throw new Error('Failed to create or find check-in')
+    }
+    const converted = rowToCheckIn(existing[0])
+    
+    // Update cache with existing check-in
+    if (tableCaches.checkIns) {
+      const existsInCache = tableCaches.checkIns.some(c => c.id === converted.id)
+      if (!existsInCache) {
+        tableCaches.checkIns = [...tableCaches.checkIns, converted]
+      }
+    }
+    if (cachedState) {
+      const existsInCache = cachedState.checkIns.some(c => c.id === converted.id)
+      if (!existsInCache) {
+        cachedState.checkIns = [...cachedState.checkIns, converted]
+      }
+    }
+    
+    return converted
+  }
+  
+  const converted = rowToCheckIn(result[0])
   
   // Optimistic cache update
   if (tableCaches.checkIns) {
-    tableCaches.checkIns = [...tableCaches.checkIns, converted]
+    const existsInCache = tableCaches.checkIns.some(c => c.id === converted.id)
+    if (!existsInCache) {
+      tableCaches.checkIns = [...tableCaches.checkIns, converted]
+    }
   }
   if (cachedState) {
-    cachedState.checkIns = [...cachedState.checkIns, converted]
+    const existsInCache = cachedState.checkIns.some(c => c.id === converted.id)
+    if (!existsInCache) {
+      cachedState.checkIns = [...cachedState.checkIns, converted]
+    }
   }
   
   return converted
@@ -717,13 +760,9 @@ export const deleteCheckIn = async (id: string): Promise<void> => {
   const tenantId = getTenantId()
   await sql`DELETE FROM check_ins WHERE id = ${id} AND tenant_id = ${tenantId}`
   
-  // Optimistic cache update
-  if (tableCaches.checkIns) {
-    tableCaches.checkIns = tableCaches.checkIns.filter(c => c.id !== id)
-  }
-  if (cachedState) {
-    cachedState.checkIns = cachedState.checkIns.filter(c => c.id !== id)
-  }
+  // Invalidate cache to ensure fresh data on next check
+  // This prevents race conditions when checking in immediately after checkout
+  invalidateCache('checkIns')
 }
 
 /**
