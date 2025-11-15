@@ -212,7 +212,9 @@ const getCheckInsBySeason = async (playerId: string): Promise<Record<string, num
   const bySeason: Record<string, number> = {}
 
   statistics.forEach((stat) => {
-    const checkInCount = stat.checkIns.filter((c) => c.playerId === playerId).length
+    // Defensive check: ensure checkIns is an array
+    const checkIns = Array.isArray(stat.checkIns) ? stat.checkIns : []
+    const checkInCount = checkIns.filter((c) => c.playerId === playerId).length
     if (checkInCount > 0) {
       bySeason[stat.season] = (bySeason[stat.season] ?? 0) + checkInCount
     }
@@ -423,7 +425,9 @@ const getPlayerStatistics = async (
   const checkInsBySeason: Record<string, number> = {}
   let totalCheckIns = 0
   relevantStats.forEach((stat) => {
-    const checkInCount = stat.checkIns.filter((c) => c.playerId === playerId).length
+    // Defensive check: ensure checkIns is an array
+    const checkIns = Array.isArray(stat.checkIns) ? stat.checkIns : []
+    const checkInCount = checkIns.filter((c) => c.playerId === playerId).length
     if (checkInCount > 0) {
       checkInsBySeason[stat.season] = (checkInsBySeason[stat.season] ?? 0) + checkInCount
       totalCheckIns += checkInCount

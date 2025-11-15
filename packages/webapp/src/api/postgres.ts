@@ -222,16 +222,33 @@ const rowToMatchPlayer = (row: any): MatchPlayer => ({
 /**
  * Converts a Postgres row to a StatisticsSnapshot.
  */
-const rowToStatisticsSnapshot = (row: any): StatisticsSnapshot => ({
-  id: row.id,
-  sessionId: row.session_id,
-  sessionDate: row.session_date,
-  season: row.season,
-  matches: (row.matches as any[]) || [],
-  matchPlayers: (row.match_players as any[]) || [],
-  checkIns: (row.check_ins as any[]) || [],
-  createdAt: row.created_at
-})
+const rowToStatisticsSnapshot = (row: any): StatisticsSnapshot => {
+  // Helper to ensure array format (handles JSONB strings, null, undefined, etc.)
+  const ensureArray = (value: any): any[] => {
+    if (Array.isArray(value)) return value
+    if (value == null) return []
+    if (typeof value === 'string') {
+      try {
+        const parsed = JSON.parse(value)
+        return Array.isArray(parsed) ? parsed : []
+      } catch {
+        return []
+      }
+    }
+    return []
+  }
+
+  return {
+    id: row.id,
+    sessionId: row.session_id,
+    sessionDate: row.session_date,
+    season: row.season,
+    matches: ensureArray(row.matches),
+    matchPlayers: ensureArray(row.match_players),
+    checkIns: ensureArray(row.check_ins),
+    createdAt: row.created_at
+  }
+}
 
 /**
  * Loads database state from Postgres.
