@@ -40,11 +40,16 @@ export default async function handler(
 
     if (req.method === 'GET') {
       // Get tenant details
+      console.log(`[tenants/:id] Fetching config for tenant: ${tenantId}`)
       const config = await getTenantConfig(tenantId)
       
+      console.log(`[tenants/:id] Config found:`, config ? 'yes' : 'no')
+      
       if (!config) {
+        console.error(`[tenants/:id] Tenant config not found for: ${tenantId}`)
         return res.status(404).json({
-          error: 'Tenant not found'
+          error: 'Tenant not found',
+          tenantId
         })
       }
       
