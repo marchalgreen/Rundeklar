@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react'
 import { PageCard } from '../../components/ui'
 import { Button } from '../../components/ui'
+import TenantDetailsPage from './TenantDetails'
 
 interface Tenant {
   id: string
@@ -13,6 +14,7 @@ export default function TenantsPage() {
   const [tenants, setTenants] = useState<Tenant[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
+  const [selectedTenantId, setSelectedTenantId] = useState<string | null>(null)
 
   useEffect(() => {
     fetchTenants()
@@ -43,6 +45,15 @@ export default function TenantsPage() {
     } finally {
       setLoading(false)
     }
+  }
+
+  if (selectedTenantId) {
+    return (
+      <TenantDetailsPage
+        tenantId={selectedTenantId}
+        onClose={() => setSelectedTenantId(null)}
+      />
+    )
   }
 
   if (loading) {
@@ -85,7 +96,11 @@ export default function TenantsPage() {
                   </p>
                 </div>
                 <div className="flex gap-2">
-                  <Button variant="secondary" size="sm">
+                  <Button 
+                    variant="secondary" 
+                    size="sm"
+                    onClick={() => setSelectedTenantId(tenant.id)}
+                  >
                     Detaljer
                   </Button>
                 </div>
