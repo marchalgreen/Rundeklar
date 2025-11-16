@@ -5,10 +5,13 @@ import { Button } from '../../components/ui'
 import { PageCard } from '../../components/ui'
 
 export default function LoginPage() {
-  const { login } = useAuth()
+  const { login, loginWithPIN } = useAuth()
   const { navigate, navigateToAuth } = useNavigation()
+  const [loginMethod, setLoginMethod] = useState<'pin' | 'email'>('pin') // Default to PIN for coaches
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
+  const [username, setUsername] = useState('')
+  const [pin, setPin] = useState('')
   const [totpCode, setTotpCode] = useState('')
   const [requires2FA, setRequires2FA] = useState(false)
   const [loading, setLoading] = useState(false)
@@ -20,7 +23,11 @@ export default function LoginPage() {
     setLoading(true)
 
     try {
-      await login(email, password, totpCode || undefined)
+      if (loginMethod === 'pin') {
+        await loginWithPIN(username, pin)
+      } else {
+        await login(email, password, totpCode || undefined)
+      }
       navigate('coach')
     } catch (err) {
       if (err instanceof Error && err.message === '2FA_REQUIRED') {
@@ -45,36 +52,109 @@ export default function LoginPage() {
           </div>
         )}
 
-        <form onSubmit={handleSubmit} className="space-y-4">
-          <div>
-            <label htmlFor="email" className="block text-sm font-medium mb-1">
-              Email
-            </label>
-            <input
-              id="email"
-              type="email"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              required
-              className="w-full px-3 py-2 border border-[hsl(var(--line))] rounded-md bg-[hsl(var(--surface))] focus:outline-none focus:ring-2 focus:ring-[hsl(var(--ring))]"
-              disabled={loading}
-            />
-          </div>
+        <div className="mb-4 flex gap-2 border-b border-[hsl(var(--line))]">
+          <button
+            type="button"
+            onClick={() => {
+              setLoginMethod('pin')
+              setError(null)
+            }}
+            className={`px-4 py-2 text-sm font-medium transition-colors ${
+              loginMethod === 'pin'
+                ? 'text-[hsl(var(--primary))] border-b-2 border-[hsl(var(--primary))]'
+                : 'text-[hsl(var(--muted))] hover:text-[hsl(var(--foreground))]'
+            }`}
+          >
+            Træner (PIN)
+          </button>
+          <button
+            type="button"
+            onClick={() => {
+              setLoginMethod('email')
+              setError(null)
+            }}
+            className={`px-4 py-2 text-sm font-medium transition-colors ${
+              loginMethod === 'email'
+                ? 'text-[hsl(var(--primary))] border-b-2 border-[hsl(var(--primary))]'
+                : 'text-[hsl(var(--muted))] hover:text-[hsl(var(--foreground))]'
+            }`}
+          >
+            Administrator
+          </button>
+        </div>
 
-          <div>
-            <label htmlFor="password" className="block text-sm font-medium mb-1">
-              Adgangskode
-            </label>
-            <input
-              id="password"
-              type="password"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              required
-              className="w-full px-3 py-2 border border-[hsl(var(--line))] rounded-md bg-[hsl(var(--surface))] focus:outline-none focus:ring-2 focus:ring-[hsl(var(--ring))]"
-              disabled={loading}
-            />
-          </div>
+        <form onSubmit={handleSubmit} className="space-y-4">
+          {loginMethod === 'pin' ? (
+            <>
+              <div>
+                <label htmlFor="username" className="block text-sm font-medium mb-1">
+                  Brugernavn
+                </label>
+                <input
+                  id="username"
+                  type="text"
+                  value={username}
+                  onChange={(e) => setUsername(e.target.value)}
+                  required
+                  autoFocus
+                  className="w-full px-3 py-2 border border-[hsl(var(--line))] rounded-md bg-[hsl(var(--surface))] focus:outline-none focus:ring-2 focus:ring-[hsl(var(--ring))]"
+                  disabled={loading}
+                />
+              </div>
+
+              <div>
+                <label htmlFor="pin" className="block text-sm font-medium mb-1">
+                  PIN (6 cifre)
+                </label>
+                <input
+                  id="pin"
+                  type="text"
+                  inputMode="numeric"
+                  pattern="[0-9]*"
+                  value={pin}
+                  onChange={(e) => setPin(e.target.value.replace(/\D/g, '').slice(0, 6))}
+                  required
+                  maxLength={6}
+                  placeholder="000000"
+                  className="w-full px-3 py-2 border border-[hsl(var(--line))] rounded-md bg-[hsl(var(--surface))] focus:outline-none focus:ring-2 focus:ring-[hsl(var(--ring))] text-center text-2xl tracking-widest"
+                  disabled={loading}
+                />
+              </div>
+            </>
+          ) : (
+            <>
+              <div>
+                <label htmlFor="email" className="block text-sm font-medium mb-1">
+                  Email
+                </label>
+                <input
+                  id="email"
+                  type="email"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  required
+                  autoFocus
+                  className="w-full px-3 py-2 border border-[hsl(var(--line))] rounded-md bg-[hsl(var(--surface))] focus:outline-none focus:ring-2 focus:ring-[hsl(var(--ring))]"
+                  disabled={loading}
+                />
+              </div>
+
+              <div>
+                <label htmlFor="password" className="block text-sm font-medium mb-1">
+                  Adgangskode
+                </label>
+                <input
+                  id="password"
+                  type="password"
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  required
+                  className="w-full px-3 py-2 border border-[hsl(var(--line))] rounded-md bg-[hsl(var(--surface))] focus:outline-none focus:ring-2 focus:ring-[hsl(var(--ring))]"
+                  disabled={loading}
+                />
+              </div>
+            </>
+          )}
 
           {requires2FA && (
             <div>
@@ -101,23 +181,35 @@ export default function LoginPage() {
         </form>
 
         <div className="mt-6 text-center space-y-2">
-          <button
-            type="button"
-            onClick={() => navigateToAuth('forgot-password')}
-            className="text-sm text-[hsl(var(--primary))] hover:underline"
-          >
-            Glemt adgangskode?
-          </button>
-          <div className="text-sm text-[hsl(var(--muted))]">
-            Har du ikke en konto?{' '}
+          {loginMethod === 'pin' ? (
             <button
               type="button"
-              onClick={() => navigateToAuth('register')}
-              className="text-[hsl(var(--primary))] hover:underline"
+              onClick={() => navigateToAuth('reset-pin')}
+              className="text-sm text-[hsl(var(--primary))] hover:underline"
             >
-              Registrer dig
+              Glemt PIN?
             </button>
-          </div>
+          ) : (
+            <>
+              <button
+                type="button"
+                onClick={() => navigateToAuth('forgot-password')}
+                className="text-sm text-[hsl(var(--primary))] hover:underline"
+              >
+                Glemt adgangskode?
+              </button>
+              <div className="text-sm text-[hsl(var(--muted))]">
+                Har du ikke en konto?{' '}
+                <button
+                  type="button"
+                  onClick={() => navigateToAuth('register')}
+                  className="text-[hsl(var(--primary))] hover:underline"
+                >
+                  Registrer dig
+                </button>
+              </div>
+            </>
+          )}
         </div>
       </PageCard>
     </div>
