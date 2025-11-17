@@ -109,16 +109,16 @@ export const PlayerSlot: React.FC<PlayerSlotProps> = ({
       onDragEnd={onDragEnd}
       className={`flex items-center gap-2 rounded-md px-2.5 py-2.5 sm:px-3 sm:py-3 xl:px-2.5 xl:py-2 h-[64px] sm:h-[72px] xl:h-[68px] w-full transition-all motion-reduce:transition-none ${
         isRecentlySwapped
-          ? `${getPlayerSlotBgColor()} avatar-rail animate-swap-in ring-2 ring-[hsl(var(--primary)/.5)] shadow-lg hover:shadow-sm cursor-grab active:cursor-grabbing ring-1 ring-[hsl(var(--line)/.12)]`
+          ? `${getPlayerSlotBgColor()} avatar-rail animate-swap-in ring-2 ring-[hsl(var(--primary)/.5)] shadow-lg hover:shadow-md cursor-grab active:cursor-grabbing`
           : isDragOverOccupied && player
-          ? `${getPlayerSlotBgColor()} avatar-rail ring-2 ring-[hsl(var(--primary)/.6)] shadow-lg hover:shadow-sm cursor-grab active:cursor-grabbing ring-1 ring-[hsl(var(--line)/.12)]`
+          ? `${getPlayerSlotBgColor()} avatar-rail ring-2 ring-[hsl(var(--primary)/.6)] shadow-lg hover:shadow-md cursor-grab active:cursor-grabbing`
           : player
-          ? `${getPlayerSlotBgColor()} avatar-rail hover:shadow-sm cursor-grab active:cursor-grabbing ring-1 ring-[hsl(var(--line)/.12)]`
+          ? `${getPlayerSlotBgColor()} avatar-rail hover:shadow-md cursor-grab active:cursor-grabbing ring-1 ring-[hsl(var(--line)/.2)]`
           : isDragOver
-          ? 'bg-[hsl(var(--primary)/.15)] ring-2 ring-[hsl(var(--primary)/.5)] shadow-md ring-1 ring-[hsl(var(--line)/.12)]'
+          ? 'bg-[hsl(var(--primary)/.15)] ring-2 ring-[hsl(var(--primary)/.5)] shadow-md'
           : isCourtHovered
           ? 'bg-[hsl(var(--primary)/.08)] ring-1 ring-[hsl(var(--primary)/.3)]'
-          : 'bg-[hsl(var(--surface-2)/.75)] text-[hsl(var(--muted))] ring-1 ring-[hsl(var(--line)/.12)]'
+          : 'bg-[hsl(var(--surface-2)/.85)] text-[hsl(var(--muted))] ring-1 ring-[hsl(var(--line)/.2)] shadow-sm'
       }`}
       data-cat={undefined}
       onDragOver={onDragOver}

@@ -119,8 +119,8 @@ export const PlayerCard: React.FC<PlayerCardProps> = ({
       className={clsx(
         'border-hair flex min-h-[56px] sm:min-h-[64px] items-center justify-between gap-2 sm:gap-3 rounded-lg px-2 py-1.5 sm:py-2 md:px-3 md:py-3',
         'transition-all duration-300 ease-[cubic-bezier(.2,.8,.2,1)] motion-reduce:transition-none',
-        'cursor-pointer hover:shadow-sm ring-0 hover:ring-2 hover:ring-[hsl(var(--accent)/.15)]',
-        'bg-[hsl(var(--surface-2)/.35)] backdrop-blur-sm',
+        'cursor-pointer hover:shadow-md ring-1 ring-[hsl(var(--line)/.2)] hover:ring-2 hover:ring-[hsl(var(--accent)/.25)]',
+        'bg-[hsl(var(--surface-2)/.85)] backdrop-blur-sm shadow-sm',
         'avatar-rail',
         isJustCheckedIn && 'ring-2 ring-[hsl(206_88%_60%)] scale-[1.02] shadow-lg',
         isAnimatingOut && 'opacity-0 scale-95 -translate-x-4 pointer-events-none',
