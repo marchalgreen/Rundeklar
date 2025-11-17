@@ -1,7 +1,7 @@
 import React, { useEffect } from 'react'
 import { useAuth } from '../../contexts/AuthContext'
 import { useNavigation } from '../../contexts/NavigationContext'
-import { UserRole, isSuperAdmin, isAdmin, hasMinimumRole } from '../../lib/auth/roles'
+import { UserRole, hasMinimumRole } from '../../lib/auth/roles'
 
 export interface ProtectedRouteProps {
   children: React.ReactNode

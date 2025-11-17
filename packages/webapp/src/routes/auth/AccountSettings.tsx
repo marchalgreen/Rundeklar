@@ -318,7 +318,7 @@ export default function AccountSettingsPage() {
       await navigator.clipboard.writeText(text)
       setCopiedCode(type)
       setTimeout(() => setCopiedCode(null), 2000)
-    } catch (err) {
+    } catch {
       // Fallback for older browsers
       const textArea = document.createElement('textarea')
       textArea.value = text

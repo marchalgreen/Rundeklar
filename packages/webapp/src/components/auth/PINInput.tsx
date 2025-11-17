@@ -153,7 +153,6 @@ export const PINInput = forwardRef<PINInputRef, PINInputProps>(({
       {Array.from({ length }).map((_, index) => {
         const digit = value[index] || ''
         const isFocused = focusedIndex === index
-        const isEmpty = !digit
 
         return (
           <input
