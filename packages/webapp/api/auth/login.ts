@@ -1,51 +1,13 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node'
 import { z } from 'zod'
 import { verifyPassword } from '../../src/lib/auth/password'
+import { verifyPIN } from '../../src/lib/auth/pin'
 import { generateAccessToken, generateRefreshToken, hashRefreshToken } from '../../src/lib/auth/jwt'
 import { checkLoginAttempts, recordLoginAttempt } from '../../src/lib/auth/rateLimit'
 import { getPostgresClient, getDatabaseUrl } from './db-helper'
 import { verifyTOTP } from '../../src/lib/auth/totp'
-
-// Import optional utilities with fallbacks
-let verifyPIN: ((pin: string, hash: string) => Promise<boolean>) | null = null
-let logger: { error: (msg: string, error?: unknown) => void } = {
-  error: (msg: string, error?: unknown) => console.error(msg, error)
-}
-let setCorsHeaders: ((res: { setHeader: (name: string, value: string) => void }, origin?: string) => void) = (res, origin) => {
-  // In development, allow the requesting origin or all origins
-  const isDev = origin && (
-    origin.includes('localhost') || 
-    origin.includes('127.0.0.1') ||
-    !process.env.VERCEL_ENV
-  )
-  res.setHeader('Access-Control-Allow-Origin', isDev ? (origin || '*') : '*')
-  res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS')
-  res.setHeader('Access-Control-Allow-Headers', 'Content-Type')
-}
-
-// Try to load optional modules (will fail gracefully if not available)
-try {
-  const pinModule = require('../../src/lib/auth/pin')
-  verifyPIN = pinModule.verifyPIN
-  logger.error('PIN module loaded successfully', { hasVerifyPIN: !!verifyPIN })
-} catch (error) {
-  // PIN support not available - will disable PIN login
-  logger.error('PIN module failed to load', error)
-}
-
-try {
-  const loggerModule = require('../../src/lib/utils/logger')
-  logger = loggerModule.logger
-} catch {
-  // Use console.error fallback
-}
-
-try {
-  const corsModule = require('../../src/lib/utils/cors')
-  setCorsHeaders = corsModule.setCorsHeaders
-} catch {
-  // Use basic CORS fallback
-}
+import { logger } from '../../src/lib/utils/logger'
+import { setCorsHeaders } from '../../src/lib/utils/cors'
 
 // Support both email/password (admins) and username/PIN (coaches)
 const loginSchema = z.object({
