@@ -10,6 +10,10 @@
     "lint": "pnpm --filter webapp lint",
     "typecheck": "pnpm --filter webapp typecheck",
     "test": "pnpm --filter webapp test",
+    "test:e2e": "pnpm --filter webapp test:e2e",
+    "test:e2e:ui": "pnpm --filter webapp test:e2e:ui",
+    "test:e2e:headed": "pnpm --filter webapp test:e2e:headed",
+    "test:e2e:debug": "pnpm --filter webapp test:e2e:debug",
     "build:guidelines": "node scripts/build-guidelines.mjs"
   },
   "devDependencies": {
