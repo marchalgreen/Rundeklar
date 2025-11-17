@@ -1,11 +1,11 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node'
 import { z } from 'zod'
-import { requireAuth, requireSuperAdmin, AuthenticatedRequest } from '../../src/lib/auth/middleware'
-import { isSuperAdmin } from '../../src/lib/auth/roles'
-import { hashPassword } from '../../src/lib/auth/password'
-import { getPostgresClient, getDatabaseUrl } from '../auth/db-helper'
-import { logger } from '../../src/lib/utils/logger'
-import { setCorsHeaders } from '../../src/lib/utils/cors'
+import { requireAuth, requireSuperAdmin, AuthenticatedRequest } from '../../src/lib/auth/middleware.js'
+import { isSuperAdmin } from '../../src/lib/auth/roles.js'
+import { hashPassword } from '../../src/lib/auth/password.js'
+import { getPostgresClient, getDatabaseUrl } from '../auth/db-helper.js'
+import { logger } from '../../src/lib/utils/logger.js'
+import { setCorsHeaders } from '../../src/lib/utils/cors.js'
 import {
   nameToSubdomain,
   validateSubdomain,
@@ -13,7 +13,7 @@ import {
   createTenantConfig,
   getAllTenantConfigs,
   getTenantConfig
-} from '../../src/lib/admin/tenant-utils'
+} from '../../src/lib/admin/tenant-utils.js'
 
 const createTenantSchema = z.object({
   name: z.string().min(1, 'Name is required'),

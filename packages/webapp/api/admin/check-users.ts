@@ -1,5 +1,5 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node'
-import { getPostgresClient, getDatabaseUrl } from '../auth/db-helper'
+import { getPostgresClient, getDatabaseUrl } from '../auth/db-helper.js'
 
 /**
  * Admin endpoint to check users in database

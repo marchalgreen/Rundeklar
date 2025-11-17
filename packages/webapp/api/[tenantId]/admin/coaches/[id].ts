@@ -1,11 +1,11 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node'
 import { z } from 'zod'
-import { requireAuth, requireAdmin, AuthenticatedRequest } from '../../../../src/lib/auth/middleware'
-import { hashPIN, validatePIN, generatePINResetToken } from '../../../../src/lib/auth/pin'
-import { sendPINResetEmail } from '../../../../src/lib/auth/email'
-import { getPostgresClient, getDatabaseUrl } from '../../../auth/db-helper'
-import { logger } from '../../../../src/lib/utils/logger'
-import { setCorsHeaders } from '../../../../src/lib/utils/cors'
+import { requireAuth, requireAdmin, AuthenticatedRequest } from '../../../../src/lib/auth/middleware.js'
+import { hashPIN, validatePIN, generatePINResetToken } from '../../../../src/lib/auth/pin.js'
+import { sendPINResetEmail } from '../../../../src/lib/auth/email.js'
+import { getPostgresClient, getDatabaseUrl } from '../../../auth/db-helper.js'
+import { logger } from '../../../../src/lib/utils/logger.js'
+import { setCorsHeaders } from '../../../../src/lib/utils/cors.js'
 
 const updateCoachSchema = z.object({
   email: z.string().email().optional(),

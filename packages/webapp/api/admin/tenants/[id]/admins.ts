@@ -1,10 +1,10 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node'
 import { z } from 'zod'
-import { requireAuth, requireSuperAdmin, AuthenticatedRequest } from '../../../../src/lib/auth/middleware'
-import { hashPassword } from '../../../../src/lib/auth/password'
-import { getPostgresClient, getDatabaseUrl } from '../../../auth/db-helper'
-import { logger } from '../../../../src/lib/utils/logger'
-import { setCorsHeaders } from '../../../../src/lib/utils/cors'
+import { requireAuth, requireSuperAdmin, AuthenticatedRequest } from '../../../../src/lib/auth/middleware.js'
+import { hashPassword } from '../../../../src/lib/auth/password.js'
+import { getPostgresClient, getDatabaseUrl } from '../../../auth/db-helper.js'
+import { logger } from '../../../../src/lib/utils/logger.js'
+import { setCorsHeaders } from '../../../../src/lib/utils/cors.js'
 
 const createAdminSchema = z.object({
   email: z.string().email('Valid email is required'),
