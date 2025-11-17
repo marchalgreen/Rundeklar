@@ -7,11 +7,15 @@ import { logger } from '../../src/lib/utils/logger'
 import { setCorsHeaders } from '../../src/lib/utils/cors'
 
 const requestResetSchema = z.object({
-  email: z.string().email('Invalid email address').optional(),
-  username: z.string().min(1, 'Username is required').optional(),
+  email: z.string().email('Invalid email address').optional().or(z.literal('')),
+  username: z.string().min(1, 'Username is required').optional().or(z.literal('')),
   tenantId: z.string().min(1, 'Tenant ID is required')
 }).refine(
-  (data) => data.email || data.username,
+  (data) => {
+    const hasEmail = data.email && data.email.trim().length > 0
+    const hasUsername = data.username && data.username.trim().length > 0
+    return hasEmail || hasUsername
+  },
   {
     message: 'Either email or username must be provided',
     path: ['email']
@@ -43,33 +47,37 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       // Request PIN reset
       const body = requestResetSchema.parse(req.body)
 
+      // Normalize inputs - trim and check if non-empty
+      const email = body.email?.trim() || ''
+      const username = body.username?.trim() || ''
+      
       // Find coach by email OR username and tenant (case-insensitive username)
       let coaches
-      if (body.email && body.username) {
+      if (email && username) {
         // Both provided - match both
         coaches = await sql`
           SELECT id, email, username
           FROM clubs
-          WHERE email = ${body.email}
-            AND LOWER(username) = LOWER(${body.username})
+          WHERE email = ${email}
+            AND LOWER(username) = LOWER(${username})
             AND tenant_id = ${body.tenantId}
             AND role = 'coach'
         `
-      } else if (body.email) {
+      } else if (email) {
         // Only email provided
         coaches = await sql`
           SELECT id, email, username
           FROM clubs
-          WHERE email = ${body.email}
+          WHERE email = ${email}
             AND tenant_id = ${body.tenantId}
             AND role = 'coach'
         `
-      } else if (body.username) {
+      } else if (username) {
         // Only username provided
         coaches = await sql`
           SELECT id, email, username
           FROM clubs
-          WHERE LOWER(username) = LOWER(${body.username})
+          WHERE LOWER(username) = LOWER(${username})
             AND tenant_id = ${body.tenantId}
             AND role = 'coach'
         `
