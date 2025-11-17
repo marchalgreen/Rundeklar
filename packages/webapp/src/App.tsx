@@ -188,7 +188,9 @@ const Header = () => {
                       aria-label="Bruger menu"
                     >
                       <User size={20} />
-                      <span className="text-sm truncate max-w-[120px]">{club?.email}</span>
+                      <span className="text-sm truncate max-w-[120px]">
+                        {club?.role === 'coach' && club?.username ? club.username : club?.email}
+                      </span>
                     </button>
                     {isUserMenuOpen && (
                       <div className="absolute right-0 mt-2 w-48 bg-[hsl(var(--surface))] border border-[hsl(var(--line))] rounded-md shadow-lg z-50">
@@ -355,12 +357,20 @@ const TenantProtectedContent = ({ children }: { children: React.ReactNode }) => 
  */
 const AppContent = () => {
   const { currentPage, authPage, isAuthRoute, navigate } = useNavigation()
+  const { club } = useAuth()
+  
+  // Prepare coach object for LandingPage - use username for coaches, email for admins
+  const coachForLanding = club ? {
+    id: club.id,
+    displayName: club.role === 'coach' && club.username ? club.username : club.email
+  } : undefined
   
   return (
     <>
         <TenantTitleUpdater />
         <div className="flex min-h-screen flex-col text-[hsl(var(--foreground))] overflow-x-hidden max-w-full relative">
-          {!isAuthRoute && <Header />}
+          {/* Show header for all routes except login/register/auth flows - but include account settings */}
+          {(!isAuthRoute || authPage === 'account') && <Header />}
           <main className="flex-1 overflow-y-auto overflow-x-hidden max-w-full relative z-0">
             <div className="flex w-full flex-col gap-4 sm:gap-6 px-4 sm:px-6 pb-6 sm:pb-10 pt-4 sm:pt-6 md:px-8 lg:px-12 max-w-full overflow-x-hidden">
             {/* Auth pages */}
@@ -376,7 +386,7 @@ const AppContent = () => {
             {!isAuthRoute && (
               <TenantProtectedContent>
                 {currentPage === 'coach' && (
-                  <LandingPage onRedirectToCheckin={() => navigate('check-in')} />
+                  <LandingPage coach={coachForLanding} onRedirectToCheckin={() => navigate('check-in')} />
                 )}
                 {currentPage === 'check-in' && <CheckInPage />}
                 {(currentPage === 'rounds' || currentPage === 'match-program') && <MatchProgramPage />}

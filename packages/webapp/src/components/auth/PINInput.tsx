@@ -178,20 +178,22 @@ export const PINInput = forwardRef<PINInputRef, PINInputProps>(({
               rounded-lg
               transition-all duration-200 ease-out
               bg-[hsl(var(--surface))]
-              ring-1 ring-[hsl(var(--line)/.12)]
+              ring-1 ring-[hsl(var(--border)/.4)]
+              border border-[hsl(var(--border)/.3)]
               text-[hsl(var(--foreground))]
               placeholder:text-[hsl(var(--muted)/.4)]
               
               focus:outline-none
               focus:ring-2 focus:ring-[hsl(var(--ring))]
+              focus:border-[hsl(var(--ring)/.5)]
               focus:ring-offset-0
               focus:scale-105
               
               disabled:opacity-50 disabled:cursor-not-allowed
               disabled:bg-[hsl(var(--surface-2))]
               
-              ${error ? 'ring-2 ring-[hsl(var(--destructive))] bg-[hsl(var(--destructive)/.05)]' : ''}
-              ${isFocused ? 'shadow-md' : ''}
+              ${error ? 'ring-2 ring-[hsl(var(--destructive))] border-[hsl(var(--destructive)/.6)] bg-[hsl(var(--destructive)/.05)]' : ''}
+              ${isFocused ? 'shadow-md' : 'shadow-sm'}
               
               selection:bg-transparent
             `}
