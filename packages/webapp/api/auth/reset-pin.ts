@@ -180,7 +180,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       })
     } else {
       return res.status(400).json({
-        error: 'Invalid action. Use ?action=request or ?action=reset'
+        error: 'Invalid action. Use ?action=request, ?action=validate, or ?action=reset'
       })
     }
   } catch (error) {
