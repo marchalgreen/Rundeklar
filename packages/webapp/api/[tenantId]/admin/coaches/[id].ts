@@ -148,7 +148,9 @@ export default async function handler(
         pinHash = await hashPIN(body.pin)
       }
 
-      // Build update query
+      // Build update query with whitelisted columns (security: prevent SQL injection)
+      // Only these columns are allowed to be updated
+      const allowedColumns = ['email', 'username', 'pin_hash'] as const
       const updates: string[] = []
       const values: any[] = []
       let paramIndex = 1
@@ -173,8 +175,22 @@ export default async function handler(
         })
       }
 
+      // Security: Verify all update columns are in whitelist
+      // This prevents SQL injection even if updates array is somehow compromised
+      const updateColumns = updates.map(u => u.split('=')[0].trim())
+      const invalidColumns = updateColumns.filter(col => !allowedColumns.includes(col as typeof allowedColumns[number]))
+      if (invalidColumns.length > 0) {
+        return res.status(400).json({
+          error: `Invalid columns: ${invalidColumns.join(', ')}`
+        })
+      }
+
       values.push(coachId, tenantId)
 
+      // Safe to use sql.unsafe here because:
+      // 1. Column names are whitelisted and validated above
+      // 2. All values are parameterized ($1, $2, etc.)
+      // 3. Tenant ID and coach ID are validated before this point
       await sql.unsafe(`
         UPDATE clubs
         SET ${updates.join(', ')}, updated_at = NOW()

@@ -35,7 +35,13 @@ CREATE INDEX IF NOT EXISTS idx_clubs_tenant_role ON clubs(tenant_id, role);
 CREATE INDEX IF NOT EXISTS idx_clubs_username_tenant ON clubs(username, tenant_id) WHERE username IS NOT NULL;
 
 -- 10. Migrate existing clubs to 'admin' role (de er tenant admins)
-UPDATE clubs SET role = 'admin' WHERE role = 'coach' OR role IS NULL;
+-- Only migrate clubs that don't have a role set AND have password_hash (existing admins)
+-- Do NOT migrate coaches (they should have pin_hash, not password_hash)
+UPDATE clubs 
+SET role = 'admin' 
+WHERE role IS NULL 
+  AND password_hash IS NOT NULL 
+  AND pin_hash IS NULL;
 
 -- 11. Drop old constraint if it exists
 ALTER TABLE clubs DROP CONSTRAINT IF EXISTS clubs_coach_requires_username_pin;
