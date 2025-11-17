@@ -134,11 +134,6 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       // PIN login: find by username and tenant_id (case-insensitive)
       // Normalize username to lowercase for matching (username is stored in lowercase)
       const normalizedUsername = body.username.toLowerCase().trim()
-      logger.error('PIN login search', {
-        searchedUsername: body.username,
-        normalizedUsername,
-        tenantId: body.tenantId
-      })
       
       clubs = await sql`
         SELECT id, email, username, pin_hash, tenant_id, role, email_verified, two_factor_enabled, two_factor_secret
@@ -147,11 +142,6 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
           AND tenant_id = ${body.tenantId}
           AND role = 'coach'
       `
-      
-      logger.error('PIN login query result', {
-        found: clubs.length,
-        usernames: clubs.map(c => c.username)
-      })
     } else if (isEmailLogin) {
       // Email/password login: find by email and tenant_id (admins)
       clubs = await sql`
@@ -224,15 +214,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         })
       }
       
-      logger.error('Verifying PIN', {
-        pinLength: body.pin?.length,
-        hasPinHash: !!club.pin_hash,
-        pinHashLength: club.pin_hash?.length
-      })
-      
       credentialsValid = await verifyPIN(body.pin!, club.pin_hash)
-      
-      logger.error('PIN verification result', { credentialsValid })
     } else if (isEmailLogin) {
       if (!club.password_hash) {
         await recordLoginAttempt(sql, club.id, rateLimitIdentifier, ipAddress, false)
