@@ -123,6 +123,55 @@ export async function send2FASetupEmail(
 }
 
 /**
+ * Send welcome email to new coach with PIN
+ * @param email - Recipient email
+ * @param pin - The coach's PIN code
+ * @param tenantId - Tenant ID for URL building
+ * @param username - Coach username
+ */
+export async function sendCoachWelcomeEmail(
+  email: string,
+  pin: string,
+  tenantId: string,
+  username: string
+): Promise<void> {
+  if (!resend) {
+    console.warn('Resend not configured - skipping welcome email')
+    return
+  }
+
+  // Build login URL based on tenant subdomain
+  const subdomain = tenantId === 'herlev-hjorten' ? '' : `${tenantId}.`
+  const loginUrl = `${APP_URL}/#/${tenantId}/login`
+
+  await resend.emails.send({
+    from: `${RESEND_FROM_NAME} <${RESEND_FROM_EMAIL}>`,
+    to: email,
+    subject: `Velkommen til ${RESEND_FROM_NAME}`,
+    html: `
+      <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+        <h1>Velkommen til ${RESEND_FROM_NAME}!</h1>
+        <p>Hej ${username},</p>
+        <p>Din trænerkonto er blevet oprettet.</p>
+        <p>Du kan nu logge ind med:</p>
+        <ul style="list-style: none; padding: 0;">
+          <li style="margin: 10px 0;"><strong>Brugernavn:</strong> ${username}</li>
+          <li style="margin: 10px 0;"><strong>PIN:</strong> <span style="font-size: 18px; font-weight: bold; letter-spacing: 2px; background-color: #f0f0f0; padding: 8px 12px; border-radius: 4px;">${pin}</span></li>
+        </ul>
+        <p>
+          <a href="${loginUrl}" style="display: inline-block; padding: 12px 24px; background-color: #007bff; color: white; text-decoration: none; border-radius: 4px; margin-top: 20px;">
+            Log ind
+          </a>
+        </p>
+        <p style="margin-top: 30px; color: #666; font-size: 14px;">
+          Hvis du har spørgsmål, er du velkommen til at kontakte os.
+        </p>
+      </div>
+    `
+  })
+}
+
+/**
  * Send PIN reset email
  * @param email - Recipient email
  * @param token - Reset token
@@ -137,34 +186,56 @@ export async function sendPINResetEmail(
 ): Promise<void> {
   if (!resend) {
     console.warn('Resend not configured - skipping PIN reset email')
-    return
+    console.warn('RESEND_API_KEY:', RESEND_API_KEY ? 'SET (hidden)' : 'NOT SET')
+    throw new Error('Resend email service is not configured. Please set RESEND_API_KEY environment variable.')
   }
 
   // Build reset URL based on tenant subdomain
   const subdomain = tenantId === 'herlev-hjorten' ? '' : `${tenantId}.`
   const resetUrl = `${APP_URL}/#/${tenantId}/reset-pin?token=${token}`
 
-  await resend.emails.send({
-    from: `${RESEND_FROM_NAME} <${RESEND_FROM_EMAIL}>`,
-    to: email,
-    subject: 'Reset your PIN',
-    html: `
-      <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
-        <h1>Reset your PIN</h1>
-        <p>Hej ${username},</p>
-        <p>Du har anmodet om at nulstille din PIN for ${RESEND_FROM_NAME}.</p>
-        <p>Klik på linket nedenfor for at nulstille din PIN:</p>
-        <p>
-          <a href="${resetUrl}" style="display: inline-block; padding: 12px 24px; background-color: #007bff; color: white; text-decoration: none; border-radius: 4px;">
-            Nulstil PIN
-          </a>
-        </p>
-        <p>Eller kopier og indsæt denne URL i din browser:</p>
-        <p style="word-break: break-all; color: #666;">${resetUrl}</p>
-        <p>Dette link udløber om 1 time.</p>
-        <p>Hvis du ikke har anmodet om en PIN-nulstilling, kan du ignorere denne email.</p>
-      </div>
-    `
-  })
+  try {
+    console.log(`[sendPINResetEmail] Attempting to send PIN reset email to ${email}`)
+    console.log(`[sendPINResetEmail] From: ${RESEND_FROM_NAME} <${RESEND_FROM_EMAIL}>`)
+    console.log(`[sendPINResetEmail] Reset URL: ${resetUrl}`)
+    
+    const result = await resend.emails.send({
+      from: `${RESEND_FROM_NAME} <${RESEND_FROM_EMAIL}>`,
+      to: email,
+      subject: 'Reset your PIN',
+      html: `
+        <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+          <h1>Reset your PIN</h1>
+          <p>Hej ${username},</p>
+          <p>Du har anmodet om at nulstille din PIN for ${RESEND_FROM_NAME}.</p>
+          <p>Klik på linket nedenfor for at nulstille din PIN:</p>
+          <p>
+            <a href="${resetUrl}" style="display: inline-block; padding: 12px 24px; background-color: #007bff; color: white; text-decoration: none; border-radius: 4px;">
+              Nulstil PIN
+            </a>
+          </p>
+          <p>Eller kopier og indsæt denne URL i din browser:</p>
+          <p style="word-break: break-all; color: #666;">${resetUrl}</p>
+          <p>Dette link udløber om 1 time.</p>
+          <p>Hvis du ikke har anmodet om en PIN-nulstilling, kan du ignorere denne email.</p>
+        </div>
+      `
+    })
+    
+    // Check for errors in result
+    if (result.error) {
+      console.error('[sendPINResetEmail] Resend API returned an error:', result.error)
+      throw new Error(`Resend API error: ${result.error.message || JSON.stringify(result.error)}`)
+    }
+    
+    console.log(`[sendPINResetEmail] Email sent successfully. Result:`, result)
+  } catch (error) {
+    console.error('[sendPINResetEmail] Failed to send PIN reset email:', error)
+    if (error instanceof Error) {
+      console.error('[sendPINResetEmail] Error message:', error.message)
+      console.error('[sendPINResetEmail] Error stack:', error.stack)
+    }
+    throw error
+  }
 }
 
