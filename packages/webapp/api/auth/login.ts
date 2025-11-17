@@ -1,13 +1,13 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node'
 import { z } from 'zod'
-import { getPostgresClient, getDatabaseUrl } from './db-helper'
-import { verifyPassword } from '../../src/lib/auth/password'
-import { verifyPIN } from '../../src/lib/auth/pin'
-import { generateAccessToken, generateRefreshToken, hashRefreshToken } from '../../src/lib/auth/jwt'
-import { checkLoginAttempts, recordLoginAttempt } from '../../src/lib/auth/rateLimit'
-import { verifyTOTP } from '../../src/lib/auth/totp'
-import { logger } from '../../src/lib/utils/logger'
-import { setCorsHeaders } from '../../src/lib/utils/cors'
+import { getPostgresClient, getDatabaseUrl } from './db-helper.js'
+import { verifyPassword } from '../../src/lib/auth/password.js'
+import { verifyPIN } from '../../src/lib/auth/pin.js'
+import { generateAccessToken, generateRefreshToken, hashRefreshToken } from '../../src/lib/auth/jwt.js'
+import { checkLoginAttempts, recordLoginAttempt } from '../../src/lib/auth/rateLimit.js'
+import { verifyTOTP } from '../../src/lib/auth/totp.js'
+import { logger } from '../../src/lib/utils/logger.js'
+import { setCorsHeaders } from '../../src/lib/utils/cors.js'
 
 // Support both email/password (admins) and username/PIN (coaches)
 const loginSchema = z.object({
