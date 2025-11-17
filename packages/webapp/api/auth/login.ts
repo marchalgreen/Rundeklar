@@ -178,7 +178,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       await recordLoginAttempt(sql, null, rateLimitIdentifier, ipAddress, false)
       return res.status(400).json({
         error: 'Invalid login method',
-        message: verifyPIN ? 'Either email/password or username/PIN required' : 'Email/password login required'
+        message: 'Either email/password or username/PIN required'
       })
     }
 
