@@ -4,6 +4,8 @@ import { requireAuth, requireAdmin, AuthenticatedRequest } from '../../../../src
 import { hashPIN, validatePIN, generatePINResetToken } from '../../../../src/lib/auth/pin'
 import { sendPINResetEmail } from '../../../../src/lib/auth/email'
 import { getPostgresClient, getDatabaseUrl } from '../../../auth/db-helper'
+import { logger } from '../../../../src/lib/utils/logger'
+import { setCorsHeaders } from '../../../../src/lib/utils/cors'
 
 const updateCoachSchema = z.object({
   email: z.string().email().optional(),
@@ -16,10 +18,8 @@ export default async function handler(
   req: AuthenticatedRequest & { query?: { tenantId?: string; id?: string }, params?: { tenantId?: string; id?: string } },
   res: VercelResponse
 ) {
-  res.setHeader('Access-Control-Allow-Origin', '*')
-  res.setHeader('Access-Control-Allow-Methods', 'GET, PUT, DELETE, POST, OPTIONS')
-  res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization')
-
+  setCorsHeaders(res, req.headers.origin)
+  
   if (req.method === 'OPTIONS') {
     return res.status(200).end()
   }
@@ -152,7 +152,7 @@ export default async function handler(
       // Only these columns are allowed to be updated
       const allowedColumns = ['email', 'username', 'pin_hash'] as const
       const updates: string[] = []
-      const values: any[] = []
+      const values: (string | null)[] = []
       let paramIndex = 1
 
       if (body.email) {
@@ -271,9 +271,9 @@ export default async function handler(
         // Send reset email
         try {
           await sendPINResetEmail(coach.email, resetToken, tenantId, coach.username)
-          console.log(`[reset-pin] PIN reset email sent successfully to ${coach.email}`)
+          logger.info(`PIN reset email sent successfully to ${coach.email}`)
         } catch (emailError) {
-          console.error('[reset-pin] Failed to send PIN reset email:', emailError)
+          logger.error('Failed to send PIN reset email', emailError)
           // Still return success to user (security best practice), but log the error
           return res.status(500).json({
             error: 'Failed to send PIN reset email',
@@ -312,7 +312,7 @@ export default async function handler(
       return res.status(403).json({ error: error.message })
     }
 
-    console.error('Coach management error:', error)
+    logger.error('Coach management error', error)
     return res.status(500).json({
       error: error instanceof Error ? error.message : 'Coach management failed'
     })

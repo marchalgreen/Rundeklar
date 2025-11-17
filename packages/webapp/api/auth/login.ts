@@ -6,6 +6,8 @@ import { generateAccessToken, generateRefreshToken, hashRefreshToken } from '../
 import { checkLoginAttempts, recordLoginAttempt } from '../../src/lib/auth/rateLimit'
 import { getPostgresClient, getDatabaseUrl } from './db-helper'
 import { verifyTOTP } from '../../src/lib/auth/totp'
+import { logger } from '../../src/lib/utils/logger'
+import { setCorsHeaders } from '../../src/lib/utils/cors'
 
 // Support both email/password (admins) and username/PIN (coaches)
 const loginSchema = z.object({
@@ -27,10 +29,8 @@ const loginSchema = z.object({
 )
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
-  res.setHeader('Access-Control-Allow-Origin', '*')
-  res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS')
-  res.setHeader('Access-Control-Allow-Headers', 'Content-Type')
-
+  setCorsHeaders(res, req.headers.origin)
+  
   if (req.method === 'OPTIONS') {
     return res.status(200).end()
   }
@@ -195,7 +195,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       })
     }
 
-    console.error('Login error:', error)
+    logger.error('Login error', error)
     return res.status(500).json({
       error: error instanceof Error ? error.message : 'Login failed'
     })

@@ -5,6 +5,8 @@ import { getPostgresClient, getDatabaseUrl } from '../../auth/db-helper'
 import { getTenantConfig } from '../../../src/lib/admin/tenant-utils'
 import { readFile, writeFile } from 'fs/promises'
 import { join } from 'path'
+import { logger } from '../../../src/lib/utils/logger'
+import { setCorsHeaders } from '../../../src/lib/utils/cors'
 
 const updateTenantSchema = z.object({
   name: z.string().min(1).optional(),
@@ -17,7 +19,7 @@ export default async function handler(
   req: AuthenticatedRequest & { query?: { id?: string }, params?: { id?: string } },
   res: VercelResponse
 ) {
-  res.setHeader('Access-Control-Allow-Origin', '*')
+  setCorsHeaders(res, req.headers.origin)
   res.setHeader('Access-Control-Allow-Methods', 'GET, PUT, DELETE, OPTIONS')
   res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization')
 
@@ -40,13 +42,11 @@ export default async function handler(
 
     if (req.method === 'GET') {
       // Get tenant details
-      console.log(`[tenants/:id] Fetching config for tenant: ${tenantId}`)
+      logger.debug(`Fetching config for tenant: ${tenantId}`)
       const config = await getTenantConfig(tenantId)
       
-      console.log(`[tenants/:id] Config found:`, config ? 'yes' : 'no')
-      
       if (!config) {
-        console.error(`[tenants/:id] Tenant config not found for: ${tenantId}`)
+        logger.warn(`Tenant config not found for: ${tenantId}`)
         return res.status(404).json({
           error: 'Tenant not found',
           tenantId
@@ -147,7 +147,7 @@ export default async function handler(
       return res.status(403).json({ error: error.message })
     }
 
-    console.error('Tenant management error:', error)
+    logger.error('Tenant management error', error)
     return res.status(500).json({
       error: error instanceof Error ? error.message : 'Tenant management failed'
     })

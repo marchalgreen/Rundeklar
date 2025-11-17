@@ -3,6 +3,8 @@ import { z } from 'zod'
 import { generatePINResetToken, isPINResetTokenExpired, hashPIN, validatePIN } from '../../src/lib/auth/pin'
 import { sendPINResetEmail } from '../../src/lib/auth/email'
 import { getPostgresClient, getDatabaseUrl } from './db-helper'
+import { logger } from '../../src/lib/utils/logger'
+import { setCorsHeaders } from '../../src/lib/utils/cors'
 
 const requestResetSchema = z.object({
   email: z.string().email('Invalid email address'),
@@ -17,10 +19,8 @@ const resetPINSchema = z.object({
 })
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
-  res.setHeader('Access-Control-Allow-Origin', '*')
-  res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS')
-  res.setHeader('Access-Control-Allow-Headers', 'Content-Type')
-
+  setCorsHeaders(res, req.headers.origin)
+  
   if (req.method === 'OPTIONS') {
     return res.status(200).end()
   }
@@ -72,9 +72,9 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       // Send reset email
       try {
         await sendPINResetEmail(coach.email, resetToken, body.tenantId, coach.username)
-        console.log(`[reset-pin] PIN reset email sent successfully to ${coach.email}`)
+        logger.info(`PIN reset email sent successfully to ${coach.email}`)
       } catch (emailError) {
-        console.error('[reset-pin] Failed to send PIN reset email:', emailError)
+        logger.error('Failed to send PIN reset email', emailError)
         // Still return success to user (security best practice), but log the error
         return res.status(500).json({
           error: 'Failed to send PIN reset email',
@@ -155,7 +155,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       })
     }
 
-    console.error('PIN reset error:', error)
+    logger.error('PIN reset error', error)
     return res.status(500).json({
       error: error instanceof Error ? error.message : 'PIN reset failed'
     })

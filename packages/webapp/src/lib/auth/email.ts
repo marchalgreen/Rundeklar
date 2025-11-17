@@ -1,4 +1,5 @@
 import { Resend } from 'resend'
+import { logger } from '../utils/logger'
 
 const RESEND_API_KEY = process.env.RESEND_API_KEY || process.env.VITE_RESEND_API_KEY
 const RESEND_FROM_EMAIL = process.env.RESEND_FROM_EMAIL || 'onboarding@resend.dev'
@@ -6,7 +7,7 @@ const RESEND_FROM_NAME = process.env.RESEND_FROM_NAME || 'Herlev Hjorten'
 const APP_URL = process.env.APP_URL || process.env.VITE_APP_URL || 'http://localhost:5173'
 
 if (!RESEND_API_KEY) {
-  console.warn('RESEND_API_KEY not set - email functionality will be disabled')
+  logger.warn('RESEND_API_KEY not set - email functionality will be disabled')
 }
 
 const resend = RESEND_API_KEY ? new Resend(RESEND_API_KEY) : null
@@ -23,7 +24,7 @@ export async function sendVerificationEmail(
   tenantId: string
 ): Promise<void> {
   if (!resend) {
-    console.warn('Resend not configured - skipping email verification')
+    logger.warn('Resend not configured - skipping email verification')
     return
   }
 
@@ -64,7 +65,7 @@ export async function sendPasswordResetEmail(
   tenantId: string
 ): Promise<void> {
   if (!resend) {
-    console.warn('Resend not configured - skipping password reset email')
+    logger.warn('Resend not configured - skipping password reset email')
     return
   }
 
@@ -103,7 +104,7 @@ export async function send2FASetupEmail(
   _tenantId: string
 ): Promise<void> {
   if (!resend) {
-    console.warn('Resend not configured - skipping 2FA setup email')
+    logger.warn('Resend not configured - skipping 2FA setup email')
     return
   }
 
@@ -136,7 +137,7 @@ export async function sendCoachWelcomeEmail(
   username: string
 ): Promise<void> {
   if (!resend) {
-    console.warn('Resend not configured - skipping welcome email')
+    logger.warn('Resend not configured - skipping welcome email')
     return
   }
 
@@ -185,8 +186,7 @@ export async function sendPINResetEmail(
   username: string
 ): Promise<void> {
   if (!resend) {
-    console.warn('Resend not configured - skipping PIN reset email')
-    console.warn('RESEND_API_KEY:', RESEND_API_KEY ? 'SET (hidden)' : 'NOT SET')
+    logger.warn('Resend not configured - skipping PIN reset email')
     throw new Error('Resend email service is not configured. Please set RESEND_API_KEY environment variable.')
   }
 
@@ -195,9 +195,7 @@ export async function sendPINResetEmail(
   const resetUrl = `${APP_URL}/#/${tenantId}/reset-pin?token=${token}`
 
   try {
-    console.log(`[sendPINResetEmail] Attempting to send PIN reset email to ${email}`)
-    console.log(`[sendPINResetEmail] From: ${RESEND_FROM_NAME} <${RESEND_FROM_EMAIL}>`)
-    console.log(`[sendPINResetEmail] Reset URL: ${resetUrl}`)
+    logger.debug(`Attempting to send PIN reset email to ${email}`)
     
     const result = await resend.emails.send({
       from: `${RESEND_FROM_NAME} <${RESEND_FROM_EMAIL}>`,
@@ -224,17 +222,13 @@ export async function sendPINResetEmail(
     
     // Check for errors in result
     if (result.error) {
-      console.error('[sendPINResetEmail] Resend API returned an error:', result.error)
+      logger.error('Resend API returned an error', result.error)
       throw new Error(`Resend API error: ${result.error.message || JSON.stringify(result.error)}`)
     }
     
-    console.log(`[sendPINResetEmail] Email sent successfully. Result:`, result)
+    logger.debug('PIN reset email sent successfully')
   } catch (error) {
-    console.error('[sendPINResetEmail] Failed to send PIN reset email:', error)
-    if (error instanceof Error) {
-      console.error('[sendPINResetEmail] Error message:', error.message)
-      console.error('[sendPINResetEmail] Error stack:', error.stack)
-    }
+    logger.error('Failed to send PIN reset email', error)
     throw error
   }
 }

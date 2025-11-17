@@ -4,6 +4,8 @@ import { requireAuth, requireSuperAdmin, AuthenticatedRequest } from '../../src/
 import { isSuperAdmin } from '../../src/lib/auth/roles'
 import { hashPassword } from '../../src/lib/auth/password'
 import { getPostgresClient, getDatabaseUrl } from '../auth/db-helper'
+import { logger } from '../../src/lib/utils/logger'
+import { setCorsHeaders } from '../../src/lib/utils/cors'
 import {
   nameToSubdomain,
   validateSubdomain,
@@ -31,10 +33,8 @@ const updateTenantSchema = z.object({
 })
 
 export default async function handler(req: AuthenticatedRequest, res: VercelResponse) {
-  res.setHeader('Access-Control-Allow-Origin', '*')
-  res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS')
-  res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization')
-
+  setCorsHeaders(res, req.headers.origin)
+  
   if (req.method === 'OPTIONS') {
     return res.status(200).end()
   }
@@ -52,7 +52,7 @@ export default async function handler(req: AuthenticatedRequest, res: VercelResp
       const sql = getPostgresClient(getDatabaseUrl())
       const tenantIds = configs.map(c => c.id)
       
-      let userCounts: any[] = []
+      let userCounts: Array<{ tenant_id: string; count: number }> = []
       if (tenantIds.length > 0) {
         userCounts = await sql`
           SELECT tenant_id, COUNT(*)::int as count
@@ -164,7 +164,7 @@ export default async function handler(req: AuthenticatedRequest, res: VercelResp
       return res.status(403).json({ error: error.message })
     }
 
-    console.error('Tenant management error:', error)
+    logger.error('Tenant management error', error)
     const errorMessage = error instanceof Error ? error.message : 'Tenant management failed'
     const errorStack = error instanceof Error ? error.stack : undefined
     return res.status(500).json({

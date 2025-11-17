@@ -4,6 +4,8 @@ import { requireAuth, requireAdmin, AuthenticatedRequest } from '../../../src/li
 import { hashPIN, generateRandomPIN, validatePIN } from '../../../src/lib/auth/pin'
 import { sendCoachWelcomeEmail } from '../../../src/lib/auth/email'
 import { getPostgresClient, getDatabaseUrl } from '../../auth/db-helper'
+import { logger } from '../../../src/lib/utils/logger'
+import { setCorsHeaders } from '../../../src/lib/utils/cors'
 
 const createCoachSchema = z.object({
   email: z.string().email('Valid email is required'),
@@ -23,10 +25,8 @@ export default async function handler(
   req: AuthenticatedRequest & { query?: { tenantId?: string }, params?: { tenantId?: string } },
   res: VercelResponse
 ) {
-  res.setHeader('Access-Control-Allow-Origin', '*')
-  res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS')
-  res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization')
-
+  setCorsHeaders(res, req.headers.origin)
+  
   if (req.method === 'OPTIONS') {
     return res.status(200).end()
   }
@@ -65,7 +65,7 @@ export default async function handler(
       
       return res.status(200).json({
         success: true,
-        coaches: coaches.map((coach: any) => ({
+        coaches: coaches.map((coach: { id: string; email: string; username: string; role: string; email_verified: boolean; created_at: Date; last_login: Date | null }) => ({
           id: coach.id,
           email: coach.email,
           username: coach.username,
@@ -153,7 +153,7 @@ export default async function handler(
         try {
           await sendCoachWelcomeEmail(coach.email, pin, tenantId, coach.username)
         } catch (emailError) {
-          console.error('Failed to send welcome email:', emailError)
+          logger.error('Failed to send welcome email', emailError)
           // Don't fail the request if email fails
         }
       }
@@ -189,7 +189,7 @@ export default async function handler(
       return res.status(403).json({ error: error.message })
     }
 
-    console.error('Coach management error:', error)
+    logger.error('Coach management error', error)
     return res.status(500).json({
       error: error instanceof Error ? error.message : 'Coach management failed',
       ...(process.env.NODE_ENV === 'development' && {
