@@ -1,13 +1,6 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node'
 import { z } from 'zod'
-import { verifyPassword } from '../../src/lib/auth/password'
-import { verifyPIN } from '../../src/lib/auth/pin'
-import { generateAccessToken, generateRefreshToken, hashRefreshToken } from '../../src/lib/auth/jwt'
-import { checkLoginAttempts, recordLoginAttempt } from '../../src/lib/auth/rateLimit'
 import { getPostgresClient, getDatabaseUrl } from './db-helper'
-import { verifyTOTP } from '../../src/lib/auth/totp'
-import { logger } from '../../src/lib/utils/logger'
-import { setCorsHeaders } from '../../src/lib/utils/cors'
 
 // Support both email/password (admins) and username/PIN (coaches)
 const loginSchema = z.object({
@@ -28,19 +21,87 @@ const loginSchema = z.object({
   }
 )
 
-export default async function handler(req: VercelRequest, res: VercelResponse) {
-  // Wrap entire handler to catch any errors, including import failures
+// Helper to safely import modules with fallback
+async function safeImport(modulePath: string): Promise<Record<string, any> | null> {
   try {
-    // Set CORS headers and ensure JSON content type
-    setCorsHeaders(res, req.headers.origin)
-    res.setHeader('Content-Type', 'application/json')
-    
-    if (req.method === 'OPTIONS') {
-      return res.status(200).end()
-    }
+    const module = await import(modulePath)
+    return (module.default || module) as Record<string, any>
+  } catch (error) {
+    console.error(`[ERROR] Failed to import ${modulePath}:`, error)
+    return null
+  }
+}
 
-    if (req.method !== 'POST') {
-      return res.status(405).json({ error: 'Method not allowed' })
+export default async function handler(req: VercelRequest, res: VercelResponse) {
+  // Always set JSON content type first - before any other operations
+  try {
+    res.setHeader('Content-Type', 'application/json')
+    res.setHeader('Access-Control-Allow-Origin', '*')
+    res.setHeader('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS')
+    res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization')
+  } catch (headerError) {
+    // If setting headers fails, we're in deep trouble - but try to continue
+    console.error('[ERROR] Failed to set headers:', headerError)
+  }
+  
+  if (req.method === 'OPTIONS') {
+    return res.status(200).end()
+  }
+
+  if (req.method !== 'POST') {
+    return res.status(405).json({ error: 'Method not allowed' })
+  }
+
+  try {
+    // Dynamically import all modules to handle failures gracefully
+    const [
+      verifyPasswordModule,
+      verifyPINModule,
+      jwtModule,
+      rateLimitModule,
+      totpModule,
+      loggerModule,
+      corsModule
+    ] = await Promise.all([
+      safeImport('../../src/lib/auth/password'),
+      safeImport('../../src/lib/auth/pin'),
+      safeImport('../../src/lib/auth/jwt'),
+      safeImport('../../src/lib/auth/rateLimit'),
+      safeImport('../../src/lib/auth/totp'),
+      safeImport('../../src/lib/utils/logger'),
+      safeImport('../../src/lib/utils/cors')
+    ])
+
+    // Extract functions with fallbacks
+    const verifyPassword = verifyPasswordModule?.verifyPassword as ((password: string, hash: string) => Promise<boolean>) | null
+    const verifyPIN = verifyPINModule?.verifyPIN as ((pin: string, hash: string) => Promise<boolean>) | null
+    const generateAccessToken = jwtModule?.generateAccessToken as ((clubId: string, tenantId: string, role: string, email: string) => string) | null
+    const generateRefreshToken = jwtModule?.generateRefreshToken as (() => Promise<string>) | null
+    const hashRefreshToken = jwtModule?.hashRefreshToken as ((token: string) => Promise<string>) | null
+    const checkLoginAttempts = rateLimitModule?.checkLoginAttempts as ((sql: any, identifier: string, ip: string) => Promise<{ allowed: boolean; lockoutUntil?: Date }>) | null
+    const recordLoginAttempt = rateLimitModule?.recordLoginAttempt as ((sql: any, clubId: string | null, identifier: string, ip: string, success: boolean) => Promise<void>) | null
+    const verifyTOTP = totpModule?.verifyTOTP as ((secret: string, code: string) => boolean) | null
+    const logger = (loggerModule || { error: (msg: string, err?: unknown) => console.error(`[ERROR] ${msg}`, err) }) as { error: (msg: string, err?: unknown) => void }
+    const setCorsHeaders = (corsModule?.setCorsHeaders || ((res: any, origin?: string) => {
+      res.setHeader('Access-Control-Allow-Origin', origin || '*')
+      res.setHeader('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS')
+      res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization')
+    })) as (res: any, origin?: string) => void
+
+    // Set CORS headers using dynamic import
+    setCorsHeaders(res, req.headers.origin)
+
+    // Validate required modules
+    if (!verifyPassword || !generateAccessToken || !generateRefreshToken || !hashRefreshToken || !checkLoginAttempts || !recordLoginAttempt) {
+      logger.error('Critical modules failed to load', {
+        verifyPassword: !!verifyPassword,
+        generateAccessToken: !!generateAccessToken,
+        verifyPIN: !!verifyPIN
+      })
+      return res.status(500).json({
+        error: 'Server configuration error',
+        message: 'Required authentication modules failed to load. Please contact support.'
+      })
     }
 
     // Parse body safely with proper error handling
@@ -111,7 +172,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     if (isPINLogin) {
       // PIN login: find by username and tenant_id (case-insensitive)
       // Normalize username to lowercase for matching (username is stored in lowercase)
-      const normalizedUsername = body.username.toLowerCase().trim()
+      const normalizedUsername = body.username!.toLowerCase().trim()
       
       clubs = await sql`
         SELECT id, email, username, pin_hash, tenant_id, role, email_verified, two_factor_enabled, two_factor_secret
@@ -173,12 +234,21 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
           error: 'Password not set for this user'
         })
       }
-      credentialsValid = await verifyPassword(body.password!, club.password_hash)
+      try {
+        credentialsValid = await verifyPassword(body.password!, club.password_hash)
+      } catch (passwordError) {
+        logger.error('Password verification failed', passwordError)
+        await recordLoginAttempt(sql, club.id, rateLimitIdentifier, ipAddress, false)
+        return res.status(500).json({
+          error: 'Password verification failed',
+          message: 'An error occurred while verifying password. Please try again.'
+        })
+      }
     } else {
       await recordLoginAttempt(sql, null, rateLimitIdentifier, ipAddress, false)
       return res.status(400).json({
         error: 'Invalid login method',
-        message: typeof verifyPIN === 'function' ? 'Either email/password or username/PIN required' : 'Email/password login required'
+        message: verifyPIN ? 'Either email/password or username/PIN required' : 'Email/password login required'
       })
     }
 
@@ -208,6 +278,14 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       if (!club.two_factor_secret) {
         return res.status(500).json({
           error: '2FA enabled but secret not found'
+        })
+      }
+
+      if (!verifyTOTP) {
+        logger.error('2FA verification requested but TOTP module not available')
+        return res.status(500).json({
+          error: '2FA verification not available',
+          message: 'Two-factor authentication module is not loaded. Please contact support.'
         })
       }
 
@@ -276,10 +354,13 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
     // Log error but don't expose internal details
     try {
-      logger.error('Login error', outerError)
+      console.error('[ERROR] Login handler error:', outerError)
+      if (outerError instanceof Error) {
+        console.error('[ERROR] Error message:', outerError.message)
+        console.error('[ERROR] Error stack:', outerError.stack)
+      }
     } catch {
-      // If logger fails, use console.error as fallback
-      console.error('[ERROR] Login error', outerError)
+      // If even console.error fails, we're in deep trouble
     }
     
     // Always return JSON, never HTML - even for import/runtime errors
@@ -292,6 +373,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       })
     } catch {
       // If even setting headers fails, return minimal JSON
+      // This should never happen, but if it does, we've done our best
       return res.status(500).json({ error: 'Server error' })
     }
   }
