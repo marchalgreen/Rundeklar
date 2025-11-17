@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react'
+import React, { useState, useEffect, useCallback } from 'react'
 import { useTenant } from '../../../contexts/TenantContext'
 import { PageCard } from '../../../components/ui'
 import { Button } from '../../../components/ui'
@@ -21,11 +21,7 @@ export default function CoachesPage() {
   const [error, setError] = useState<string | null>(null)
   const [showCreateForm, setShowCreateForm] = useState(false)
 
-  useEffect(() => {
-    fetchCoaches()
-  }, [tenantId])
-
-  const fetchCoaches = async () => {
+  const fetchCoaches = useCallback(async () => {
     try {
       const token = localStorage.getItem('auth_access_token')
       const apiUrl = import.meta.env.DEV 

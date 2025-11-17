@@ -19,7 +19,7 @@ export default function ResetPasswordPage() {
     const hash = window.location.hash.replace(/^#/, '')
     
     // Split hash into path and query string
-    const [pathPart, queryPart] = hash.split('?')
+    const [_pathPart, queryPart] = hash.split('?')
     
     // Extract token from query params in hash
     if (queryPart) {

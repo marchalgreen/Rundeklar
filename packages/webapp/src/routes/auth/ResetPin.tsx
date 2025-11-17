@@ -4,7 +4,6 @@ import { getCurrentTenantId } from '../../lib/tenant'
 import { Button, PINInput } from '../../components/ui'
 import type { PINInputRef } from '../../components/auth/PINInput'
 import { PageCard } from '../../components/ui'
-import { User, Lock } from 'lucide-react'
 
 export default function ResetPinPage() {
   const { navigateToAuth } = useNavigation()
@@ -93,7 +92,7 @@ export default function ResetPinPage() {
       } else {
         setError(data.error || 'Ugyldig eller udløbet nulstillings-token')
       }
-    } catch (err) {
+    } catch {
       setError('Kunne ikke validere token. Tjek om linket er korrekt.')
     }
   }

@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react'
+import React, { useState, useEffect, useCallback } from 'react'
 import { PageCard } from '../../components/ui'
 import { Button } from '../../components/ui'
 
@@ -33,12 +33,7 @@ export default function TenantDetailsPage({ tenantId, onClose }: TenantDetailsPa
   const [error, setError] = useState<string | null>(null)
   const [activeTab, setActiveTab] = useState<'details' | 'admins'>('details')
 
-  useEffect(() => {
-    fetchTenantDetails()
-    fetchAdmins()
-  }, [tenantId])
-
-  const fetchTenantDetails = async () => {
+  const fetchTenantDetails = useCallback(async () => {
     try {
       const token = localStorage.getItem('auth_access_token')
       const apiUrl = import.meta.env.DEV 
@@ -63,9 +58,9 @@ export default function TenantDetailsPage({ tenantId, onClose }: TenantDetailsPa
     } finally {
       setLoading(false)
     }
-  }
+  }, [tenantId])
 
-  const fetchAdmins = async () => {
+  const fetchAdmins = useCallback(async () => {
     try {
       const token = localStorage.getItem('auth_access_token')
       const apiUrl = import.meta.env.DEV 
@@ -85,7 +80,12 @@ export default function TenantDetailsPage({ tenantId, onClose }: TenantDetailsPa
     } catch (err) {
       console.error('Failed to fetch admins:', err)
     }
-  }
+  }, [tenantId])
+
+  useEffect(() => {
+    fetchTenantDetails()
+    fetchAdmins()
+  }, [fetchTenantDetails, fetchAdmins])
 
   const handleDeleteTenant = async () => {
     if (!confirm(`Er du sikker på, at du vil slette tenant "${tenant?.name}"? Dette vil markere tenanten som slettet, men data vil blive bevaret.`)) {
