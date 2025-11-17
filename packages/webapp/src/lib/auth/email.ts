@@ -1,5 +1,5 @@
 import { Resend } from 'resend'
-import { logger } from '../utils/logger'
+import { logger } from '../utils/logger.js'
 
 const RESEND_API_KEY = process.env.RESEND_API_KEY || process.env.VITE_RESEND_API_KEY
 const RESEND_FROM_EMAIL = process.env.RESEND_FROM_EMAIL || 'onboarding@resend.dev'
