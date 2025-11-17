@@ -156,7 +156,16 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         })
       }
       
-      credentialsValid = await verifyPIN(body.pin!, club.pin_hash)
+      try {
+        credentialsValid = await verifyPIN(body.pin!, club.pin_hash)
+      } catch (pinError) {
+        logger.error('PIN verification failed', pinError)
+        await recordLoginAttempt(sql, club.id, rateLimitIdentifier, ipAddress, false)
+        return res.status(500).json({
+          error: 'PIN verification failed',
+          message: 'An error occurred while verifying PIN. Please try again.'
+        })
+      }
     } else if (isEmailLogin) {
       if (!club.password_hash) {
         await recordLoginAttempt(sql, club.id, rateLimitIdentifier, ipAddress, false)
