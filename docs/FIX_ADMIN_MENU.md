@@ -1,7 +1,7 @@
 # Fix Admin Menu Not Showing
 
 ## Problem
-Admin menu vises ikke selvom du har `super_admin` rolle i databasen.
+Admin menu vises ikke selvom du har `sysadmin` (eller `super_admin`) rolle i databasen.
 
 ## Løsning
 
@@ -36,7 +36,7 @@ Efter login, tjek debug output (gul boks øverst på siden):
 ```json
 {
   "club": {
-    "role": "super_admin"  // ← Dette skal være med nu!
+    "role": "sysadmin"  // ← Eller "super_admin" for backward compatibility
   },
   "isAdmin": true,         // ← Skal være true
   "isSuperAdmin": true     // ← Skal være true
@@ -54,7 +54,7 @@ Hvis debug output viser korrekt rolle, skulle Admin menu nu vise i navigationen.
 1. Åbn browser console (F12)
 2. Tjek Network tab
 3. Find `/api/auth/me` request
-4. Se response - skal indeholde `role: "super_admin"`
+4. Se response - skal indeholde `role: "sysadmin"` (eller `role: "super_admin"` for backward compatibility)
 
 ### Manuelt Opdater Token
 
@@ -78,7 +78,7 @@ FROM clubs
 WHERE email = 'marchalgreen@gmail.com';
 ```
 
-Skal vise `role = 'super_admin'`.
+Skal vise `role = 'sysadmin'` (eller `role = 'super_admin'` for backward compatibility).
 
 ## Debug Komponent
 

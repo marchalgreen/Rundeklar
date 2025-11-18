@@ -1,7 +1,7 @@
 import type { VercelRequest } from '@vercel/node'
 import { verifyAccessToken } from './jwt.js'
 import { getPostgresClient, getDatabaseUrl } from '../../../api/auth/db-helper.js'
-import { isSuperAdmin, isAdmin, isCoach } from './roles.js'
+import { isSysAdmin, isSuperAdmin, isAdmin, isCoach } from './roles.js'
 
 export interface AuthenticatedRequest extends VercelRequest {
   clubId?: string
@@ -109,20 +109,32 @@ export async function optionalAuth(req: AuthenticatedRequest): Promise<void> {
 }
 
 /**
- * Require super admin role
+ * Require sysadmin role
  * @param req - Authenticated request
- * @throws Error if not super admin
+ * @throws Error if not sysadmin
  */
-export function requireSuperAdmin(req: AuthenticatedRequest): void {
-  if (!req.role || !isSuperAdmin(req.role)) {
-    throw new Error('Super admin access required')
+export function requireSysAdmin(req: AuthenticatedRequest): void {
+  if (!req.role || !isSysAdmin(req.role)) {
+    throw new Error('System administrator access required')
   }
 }
 
 /**
- * Require admin or super admin role
+ * @deprecated Use requireSysAdmin instead
+ * Require super admin role (backward compatibility)
  * @param req - Authenticated request
- * @throws Error if not admin or super admin
+ * @throws Error if not sysadmin
+ */
+export function requireSuperAdmin(req: AuthenticatedRequest): void {
+  if (!req.role || !isSuperAdmin(req.role)) {
+    throw new Error('System administrator access required')
+  }
+}
+
+/**
+ * Require admin or sysadmin role
+ * @param req - Authenticated request
+ * @throws Error if not admin or sysadmin
  */
 export function requireAdmin(req: AuthenticatedRequest): void {
   if (!req.role || !isAdmin(req.role)) {

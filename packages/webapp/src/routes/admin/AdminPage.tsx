@@ -11,7 +11,7 @@ type AdminTab = 'tenants' | 'coaches'
 export default function AdminPage() {
   const { club } = useAuth()
   const clubRole = (club as any)?.role as string | undefined
-  const isSuperAdmin = clubRole === UserRole.SUPER_ADMIN || clubRole === 'super_admin'
+  const isSuperAdmin = clubRole === UserRole.SYSADMIN || clubRole === 'sysadmin' || clubRole === UserRole.SUPER_ADMIN || clubRole === 'super_admin' // Backward compatibility
   const [activeTab, setActiveTab] = useState<AdminTab>(isSuperAdmin ? 'tenants' : 'coaches')
 
   return (

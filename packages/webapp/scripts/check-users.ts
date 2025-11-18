@@ -46,7 +46,8 @@ async function checkUsers() {
 
     // Group by role
     const byRole = {
-      super_admin: [] as typeof users,
+      sysadmin: [] as typeof users,
+      super_admin: [] as typeof users, // Backward compatibility
       admin: [] as typeof users,
       coach: [] as typeof users,
       null: [] as typeof users
@@ -54,17 +55,19 @@ async function checkUsers() {
 
     users.forEach(user => {
       const role = user.role || 'null'
-      if (role in byRole) {
-        byRole[role as keyof typeof byRole].push(user)
+      // Map super_admin to sysadmin for grouping
+      const normalizedRole = role === 'super_admin' ? 'sysadmin' : role
+      if (normalizedRole in byRole) {
+        byRole[normalizedRole as keyof typeof byRole].push(user)
       } else {
         byRole.null.push(user)
       }
     })
 
     // Print by role
-    if (byRole.super_admin.length > 0) {
-      console.log('🔴 SUPER_ADMINS:')
-      byRole.super_admin.forEach(user => {
+    if (byRole.sysadmin.length > 0) {
+      console.log('🔴 SYSADMINS:')
+      byRole.sysadmin.forEach(user => {
         console.log(`  - ${user.email} (${user.username || 'no username'})`)
         console.log(`    ID: ${user.id}, Tenant: ${user.tenant_id}`)
         console.log(`    Has password: ${user.has_password}, Has PIN: ${user.has_pin}`)
@@ -113,7 +116,10 @@ async function checkUsers() {
     // Summary
     console.log('\n=== Summary ===')
     console.log(`Total users: ${users.length}`)
-    console.log(`Super admins: ${byRole.super_admin.length}`)
+    console.log(`Sysadmins: ${byRole.sysadmin.length}`)
+    if (byRole.super_admin.length > 0) {
+      console.log(`Super admins (legacy): ${byRole.super_admin.length}`)
+    }
     console.log(`Admins: ${byRole.admin.length}`)
     console.log(`Coaches: ${byRole.coach.length}`)
     console.log(`Without role: ${byRole.null.length}`)

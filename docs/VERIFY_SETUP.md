@@ -16,7 +16,7 @@ WHERE tenant_id = 'herlev-hjorten'
 ORDER BY created_at;
 ```
 
-**Expected:** Should show your admin users with `role = 'admin'` or `role = 'super_admin'`
+**Expected:** Should show your admin users with `role = 'admin'` or `role = 'sysadmin'` (or `role = 'super_admin'` for backward compatibility)
 
 ### 2. Verify migrations were applied
 ```sql
@@ -124,7 +124,7 @@ Test that subdomain detection works:
    SELECT email, role FROM clubs WHERE email = 'your-email@example.com';
    ```
 
-2. **Should be 'admin' or 'super_admin'**
+2. **Should be 'admin' or 'sysadmin'** (or 'super_admin' for backward compatibility)
 
 3. **Check JWT token includes role:**
    - Open browser DevTools → Application → Local Storage
@@ -156,7 +156,7 @@ Test that subdomain detection works:
 
 - [ ] Migrations 007, 008, 010 all ran successfully
 - [ ] 2+ users exist with tenant_id = 'herlev-hjorten'
-- [ ] Users have role = 'admin' or 'super_admin'
+- [ ] Users have role = 'admin' or 'sysadmin' (or 'super_admin' for backward compatibility)
 - [ ] Can log in as admin
 - [ ] Admin menu appears in navigation
 - [ ] Can access admin module

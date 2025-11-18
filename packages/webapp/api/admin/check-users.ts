@@ -43,7 +43,8 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     // Group by role
     type UserRow = typeof users[number]
     const byRole = {
-      super_admin: [] as UserRow[],
+      sysadmin: [] as UserRow[],
+      super_admin: [] as UserRow[], // Backward compatibility
       admin: [] as UserRow[],
       coach: [] as UserRow[],
       null: [] as UserRow[]
@@ -51,8 +52,10 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
     users.forEach(user => {
       const role = user.role || 'null'
-      if (role in byRole) {
-        byRole[role as keyof typeof byRole].push(user)
+      // Map super_admin to sysadmin for grouping
+      const normalizedRole = role === 'super_admin' ? 'sysadmin' : role
+      if (normalizedRole in byRole) {
+        byRole[normalizedRole as keyof typeof byRole].push(user)
       } else {
         byRole.null.push(user)
       }
@@ -70,7 +73,8 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       success: true,
       summary: {
         total: users.length,
-        super_admin: byRole.super_admin.length,
+        sysadmin: byRole.sysadmin.length,
+        super_admin: byRole.super_admin.length, // Backward compatibility (should be 0 after migration)
         admin: byRole.admin.length,
         coach: byRole.coach.length,
         without_role: byRole.null.length
@@ -92,7 +96,16 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         last_login: user.last_login
       })),
       byRole: {
-        super_admin: byRole.super_admin.map(u => ({
+        sysadmin: byRole.sysadmin.map(u => ({
+          id: u.id,
+          email: u.email,
+          username: u.username,
+          tenant_id: u.tenant_id,
+          email_verified: u.email_verified,
+          has_password: u.has_password,
+          has_pin: u.has_pin
+        })),
+        super_admin: byRole.super_admin.map(u => ({ // Backward compatibility
           id: u.id,
           email: u.email,
           username: u.username,

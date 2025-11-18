@@ -42,7 +42,7 @@ export default async function handler(
         SELECT id, email, role, email_verified, created_at, last_login
         FROM clubs
         WHERE tenant_id = ${tenantId}
-          AND role IN ('admin', 'super_admin')
+          AND role IN ('admin', 'sysadmin', 'super_admin') -- Backward compatibility
         ORDER BY created_at DESC
       `
       

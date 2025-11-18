@@ -6,25 +6,27 @@ This guide explains the role-based access control (RBAC) system.
 
 The system uses a three-tier role hierarchy:
 
-1. **Super Admin** (highest)
+1. **System Administrator (Sysadmin)** (highest)
 2. **Admin** (middle)
 3. **Coach** (lowest)
 
 ## Role Hierarchy
 
 ```
-Super Admin
+System Administrator (sysadmin)
     ↓
-Admin
+Admin (admin)
     ↓
-Coach
+Coach (coach)
 ```
 
 Higher roles inherit permissions from lower roles.
 
 ## Roles
 
-### Super Admin
+### System Administrator (Sysadmin)
+
+**Role**: `sysadmin` (previously `super_admin`)
 
 **Access Level**: System-wide
 
@@ -41,6 +43,8 @@ Higher roles inherit permissions from lower roles.
 - Initial setup
 
 **Login Method**: Email + Password
+
+**Note**: The role was renamed from `super_admin` to `sysadmin` for better clarity. `super_admin` is still supported for backward compatibility.
 
 ### Admin (Tenant Admin)
 
@@ -83,11 +87,16 @@ Higher roles inherit permissions from lower roles.
 ### In Code
 
 ```typescript
-import { UserRole, isSuperAdmin, isAdmin, hasMinimumRole } from './lib/auth/roles'
+import { UserRole, isSysAdmin, isSuperAdmin, isAdmin, hasMinimumRole } from './lib/auth/roles'
 
-// Check exact role
-if (user.role === UserRole.SUPER_ADMIN) {
-  // Super admin only
+// Check exact role (new way)
+if (user.role === UserRole.SYSADMIN) {
+  // Sysadmin only
+}
+
+// Check exact role (backward compatible)
+if (user.role === UserRole.SUPER_ADMIN || user.role === 'super_admin') {
+  // Still works for backward compatibility
 }
 
 // Check if admin or higher
@@ -104,8 +113,8 @@ if (hasMinimumRole(user.role, UserRole.ADMIN)) {
 ### In Components
 
 ```typescript
-<ProtectedRoute requireRole={UserRole.SUPER_ADMIN}>
-  <SuperAdminComponent />
+<ProtectedRoute requireRole={UserRole.SYSADMIN}>
+  <SysAdminComponent />
 </ProtectedRoute>
 
 <ProtectedRoute requireMinRole={UserRole.ADMIN}>
@@ -116,11 +125,15 @@ if (hasMinimumRole(user.role, UserRole.ADMIN)) {
 ### In API Routes
 
 ```typescript
-import { requireAuth, requireSuperAdmin, requireAdmin } from './lib/auth/middleware'
+import { requireAuth, requireSysAdmin, requireSuperAdmin, requireAdmin } from './lib/auth/middleware'
 
-// Require super admin
+// Require sysadmin (new way)
 await requireAuth(req)
-requireSuperAdmin(req)
+requireSysAdmin(req)
+
+// Require sysadmin (backward compatible - still works)
+await requireAuth(req)
+requireSuperAdmin(req) // Still works, but use requireSysAdmin for new code
 
 // Require admin or super admin
 await requireAuth(req)
@@ -142,13 +155,16 @@ requireAdmin(req)
 | Manage tenant admins | ❌ | ❌ | ✅ |
 | View all tenants | ❌ | ❌ | ✅ |
 
+**Note**: "Super Admin" in the table above refers to the `sysadmin` role.
+
 ## Role Assignment
 
 ### During User Creation
 
-**Super Admin**:
+**System Administrator (Sysadmin)**:
 - Created manually in database
-- Or via super admin interface (future)
+- Or via sysadmin interface (future)
+- Role: `sysadmin` (previously `super_admin`)
 
 **Admin**:
 - Created by super admin
@@ -166,12 +182,12 @@ requireAdmin(req)
 
 - Admins can only access their own tenant
 - Coaches can only access their own tenant
-- Super admins can access all tenants
+- Sysadmins can access all tenants
 
 ### Cross-Tenant Access
 
 - Not allowed for admins or coaches
-- Super admins have read-only access to all tenants
+- Sysadmins have read-only access to all tenants
 - Tenant data is isolated by `tenant_id` in all queries
 
 ## JWT Token
@@ -192,9 +208,10 @@ Roles are included in JWT tokens:
 
 Located in `packages/webapp/src/lib/auth/roles.ts`:
 
-- `UserRole` - Role enum
-- `isSuperAdmin()` - Check if super admin
-- `isAdmin()` - Check if admin or super admin
+- `UserRole` - Role enum (`COACH`, `ADMIN`, `SYSADMIN`)
+- `isSysAdmin()` - Check if sysadmin (new)
+- `isSuperAdmin()` - Check if sysadmin (backward compatible, deprecated)
+- `isAdmin()` - Check if admin or sysadmin
 - `isCoach()` - Check if coach
 - `hasMinimumRole()` - Check if role meets minimum
 - `hasExactRole()` - Check exact role match

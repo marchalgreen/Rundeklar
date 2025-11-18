@@ -118,7 +118,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         FROM clubs
         WHERE email = ${body.email}
           AND tenant_id = ${body.tenantId}
-          AND role IN ('admin', 'super_admin')
+          AND role IN ('admin', 'sysadmin', 'super_admin') -- Backward compatibility
       `
     } else {
       return res.status(400).json({

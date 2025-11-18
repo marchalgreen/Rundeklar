@@ -4,11 +4,26 @@
  */
 
 import { describe, it, expect } from 'vitest'
-import { isSuperAdmin, isAdmin, isCoach } from '../../src/lib/auth/roles'
+import { isSysAdmin, isSuperAdmin, isAdmin, isCoach } from '../../src/lib/auth/roles'
 
 describe('Admin Module - Role Checks', () => {
-  describe('isSuperAdmin', () => {
-    it('should return true for super_admin role', () => {
+  describe('isSysAdmin', () => {
+    it('should return true for sysadmin role', () => {
+      expect(isSysAdmin('sysadmin')).toBe(true)
+    })
+
+    it('should return false for admin role', () => {
+      expect(isSysAdmin('admin')).toBe(false)
+    })
+
+    it('should return false for coach role', () => {
+      expect(isSysAdmin('coach')).toBe(false)
+    })
+  })
+
+  describe('isSuperAdmin (backward compatibility)', () => {
+    it('should return true for sysadmin and super_admin roles', () => {
+      expect(isSuperAdmin('sysadmin')).toBe(true)
       expect(isSuperAdmin('super_admin')).toBe(true)
     })
 
@@ -22,7 +37,11 @@ describe('Admin Module - Role Checks', () => {
   })
 
   describe('isAdmin', () => {
-    it('should return true for super_admin role', () => {
+    it('should return true for sysadmin role', () => {
+      expect(isAdmin('sysadmin')).toBe(true)
+    })
+
+    it('should return true for super_admin role (backward compatibility)', () => {
       expect(isAdmin('super_admin')).toBe(true)
     })
 
@@ -42,6 +61,10 @@ describe('Admin Module - Role Checks', () => {
 
     it('should return false for admin role', () => {
       expect(isCoach('admin')).toBe(false)
+    })
+
+    it('should return false for sysadmin role', () => {
+      expect(isCoach('sysadmin')).toBe(false)
     })
 
     it('should return false for super_admin role', () => {

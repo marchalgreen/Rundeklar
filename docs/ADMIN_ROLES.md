@@ -4,8 +4,8 @@
 
 Systemet har tre roller, arrangeret i hierarki:
 
-### 1. Super Admin (Højeste Niveau) 🔴
-**Rolle:** `super_admin`
+### 1. System Administrator / Sysadmin (Højeste Niveau) 🔴
+**Rolle:** `sysadmin` (tidligere `super_admin`)
 
 **Rettigheder:**
 - Kan oprette og administrere alle tenants
@@ -56,15 +56,17 @@ Systemet har tre roller, arrangeret i hierarki:
 
 **Login:** Username + PIN (6 cifre)
 
-## Opgradering til Super Admin
+## Opgradering til System Administrator
 
-For at opgradere en bruger til super admin, kør denne SQL:
+For at opgradere en bruger til sysadmin, kør denne SQL:
 
 ```sql
 UPDATE clubs 
-SET role = 'super_admin' 
+SET role = 'sysadmin' 
 WHERE email = 'din-email@example.com';
 ```
+
+**Note:** `super_admin` er stadig understøttet for backward compatibility, men `sysadmin` er den nye standard.
 
 **Efter opgradering:**
 1. Log ud og log ind igen for at opdatere JWT token
@@ -84,7 +86,7 @@ WHERE email = 'din-email@example.com';
 ## Rolle Hierarki
 
 ```
-Super Admin (super_admin)
+System Administrator (sysadmin)
     ↓
 Admin (admin)
     ↓

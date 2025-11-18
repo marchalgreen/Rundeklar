@@ -61,7 +61,7 @@ WHERE conrelid = 'clubs'::regclass
 ```sql
 -- Try adding role column manually
 ALTER TABLE clubs ADD COLUMN IF NOT EXISTS role TEXT NOT NULL DEFAULT 'coach' 
-  CHECK (role IN ('super_admin', 'admin', 'coach'));
+  CHECK (role IN ('sysadmin', 'admin', 'coach'));
 ```
 
 ### Issue 2: Migration 010 ran but no data to migrate

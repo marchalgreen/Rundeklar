@@ -1,12 +1,12 @@
 /**
  * Role-based access control utilities
- * Three-tier system: COACH < ADMIN < SUPER_ADMIN
+ * Three-tier system: COACH < ADMIN < SYSADMIN
  */
 
 export enum UserRole {
   COACH = 'coach',
   ADMIN = 'admin',
-  SUPER_ADMIN = 'super_admin'
+  SYSADMIN = 'sysadmin'
 }
 
 /**
@@ -15,7 +15,7 @@ export enum UserRole {
 const ROLE_HIERARCHY: Record<UserRole, number> = {
   [UserRole.COACH]: 1,
   [UserRole.ADMIN]: 2,
-  [UserRole.SUPER_ADMIN]: 3
+  [UserRole.SYSADMIN]: 3
 }
 
 /**
@@ -39,21 +39,30 @@ export function hasExactRole(userRole: UserRole, requiredRole: UserRole): boolea
 }
 
 /**
- * Check if user is super admin
+ * Check if user is sysadmin
  * @param role - User role
- * @returns True if super admin
+ * @returns True if sysadmin
  */
-export function isSuperAdmin(role: string | UserRole): boolean {
-  return role === UserRole.SUPER_ADMIN
+export function isSysAdmin(role: string | UserRole): boolean {
+  return role === UserRole.SYSADMIN
 }
 
 /**
- * Check if user is admin or super admin
+ * @deprecated Use isSysAdmin instead
  * @param role - User role
- * @returns True if admin or super admin
+ * @returns True if sysadmin
+ */
+export function isSuperAdmin(role: string | UserRole): boolean {
+  return role === UserRole.SYSADMIN || role === 'sysadmin' || role === 'super_admin' // Backward compatibility
+}
+
+/**
+ * Check if user is admin or sysadmin
+ * @param role - User role
+ * @returns True if admin or sysadmin
  */
 export function isAdmin(role: string | UserRole): boolean {
-  return role === UserRole.ADMIN || role === UserRole.SUPER_ADMIN
+  return role === UserRole.ADMIN || role === UserRole.SYSADMIN || role === 'sysadmin' || role === 'super_admin' // Backward compatibility
 }
 
 /**
@@ -72,8 +81,10 @@ export function isCoach(role: string | UserRole): boolean {
  */
 export function getRoleDisplayName(role: string | UserRole): string {
   switch (role) {
-    case UserRole.SUPER_ADMIN:
-      return 'Super Administrator'
+    case UserRole.SYSADMIN:
+    case 'sysadmin':
+    case 'super_admin': // Backward compatibility
+      return 'System Administrator'
     case UserRole.ADMIN:
       return 'Administrator'
     case UserRole.COACH:

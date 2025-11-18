@@ -54,7 +54,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       FROM clubs
       WHERE id = ${payload.clubId}
         AND tenant_id = ${payload.tenantId}
-        AND role IN ('admin', 'super_admin')
+        AND role IN ('admin', 'sysadmin', 'super_admin') -- Backward compatibility
     `
 
     if (clubs.length === 0) {

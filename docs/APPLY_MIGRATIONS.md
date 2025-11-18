@@ -128,7 +128,7 @@ Once migrations are applied:
    ```sql
    -- First, create a user with email/password (use your password hashing)
    -- Then update role:
-   UPDATE clubs SET role = 'super_admin' WHERE email = 'your-email@example.com';
+   UPDATE clubs SET role = 'sysadmin' WHERE email = 'your-email@example.com';
    ```
 
 3. **Test the system**:

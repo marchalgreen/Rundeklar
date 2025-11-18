@@ -167,7 +167,7 @@ Admins use email/password login:
 
 ### Cannot Access Admin Module
 
-- Verify your role is `admin` or `super_admin`
+- Verify your role is `admin` or `sysadmin` (or `super_admin` for backward compatibility)
 - Check JWT token includes role
 - Ensure tenant_id matches your tenant
 

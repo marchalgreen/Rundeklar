@@ -13,7 +13,7 @@ ALTER TABLE clubs ALTER COLUMN password_hash DROP NOT NULL;
 
 -- 4. Add role column
 ALTER TABLE clubs ADD COLUMN IF NOT EXISTS role TEXT NOT NULL DEFAULT 'coach' 
-  CHECK (role IN ('super_admin', 'admin', 'coach'));
+  CHECK (role IN ('sysadmin', 'admin', 'coach'));
 
 -- 5. Add username column (nullable for admins, required for coaches)
 ALTER TABLE clubs ADD COLUMN IF NOT EXISTS username TEXT;
@@ -51,6 +51,6 @@ ALTER TABLE clubs DROP CONSTRAINT IF EXISTS clubs_coach_requires_username_pin;
 ALTER TABLE clubs ADD CONSTRAINT IF NOT EXISTS clubs_role_auth_requirements 
   CHECK (
     (role = 'coach' AND username IS NOT NULL AND pin_hash IS NOT NULL AND password_hash IS NULL) OR
-    (role IN ('admin', 'super_admin') AND password_hash IS NOT NULL)
+    (role IN ('admin', 'sysadmin') AND password_hash IS NOT NULL)
   );
 

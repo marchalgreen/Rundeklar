@@ -45,7 +45,7 @@ export default async function handler(
     }
 
     // Verify tenant matches authenticated user's tenant (unless super admin)
-    if (req.role !== 'super_admin' && req.tenantId !== tenantId) {
+    if (req.role !== 'sysadmin' && req.role !== 'super_admin' && req.tenantId !== tenantId) { // Backward compatibility
       return res.status(403).json({
         error: 'Access denied to this tenant'
       })
