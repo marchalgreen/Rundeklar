@@ -234,6 +234,14 @@ export default async function handler(
     // Ensure Content-Type is set even in error cases
     res.setHeader('Content-Type', 'application/json')
     
+    // Try to log error, but don't fail if logger fails
+    try {
+      logger.error('Coach management error', error)
+    } catch (logError) {
+      // Logger failed, but we still need to return JSON
+      console.error('Failed to log error:', logError)
+    }
+    
     if (error instanceof z.ZodError) {
       return res.status(400).json({
         error: 'Validation error',
@@ -241,26 +249,39 @@ export default async function handler(
       })
     }
 
-    if (error instanceof Error && error.message.includes('Authentication required')) {
-      return res.status(401).json({ error: error.message })
-    }
+    if (error instanceof Error) {
+      const errorMessage = error.message || 'Unknown error'
+      
+      if (errorMessage.includes('Authentication required') || 
+          errorMessage.includes('Invalid or expired token') ||
+          errorMessage.includes('Club not found')) {
+        return res.status(401).json({ error: errorMessage })
+      }
 
-    if (error instanceof Error && error.message.includes('Admin access required')) {
-      return res.status(403).json({ error: error.message })
-    }
+      if (errorMessage.includes('Admin access required')) {
+        return res.status(403).json({ error: errorMessage })
+      }
 
-    if (error instanceof Error && error.message.includes('DATABASE_URL')) {
+      if (errorMessage.includes('DATABASE_URL') || errorMessage.includes('Database')) {
+        return res.status(500).json({
+          error: 'Database configuration error',
+          message: errorMessage
+        })
+      }
+
       return res.status(500).json({
-        error: 'Database configuration error',
-        message: error.message
+        error: errorMessage,
+        ...(process.env.NODE_ENV === 'development' && {
+          stack: error.stack
+        })
       })
     }
 
-    logger.error('Coach management error', error)
+    // Fallback for non-Error objects
     return res.status(500).json({
-      error: error instanceof Error ? error.message : 'Coach management failed',
+      error: 'Coach management failed',
       ...(process.env.NODE_ENV === 'development' && {
-        stack: error instanceof Error ? error.stack : undefined
+        details: String(error)
       })
     })
   }
