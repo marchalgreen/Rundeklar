@@ -1,5 +1,6 @@
 import { Resend } from 'resend'
 import { logger } from '../utils/logger.js'
+import { formatCoachUsername } from '../formatting.js'
 
 const RESEND_API_KEY = process.env.RESEND_API_KEY || process.env.VITE_RESEND_API_KEY
 const RESEND_FROM_EMAIL = process.env.RESEND_FROM_EMAIL || 'onboarding@resend.dev'
@@ -388,7 +389,7 @@ export async function sendCoachWelcomeEmail(
     </h1>
     
     <p style="margin: 0 0 20px 0; font-size: 16px; line-height: 1.6; color: #495057;">
-      Hej ${username},
+      Hej ${formatCoachUsername(username)},
     </p>
     
     <p style="margin: 0 0 32px 0; font-size: 16px; line-height: 1.6; color: #495057;">
@@ -402,7 +403,7 @@ export async function sendCoachWelcomeEmail(
             Brugernavn
           </p>
           <p style="margin: 8px 0 0 0; font-size: 18px; font-weight: 600; color: #212529;">
-            ${username}
+            ${formatCoachUsername(username)}
           </p>
         </td>
       </tr>

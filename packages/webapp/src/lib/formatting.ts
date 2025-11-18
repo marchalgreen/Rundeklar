@@ -210,3 +210,28 @@ export const truncateText = (text: string, maxLength: number): string => {
   return `${text.slice(0, maxLength - 3)}...`
 }
 
+/**
+ * Formats a coach username for display.
+ * Converts lowercase username to title case (first letter capitalized).
+ * Usernames are stored in lowercase for consistency in login/authentication,
+ * but should be displayed with proper capitalization.
+ * 
+ * @param username - Coach username (typically lowercase)
+ * @returns Formatted username with first letter capitalized
+ * 
+ * @example
+ * ```typescript
+ * formatCoachUsername('simoni') // 'Simoni'
+ * formatCoachUsername('john doe') // 'John doe'
+ * formatCoachUsername('') // ''
+ * ```
+ */
+export const formatCoachUsername = (username: string | null | undefined): string => {
+  if (!username || username.length === 0) {
+    return ''
+  }
+  
+  // Capitalize first letter, keep rest as-is
+  return username.charAt(0).toUpperCase() + username.slice(1)
+}
+

@@ -4,6 +4,7 @@ import { useTenant } from '../../contexts/TenantContext'
 import { useNavigation } from '../../contexts/NavigationContext'
 import { Button, PageCard, Badge, PINInput } from '../../components/ui'
 import type { PINInputRef } from '../../components/auth/PINInput'
+import { formatCoachUsername } from '../../lib/formatting'
 import { 
   User, 
   Lock, 
@@ -387,7 +388,7 @@ export default function AccountSettingsPage() {
               <div className="flex items-center gap-2">
                 <User className="w-4 h-4 text-[hsl(var(--muted))]" />
                 <p className="text-sm sm:text-base font-medium text-[hsl(var(--foreground))]">
-                  {club.username}
+                  {formatCoachUsername(club.username)}
                 </p>
               </div>
             </div>

@@ -3,6 +3,7 @@ import { useTenant } from '../../../contexts/TenantContext'
 import { PageCard } from '../../../components/ui'
 import { Button } from '../../../components/ui'
 import CreateCoachForm from '../../../components/admin/CreateCoachForm'
+import { formatCoachUsername } from '../../../lib/formatting'
 
 interface Coach {
   id: string
@@ -154,7 +155,7 @@ export default function CoachesPage() {
               >
                 <div className="flex items-center justify-between">
                   <div>
-                    <h3 className="font-semibold">{coach.username}</h3>
+                    <h3 className="font-semibold">{formatCoachUsername(coach.username)}</h3>
                     <p className="text-sm text-[hsl(var(--muted))]">{coach.email}</p>
                     {coach.lastLogin && (
                       <p className="text-xs text-[hsl(var(--muted))]">

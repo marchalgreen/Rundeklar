@@ -23,6 +23,7 @@ import { getCurrentTenantId } from './lib/tenant'
 import { Button } from './components/ui'
 import { UserRole } from './lib/auth/roles'
 import AdminPage from './routes/admin/AdminPage'
+import { formatCoachUsername } from './lib/formatting'
 
 /**
  * Component that updates document title.
@@ -190,7 +191,9 @@ const Header = () => {
                     >
                       <User size={20} />
                       <span className="text-sm truncate max-w-[120px]">
-                        {club?.role === 'coach' && club?.username ? club.username : club?.email}
+                        {club?.role === 'coach' && club?.username 
+                          ? formatCoachUsername(club.username) 
+                          : club?.email}
                       </span>
                     </button>
                     {isUserMenuOpen && (
@@ -363,7 +366,9 @@ const AppContent = () => {
   // Prepare coach object for LandingPage - use username for coaches, email for admins
   const coachForLanding = club ? {
     id: club.id,
-    displayName: club.role === 'coach' && club.username ? club.username : club.email
+    displayName: club.role === 'coach' && club.username 
+      ? formatCoachUsername(club.username) 
+      : club.email
   } : undefined
   
   return (
