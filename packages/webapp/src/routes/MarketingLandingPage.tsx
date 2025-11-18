@@ -18,8 +18,8 @@ export default function MarketingLandingPage() {
       <HeroSection />
       <FeaturesSection />
       <InteractiveDemoSection />
-      <PricingSection />
       <TestimonialsSection />
+      <PricingSection />
       <FAQSection />
       <MarketingFooter />
     </div>

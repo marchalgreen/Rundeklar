@@ -14,33 +14,33 @@ interface Feature {
 const features: Feature[] = [
   {
     icon: <UserCheck className="w-8 h-8 sm:w-10 sm:h-10" />,
-    title: 'Hurtig Tjek ind',
-    description: 'Simpelt og hurtigt tjek ind-system med søgning og virtuel liste. Spillere tjekker ind på sekunder.'
+    title: 'Hurtigt tjek ind',
+    description: 'Spillerne tjekker ind på få sekunder via tablet eller mobil. Du har altid styr på hvem der er mødt op.'
   },
   {
     icon: <Grid2x2 className="w-8 h-8 sm:w-10 sm:h-10" />,
-    title: 'Drag & Drop Matchmaking',
-    description: 'Træk spillere mellem bænk og baner med intuitiv drag-and-drop. Automatisk matchmaking på alle baner.'
+    title: 'Drag og drop matchmaking',
+    description: 'Træk spillere mellem bænk og baner med intuitiv drag og drop. Rundeklar matcher automatisk runder på tværs af alle baner.'
   },
   {
     icon: <Users className="w-8 h-8 sm:w-10 sm:h-10" />,
     title: 'Spilleradministration',
-    description: 'Komplet spillerdatabase med søgning, kategorier, niveauer og træningsgrupper. Alt på ét sted.'
+    description: 'Samlet spillerkartotek med hold, niveauer og træningsgrupper. Slut med papir og løse lister.'
   },
   {
     icon: <BarChart3 className="w-8 h-8 sm:w-10 sm:h-10" />,
-    title: 'Avancerede Statistikker',
-    description: 'Følg spilleres aktivitet, partnere, modstandere og præstationer over tid med detaljerede rapporter.'
+    title: 'Avancerede statistikker',
+    description: 'Følg fremmøde, aktivitet og udvikling på spillere og grupper over tid. Hjælper dig med at træffe bedre trænerbeslutninger.'
   },
   {
     icon: <Zap className="w-8 h-8 sm:w-10 sm:h-10" />,
-    title: 'Hurtig & Effektiv',
-    description: 'Optimeret til hurtig indlæsning og responsivt design. Fungerer perfekt på alle enheder.'
+    title: 'Hurtig og effektiv',
+    description: 'Designet til at køre stabilt på både klub PC, iPad og mobil. Perfekt til travle træningsaftener.'
   },
   {
     icon: <Shield className="w-8 h-8 sm:w-10 sm:h-10" />,
-    title: 'Sikker & Privat',
-    description: 'Dine data er sikre med moderne kryptering og GDPR-kompatibel databehandling.'
+    title: 'Sikker og privat',
+    description: 'Dine data behandles efter gældende GDPR og gemmes sikkert. Du beholder altid ejerskab over klubbens data.'
   }
 ]
 
@@ -90,10 +90,10 @@ export const FeaturesSection: React.FC = () => {
           transition={{ duration: 0.6 }}
         >
           <h2 className="text-3xl sm:text-4xl md:text-5xl font-bold text-[hsl(var(--foreground))] mb-4 sm:mb-6">
-            Alt hvad din klub har brug for
+            Alt hvad din klub har brug for til træningsaftenen
           </h2>
           <p className="text-lg sm:text-xl text-[hsl(var(--muted))] max-w-2xl mx-auto">
-            Et komplet system til træningsadministration, matchmaking og statistikker
+            Samlet system til indtjekning, runder og overblik. Udviklet til danske badmintonklubber.
           </p>
         </motion.div>
 

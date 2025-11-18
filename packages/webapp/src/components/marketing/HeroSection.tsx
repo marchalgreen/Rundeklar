@@ -51,6 +51,16 @@ export const HeroSection: React.FC = () => {
             />
           </motion.div>
 
+          {/* Overline */}
+          <motion.p
+            className="text-sm sm:text-base text-[hsl(var(--muted))] mb-4 uppercase tracking-wide"
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.8, delay: 0.3 }}
+          >
+            For badmintonklubber med faste træningsaftener
+          </motion.p>
+
           {/* Headline */}
           <motion.h1
             className="text-4xl sm:text-5xl md:text-6xl lg:text-7xl font-bold text-[hsl(var(--foreground))] mb-6 sm:mb-8 leading-tight"
@@ -58,9 +68,7 @@ export const HeroSection: React.FC = () => {
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.8, delay: 0.4 }}
           >
-            Din badmintonklubs
-            <br />
-            <span className="text-[hsl(var(--primary))]">digitale hjerteskud</span>
+            Gør træningsaftenerne rundeklar på få minutter
           </motion.h1>
 
           {/* Subheadline */}
@@ -70,12 +78,12 @@ export const HeroSection: React.FC = () => {
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.8, delay: 0.6 }}
           >
-            Forenkl træningsadministration med intuitiv tjek ind, automatisk matchmaking og avancerede statistikker. Alt hvad din klub har brug for i ét moderne system.
+            Rundeklar samler indtjekning, runder og statistik i ét enkelt system. Mindre administration, slut med pen og papir og mere tid på banen.
           </motion.p>
 
-          {/* CTAs */}
+          {/* CTA */}
           <motion.div
-            className="flex flex-col sm:flex-row gap-4 sm:gap-6 justify-center items-center mb-12 sm:mb-16"
+            className="flex justify-center items-center mb-12 sm:mb-16"
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.8, delay: 0.8 }}
@@ -86,15 +94,7 @@ export const HeroSection: React.FC = () => {
               className="w-full sm:w-auto text-base sm:text-lg px-8 sm:px-10 py-6 sm:py-7"
             >
               <Play className="w-5 h-5 sm:w-6 sm:h-6" />
-              Prøv gratis demo
-            </Button>
-            <Button
-              variant="secondary"
-              size="md"
-              onClick={scrollToFeatures}
-              className="w-full sm:w-auto text-base sm:text-lg px-8 sm:px-10 py-6 sm:py-7"
-            >
-              Læs mere
+              Prøv live demo
             </Button>
           </motion.div>
 

@@ -22,7 +22,7 @@ export const MarketingFooter: React.FC = () => {
               className="h-10 sm:h-12 mb-4 object-contain"
             />
             <p className="text-sm text-[hsl(var(--muted))] leading-relaxed">
-              Din badmintonklubs digitale hjerteskud. Forenkel træningsadministration med moderne teknologi.
+              Din badmintonklubs digitale hjerteskud. Rundeklar forenkler træningsadministration med moderne teknologi.
             </p>
           </div>
 
@@ -73,11 +73,11 @@ export const MarketingFooter: React.FC = () => {
             <ul className="space-y-2">
               <li>
                 <a
-                  href="mailto:kontakt@rundeklar.dk"
+                  href="mailto:marchalgreen@gmail.com"
                   className="flex items-center gap-2 text-sm text-[hsl(var(--muted))] hover:text-[hsl(var(--foreground))] transition-colors"
                 >
                   <Mail className="w-4 h-4" />
-                  kontakt@rundeklar.dk
+                  Kontakt os
                 </a>
               </li>
             </ul>
@@ -86,24 +86,10 @@ export const MarketingFooter: React.FC = () => {
 
         {/* Bottom Bar */}
         <div className="mt-12 pt-8 border-t border-[hsl(var(--line)/.12)]">
-          <div className="flex flex-col sm:flex-row justify-between items-center gap-4">
+          <div className="flex justify-center items-center">
             <p className="text-xs text-[hsl(var(--muted))]">
               © {new Date().getFullYear()} Rundeklar. Alle rettigheder forbeholdes.
             </p>
-            <div className="flex gap-6">
-              <a
-                href="#"
-                className="text-xs text-[hsl(var(--muted))] hover:text-[hsl(var(--foreground))] transition-colors"
-              >
-                Privatlivspolitik
-              </a>
-              <a
-                href="#"
-                className="text-xs text-[hsl(var(--muted))] hover:text-[hsl(var(--foreground))] transition-colors"
-              >
-                Vilkår
-              </a>
-            </div>
           </div>
         </div>
       </div>

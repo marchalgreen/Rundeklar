@@ -12,7 +12,6 @@ import { Check } from 'lucide-react'
  */
 const PricingCard: React.FC<{ plan: PricingPlan; isYearly: boolean; index: number }> = ({ plan, isYearly, index }) => {
   const price = isYearly ? plan.yearlyPrice : plan.monthlyPrice
-  const priceLabel = plan.monthlyPrice === 0 ? 'Pris ved henvendelse' : isYearly ? `${price} kr/år` : `${price} kr/måned`
   const monthlyEquivalent = plan.monthlyPrice === 0 ? null : isYearly ? `${Math.round(plan.yearlyPrice / 12)} kr/måned` : null
 
   return (
@@ -33,7 +32,7 @@ const PricingCard: React.FC<{ plan: PricingPlan; isYearly: boolean; index: numbe
         {plan.featured && (
           <div className="mb-4">
             <span className="inline-block px-3 py-1 rounded-full text-xs font-semibold bg-[hsl(var(--primary))] text-white">
-              Mest populær
+              Mest valgt
             </span>
           </div>)}
 
@@ -43,7 +42,9 @@ const PricingCard: React.FC<{ plan: PricingPlan; isYearly: boolean; index: numbe
 
           <div className="mb-6">
             <div className="flex items-baseline gap-2">
-              <span className="text-4xl font-bold text-[hsl(var(--foreground))]">{priceLabel}</span>
+              <span className="text-4xl font-bold text-[hsl(var(--foreground))]">
+                {plan.monthlyPrice === 0 ? 'Pris efter aftale' : isYearly ? `${price} kr/år` : `${price} kr pr måned`}
+              </span>
             </div>
             {monthlyEquivalent && (
               <p className="text-sm text-[hsl(var(--muted))] mt-1">{monthlyEquivalent}</p>
@@ -80,7 +81,7 @@ const PricingCard: React.FC<{ plan: PricingPlan; isYearly: boolean; index: numbe
           onClick={() => {
             if (plan.monthlyPrice === 0) {
               // Enterprise - open contact form or email
-              window.location.href = 'mailto:kontakt@rundeklar.dk?subject=Enterprise henvendelse'
+              window.location.href = 'mailto:marchalgreen@gmail.com?subject=Enterprise henvendelse'
             } else {
               // Open demo
               window.open('https://demo.rundeklar.dk', '_blank')
@@ -116,7 +117,7 @@ export const PricingSection: React.FC = () => {
             Enkle, gennemsigtige priser
           </h2>
           <p className="text-lg sm:text-xl text-[hsl(var(--muted))] max-w-2xl mx-auto mb-8">
-            Vælg den pakke der passer til din klub
+            Vælg den pakke der passer til din klub. Ingen opstartsgebyrer og ingen skjulte omkostninger.
           </p>
 
           {/* Toggle */}
@@ -138,8 +139,7 @@ export const PricingSection: React.FC = () => {
               />
             </button>
             <span className={`text-sm font-medium ${isYearly ? 'text-[hsl(var(--foreground))]' : 'text-[hsl(var(--muted))]'}`}>
-              Årlig
-              <span className="ml-2 text-xs text-[hsl(var(--success))]">(10% rabat)</span>
+              Årlig (10 procent rabat)
             </span>
           </div>
         </motion.div>
@@ -150,6 +150,16 @@ export const PricingSection: React.FC = () => {
             <PricingCard key={plan.id} plan={plan} isYearly={isYearly} index={index} />
           ))}
         </div>
+
+        {/* Microcopy */}
+        <motion.p
+          className="text-center text-sm text-[hsl(var(--muted))] mt-8"
+          initial={{ opacity: 0 }}
+          animate={isInView ? { opacity: 1 } : { opacity: 0 }}
+          transition={{ duration: 0.6, delay: 0.6 }}
+        >
+          Ingen binding. Opsig når som helst.
+        </motion.p>
       </div>
     </section>
   )

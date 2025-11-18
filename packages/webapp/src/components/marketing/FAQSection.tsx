@@ -12,28 +12,28 @@ interface FAQItem {
 
 const faqs: FAQItem[] = [
   {
-    question: 'Hvordan starter jeg?',
-    answer: 'Du kan starte med at prøve vores gratis demo på demo.rundeklar.dk. Her kan du udforske alle funktioner uden at oprette en konto. Når du er klar, kan du kontakte os for at oprette din klub.'
+    question: 'Hvordan kommer vi i gang?',
+    answer: 'I kan starte med at prøve vores gratis demo på demo.rundeklar.dk. Når det føles rigtigt, hjælper vi jer med at sætte klubbens rigtige data op og komme sikkert i gang.'
   },
   {
-    question: 'Kan jeg prøve produktet før jeg køber?',
-    answer: 'Ja! Vi tilbyder en gratis demo på demo.rundeklar.dk hvor du kan udforske alle funktioner. Du kan også kontakte os for en personlig demo eller gratis prøveperiode.'
+    question: 'Kan vi prøve produktet før vi køber?',
+    answer: 'Ja. I får adgang til en fuld demo, hvor I kan afprøve alle funktioner uden at oprette betalingsoplysninger. Vi tilbyder også en personlig gennemgang hvis I ønsker det.'
   },
   {
-    question: 'Hvad sker der med mine data?',
-    answer: 'Dine data er sikre og private. Vi følger GDPR-reglerne og bruger moderne kryptering til at beskytte dine oplysninger. Du kan altid eksportere eller slette dine data.'
+    question: 'Hvad sker der med vores data?',
+    answer: 'Vi følger GDPR reglerne og gemmer data sikkert. I kan til enhver tid få data udleveret eller få den slettet, hvis I ønsker at stoppe.'
   },
   {
-    question: 'Kan jeg ændre pakke senere?',
-    answer: 'Ja, du kan opgradere eller nedgradere din pakke når som helst. Ændringer træder i kraft ved næste faktureringsperiode.'
+    question: 'Kan vi ændre pakke senere?',
+    answer: 'Ja. I kan altid opgradere eller nedgradere mellem pakker. Ændringen træder i kraft fra næste faktureringsperiode.'
   },
   {
-    question: 'Hvad hvis jeg har brug for hjælp?',
-    answer: 'Vi tilbyder email support til alle kunder. Professionel og Enterprise kunder får prioriteret support. Du kan også kontakte os direkte hvis du har spørgsmål.'
+    question: 'Hvad hvis vi har brug for hjælp?',
+    answer: 'Alle kunder har adgang til email support. På Professionel og Enterprise giver vi prioriteret support og kan aftale fast kontaktperson.'
   },
   {
-    question: 'Understøtter I flere klubber?',
-    answer: 'Ja, Enterprise pakken understøtter flere klubber og white-label branding. Kontakt os for at høre mere om mulighederne.'
+    question: 'Understøtter I flere klubber eller afdelinger?',
+    answer: 'Ja. Enterprise pakken er egnet til flere klubber, forbund eller større organisationer. Kontakt os, så finder vi en løsning der passer.'
   }
 ]
 
@@ -106,7 +106,7 @@ export const FAQSection: React.FC = () => {
             Ofte stillede spørgsmål
           </h2>
           <p className="text-lg sm:text-xl text-[hsl(var(--muted))] max-w-2xl mx-auto">
-            Har du spørgsmål? Vi har svarene
+            Har du spørgsmål, så har vi svarene.
           </p>
         </motion.div>
 

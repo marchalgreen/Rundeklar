@@ -33,10 +33,10 @@ export const InteractiveDemoSection: React.FC = () => {
           transition={{ duration: 0.6 }}
         >
           <h2 className="text-3xl sm:text-4xl md:text-5xl font-bold text-[hsl(var(--foreground))] mb-4 sm:mb-6">
-            Se det i aktion
+            Se Rundeklar i aktion
           </h2>
           <p className="text-lg sm:text-xl text-[hsl(var(--muted))] max-w-2xl mx-auto">
-            Prøv vores interaktive demos og oplev hvor nemt det er at bruge Rundeklar
+            Prøv de vigtigste funktioner direkte her på siden og mærk hvordan det føles at køre en træningsaften med Rundeklar.
           </p>
         </motion.div>
 
@@ -100,14 +100,19 @@ export const InteractiveDemoSection: React.FC = () => {
           animate={isInView ? { opacity: 1 } : { opacity: 0 }}
           transition={{ duration: 0.6, delay: 0.4 }}
         >
-          <Button
-            size="md"
-            onClick={() => window.open('https://demo.rundeklar.dk', '_blank')}
-            className="text-base sm:text-lg px-8 sm:px-10 py-6 sm:py-7"
-          >
-            Prøv hele produktet her
-            <ExternalLink className="w-5 h-5" />
-          </Button>
+          <div className="flex flex-col items-center gap-3">
+            <Button
+              size="md"
+              onClick={() => window.open('https://demo.rundeklar.dk', '_blank')}
+              className="text-base sm:text-lg px-8 sm:px-10 py-6 sm:py-7"
+            >
+              Prøv hele produktet på demo.rundeklar.dk
+              <ExternalLink className="w-5 h-5" />
+            </Button>
+            <p className="text-sm text-[hsl(var(--muted))]">
+              Test alle funktioner gratis uden login.
+            </p>
+          </div>
         </motion.div>
       </div>
     </section>
