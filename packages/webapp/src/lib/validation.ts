@@ -5,7 +5,7 @@
  * for consistent validation across the application.
  */
 
-import { VALIDATION } from '../constants'
+import { VALIDATION } from '../constants/index.js'
 import type { PlayerGender, PlayerCategory } from '@rundeklar/common'
 
 /**

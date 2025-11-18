@@ -5,7 +5,7 @@
  * and consistent error messages.
  */
 
-import { ERROR_CODES } from '../constants'
+import { ERROR_CODES } from '../constants/index.js'
 
 /**
  * Base application error class.
