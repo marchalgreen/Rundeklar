@@ -105,7 +105,18 @@ export const getCurrentTenantId = (): string => {
     return 'marketing' // Eller håndter særskilt
   }
   
-  // 4. Fallback (development/localhost) - use herlev-hjorten instead of default
+  // 4. Development mode: Check for tenant query parameter or path
+  // Allows testing different tenants locally: ?tenant=marketing or /marketing
+  if (hostname === 'localhost' || hostname === '127.0.0.1' || hostname.startsWith('192.168.') || hostname.startsWith('10.')) {
+    // Check query parameter first (e.g., ?tenant=marketing)
+    const urlParams = new URLSearchParams(window.location.search)
+    const tenantParam = urlParams.get('tenant')
+    if (tenantParam) {
+      return tenantParam
+    }
+  }
+  
+  // 5. Fallback (development/localhost) - use path-based detection
   // For HashRouter, pathname is like "/#/demo/check-in" or "/#/check-in"
   // For BrowserRouter, pathname is like "/demo/check-in" or "/check-in"
   const pathname = window.location.pathname

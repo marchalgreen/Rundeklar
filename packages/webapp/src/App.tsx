@@ -4,6 +4,7 @@ import CheckInPage from './routes/CheckIn'
 import MatchProgramPage from './routes/MatchProgram'
 import StatisticsPage from './routes/Statistics'
 import LandingPage from './routes/LandingPage'
+import MarketingLandingPage from './routes/MarketingLandingPage'
 import PrismTestPage from './routes/PrismTest'
 import LoginPage from './routes/auth/Login'
 import RegisterPage from './routes/auth/Register'
@@ -322,10 +323,9 @@ const TenantProtectedContent = ({ children }: { children: React.ReactNode }) => 
   const { isAuthenticated, loading } = useAuth()
   const { navigateToAuth } = useNavigation()
   
-  // All other tenants (including herlev-hjorten) require authentication
+  // Skip authentication check for demo and marketing tenants
   useEffect(() => {
-    // Skip authentication check for demo tenant
-    if (tenantId === 'demo') {
+    if (tenantId === 'demo' || tenantId === 'marketing') {
       return
     }
     
@@ -334,8 +334,8 @@ const TenantProtectedContent = ({ children }: { children: React.ReactNode }) => 
     }
   }, [tenantId, loading, isAuthenticated, navigateToAuth])
   
-  // Demo tenant is public - no authentication required
-  if (tenantId === 'demo') {
+  // Demo and marketing tenants are public - no authentication required
+  if (tenantId === 'demo' || tenantId === 'marketing') {
     return <>{children}</>
   }
   
@@ -362,6 +362,8 @@ const TenantProtectedContent = ({ children }: { children: React.ReactNode }) => 
 const AppContent = () => {
   const { currentPage, authPage, isAuthRoute, navigate } = useNavigation()
   const { club } = useAuth()
+  const tenantId = getCurrentTenantId()
+  const isMarketingTenant = tenantId === 'marketing'
   
   // Prepare coach object for LandingPage - use username for coaches, email for admins
   const coachForLanding = club ? {
@@ -370,6 +372,16 @@ const AppContent = () => {
       ? formatCoachUsername(club.username) 
       : club.email
   } : undefined
+  
+  // Marketing tenant shows marketing page for ALL users
+  if (isMarketingTenant) {
+    return (
+      <>
+        <TenantTitleUpdater />
+        <MarketingLandingPage />
+      </>
+    )
+  }
   
   return (
     <>

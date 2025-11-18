@@ -1,0 +1,28 @@
+import React from 'react'
+import { motion } from 'framer-motion'
+import { HeroSection } from '../components/marketing/HeroSection'
+import { FeaturesSection } from '../components/marketing/FeaturesSection'
+import { InteractiveDemoSection } from '../components/marketing/InteractiveDemoSection'
+import { PricingSection } from '../components/marketing/PricingSection'
+import { TestimonialsSection } from '../components/marketing/TestimonialsSection'
+import { FAQSection } from '../components/marketing/FAQSection'
+import { MarketingFooter } from '../components/marketing/MarketingFooter'
+
+/**
+ * Main marketing landing page component.
+ * Displays all marketing sections with scroll animations.
+ */
+export default function MarketingLandingPage() {
+  return (
+    <div className="min-h-screen bg-[hsl(var(--bg-canvas))] overflow-x-hidden">
+      <HeroSection />
+      <FeaturesSection />
+      <InteractiveDemoSection />
+      <PricingSection />
+      <TestimonialsSection />
+      <FAQSection />
+      <MarketingFooter />
+    </div>
+  )
+}
+
