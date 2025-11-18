@@ -108,7 +108,6 @@ export const DragDropDemo: React.FC<DragDropDemoProps> = ({ checkedInPlayers }) 
     }
 
     setDragOverSlot(null)
-    setDraggedPlayer(null)
   }
 
   const handleDragLeave = () => {
