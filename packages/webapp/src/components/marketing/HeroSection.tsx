@@ -68,7 +68,7 @@ export const HeroSection: React.FC = () => {
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.8, delay: 0.4 }}
           >
-            Gør træningsaftenerne rundeklar på få minutter
+            Gør træningsaftenerne <span className="text-[hsl(var(--primary))]">rundeklar på få minutter</span>
           </motion.h1>
 
           {/* Subheadline */}

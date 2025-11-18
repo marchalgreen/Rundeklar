@@ -93,7 +93,7 @@ export const FeaturesSection: React.FC = () => {
             Alt hvad din klub har brug for til træningsaftenen
           </h2>
           <p className="text-lg sm:text-xl text-[hsl(var(--muted))] max-w-2xl mx-auto">
-            Samlet system til indtjekning, runder og overblik. Udviklet til danske badmintonklubber.
+            Samlet system til indtjekning, runder og overblik. Udviklet til danske klubber med faste træningsaftener.
           </p>
         </motion.div>
 
