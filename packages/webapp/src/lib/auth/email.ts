@@ -421,10 +421,6 @@ export async function sendCoachWelcomeEmail(
     </table>
 
     ${emailButton('Log ind', loginUrl)}
-
-    <p style="margin: 32px 0 0 0; font-size: 14px; line-height: 1.6; color: #6c757d; text-align: center;">
-      Hvis du har spørgsmål, er du velkommen til at kontakte os.
-    </p>
   `
 
   await resend.emails.send({
