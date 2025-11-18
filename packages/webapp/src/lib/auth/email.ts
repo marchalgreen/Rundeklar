@@ -16,8 +16,8 @@ const resend = RESEND_API_KEY ? new Resend(RESEND_API_KEY) : null
 /**
  * Builds a tenant-specific subdomain URL
  * @param tenantId - Tenant ID (e.g., "herlev-hjorten", "demo")
- * @param path - Path to append (e.g., "/login", "/reset-pin?token=...")
- * @returns Full URL with subdomain (e.g., "https://herlev-hjorten.rundeklar.dk/login")
+ * @param path - Path to append (e.g., "/", "/reset-pin?token=...")
+ * @returns Full URL with subdomain (e.g., "https://herlev-hjorten.rundeklar.dk/")
  */
 function buildTenantUrl(tenantId: string, path: string): string {
   // For development/localhost, use APP_URL with hash routing
@@ -379,7 +379,8 @@ export async function sendCoachWelcomeEmail(
   }
 
   // Build login URL based on tenant subdomain
-  const loginUrl = buildTenantUrl(tenantId, '/login')
+  // Login page is shown automatically on tenant root, so just link to root
+  const loginUrl = buildTenantUrl(tenantId, '/')
 
   const content = `
     <h1 style="margin: 0 0 24px 0; font-size: 28px; font-weight: 700; color: #212529; line-height: 1.2;">
