@@ -56,10 +56,14 @@ export const NavigationProvider: React.FC<NavigationProviderProps> = ({
 
   const isAuthRoute = authPage !== null
 
-  // Initialize from URL hash if present (for backward compatibility)
+  // Initialize from URL hash or pathname (for email links and backward compatibility)
   useEffect(() => {
     if (typeof window !== 'undefined') {
       const hash = window.location.hash.replace(/^#/, '')
+      const pathname = window.location.pathname
+      const search = window.location.search
+      
+      // Check hash first (for backward compatibility)
       if (hash) {
         // Remove query params before matching
         const pathWithoutQuery = hash.split('?')[0]
@@ -86,6 +90,27 @@ export const NavigationProvider: React.FC<NavigationProviderProps> = ({
           // But clear it for other auth pages
           if (path !== 'reset-pin' && path !== 'reset-password') {
             window.history.replaceState(null, '', window.location.pathname)
+          }
+        }
+        return // Hash takes precedence
+      }
+      
+      // Check pathname for email links (e.g., /verify-email?token=...)
+      // Only check if pathname is not root and has an auth page path
+      if (pathname && pathname !== '/') {
+        const pathWithoutQuery = pathname.split('?')[0]
+        const path = pathWithoutQuery.replace(/^\//, '').split('/')[0] // Get first path segment
+        const knownAuthPages: AuthPage[] = ['login', 'register', 'verify-email', 'forgot-password', 'forgot-pin', 'reset-password', 'reset-pin', 'account']
+        
+        if (knownAuthPages.includes(path as AuthPage)) {
+          setAuthPage(path as AuthPage)
+          setCurrentPage('coach')
+          // Preserve query params in URL for token-based auth pages
+          // Clean up pathname but keep search params - redirect to root with query params
+          if (search) {
+            window.history.replaceState(null, '', `/${search}`)
+          } else {
+            window.history.replaceState(null, '', '/')
           }
         }
       }
