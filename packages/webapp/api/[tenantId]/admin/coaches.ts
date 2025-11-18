@@ -82,7 +82,7 @@ export default async function handler(
       const sql = getPostgresClient(getDatabaseUrl())
       
       // Check if username already exists for this tenant (case-insensitive)
-      // Normalize username to lowercase for storage
+      // Normalize username to lowercase for comparison, but store with proper capitalization
       const normalizedUsername = body.username.toLowerCase().trim()
       
       const existingUsername = await sql`
@@ -127,7 +127,11 @@ export default async function handler(
       // Hash PIN
       const pinHash = await hashPIN(pin)
       
-      // Create coach (store username in lowercase)
+      // Capitalize first letter of username for storage (display consistency)
+      // Login still works because we use LOWER() in queries
+      const capitalizedUsername = normalizedUsername.charAt(0).toUpperCase() + normalizedUsername.slice(1)
+      
+      // Create coach (store username with proper capitalization)
       const [coach] = await sql`
         INSERT INTO clubs (
           tenant_id,
@@ -140,7 +144,7 @@ export default async function handler(
         VALUES (
           ${tenantId},
           ${body.email},
-          ${normalizedUsername},
+          ${capitalizedUsername},
           ${pinHash},
           'coach',
           true

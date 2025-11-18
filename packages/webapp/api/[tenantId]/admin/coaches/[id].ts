@@ -160,9 +160,11 @@ export default async function handler(
         values.push(body.email)
       }
       if (body.username) {
-        // Store username in lowercase
+        // Capitalize first letter of username for storage (display consistency)
+        // Login still works because we use LOWER() in queries
+        const capitalizedUsername = normalizedUsername!.charAt(0).toUpperCase() + normalizedUsername!.slice(1)
         updates.push(`username = $${paramIndex++}`)
-        values.push(normalizedUsername ?? null)
+        values.push(capitalizedUsername)
       }
       if (pinHash) {
         updates.push(`pin_hash = $${paramIndex++}`)
