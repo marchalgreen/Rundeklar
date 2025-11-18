@@ -19,8 +19,8 @@ const features: Feature[] = [
   },
   {
     icon: <Grid2x2 className="w-8 h-8 sm:w-10 sm:h-10" />,
-    title: 'Drag og drop matchmaking',
-    description: 'Træk spillere mellem bænk og baner med intuitiv drag og drop. Rundeklar matcher automatisk runder på tværs af alle baner.'
+    title: 'Drag & drop matchmaking',
+    description: 'Træk spillere mellem bænk og baner med intuitiv drag & drop. Rundeklar matcher automatisk runder på tværs af alle baner.'
   },
   {
     icon: <Users className="w-8 h-8 sm:w-10 sm:h-10" />,

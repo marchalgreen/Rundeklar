@@ -25,7 +25,7 @@ export const pricingPlans: PricingPlan[] = [
       '1 træningsgruppe',
       '1 trænerlogin',
       'Tjek ind system',
-      'Kampprogram med drag og drop',
+      'Kampprogram med drag & drop',
       'Spilleradministration',
       'Simple fremmødestatistikker',
       'Email support'
