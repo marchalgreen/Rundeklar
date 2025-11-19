@@ -537,6 +537,42 @@ export const createPlayer = async (player: Omit<Player, 'id' | 'createdAt'>): Pr
   const sql = getPostgres()
   const tenantId = getTenantId()
   const playerAny = player as any
+  
+  // Validate training group limits if new groups are being added
+  if (playerAny.trainingGroups && Array.isArray(playerAny.trainingGroups) && playerAny.trainingGroups.length > 0) {
+    // Get all unique training groups from all players in this tenant
+    const allPlayers = await sql`
+      SELECT training_group
+      FROM players
+      WHERE tenant_id = ${tenantId}
+    `
+    
+    // Collect all unique training groups
+    const existingGroups = new Set<string>()
+    allPlayers.forEach((p: any) => {
+      if (p.training_group && Array.isArray(p.training_group)) {
+        p.training_group.forEach((group: string) => {
+          if (group) existingGroups.add(group)
+        })
+      }
+    })
+    
+    // Check if new groups are being added
+    const newGroups = playerAny.trainingGroups as string[]
+    const groupsToAdd = newGroups.filter(group => group && !existingGroups.has(group))
+    
+    if (groupsToAdd.length > 0) {
+      // Import validation function dynamically to avoid circular dependencies
+      const { validateTrainingGroupLimit } = await import('../lib/admin/plan-limits.js')
+      const currentGroupCount = existingGroups.size
+      const validation = await validateTrainingGroupLimit(tenantId, currentGroupCount)
+      
+      if (!validation.isValid) {
+        throw new Error(validation.error || 'Training group limit reached for this plan')
+      }
+    }
+  }
+  
   const [created] = await sql`
     INSERT INTO players (
       name, alias, level_single, level_double, level_mix, gender, 
@@ -598,6 +634,43 @@ export const updatePlayer = async (id: string, updates: PlayerUpdateInput['patch
   if (updatesAny.preferredMixedPartners !== undefined) updateData.preferred_mixed_partners = updatesAny.preferredMixedPartners ?? []
 
   const tenantId = getTenantId()
+
+  // Validate training group limits if training groups are being updated
+  if (updatesAny.trainingGroups !== undefined) {
+    // Get all unique training groups from all players in this tenant
+    const allPlayers = await sql`
+      SELECT training_group
+      FROM players
+      WHERE tenant_id = ${tenantId}
+    `
+    
+    // Collect all unique training groups
+    const existingGroups = new Set<string>()
+    allPlayers.forEach((player: any) => {
+      if (player.training_group && Array.isArray(player.training_group)) {
+        player.training_group.forEach((group: string) => {
+          if (group) existingGroups.add(group)
+        })
+      }
+    })
+    
+    // Check if new groups are being added
+    const newGroups = updatesAny.trainingGroups as string[] | null
+    if (newGroups && Array.isArray(newGroups)) {
+      const groupsToAdd = newGroups.filter(group => group && !existingGroups.has(group))
+      
+      if (groupsToAdd.length > 0) {
+        // Import validation function dynamically to avoid circular dependencies
+        const { validateTrainingGroupLimit } = await import('../lib/admin/plan-limits.js')
+        const currentGroupCount = existingGroups.size
+        const validation = await validateTrainingGroupLimit(tenantId, currentGroupCount)
+        
+        if (!validation.isValid) {
+          throw new Error(validation.error || 'Training group limit reached for this plan')
+        }
+      }
+    }
+  }
 
   if (Object.keys(updateData).length === 0) {
     // No updates, just fetch the player

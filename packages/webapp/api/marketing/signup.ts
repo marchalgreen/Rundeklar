@@ -149,7 +149,8 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       name: body.clubName,
       subdomain: tenantId,
       logo: 'fulllogo_transparent_nobuffer_horizontal.png',
-      maxCourts: 8
+      maxCourts: 8,
+      planId: body.planId || 'basic'
     })
 
     // Hash password

@@ -183,6 +183,7 @@ export async function createTenantConfig(tenantData: {
   subdomain: string
   logo?: string
   maxCourts?: number
+  planId?: 'basic' | 'professional' | 'enterprise'
   features?: Record<string, any>
   postgresUrl?: string
 }): Promise<TenantConfig> {
@@ -192,6 +193,7 @@ export async function createTenantConfig(tenantData: {
     subdomain: tenantData.subdomain,
     logo: tenantData.logo || 'fulllogo_transparent_nobuffer_horizontal.png',
     maxCourts: tenantData.maxCourts || 8,
+    ...(tenantData.planId && { planId: tenantData.planId }),
     features: tenantData.features || {},
     ...(tenantData.postgresUrl && { postgresUrl: tenantData.postgresUrl })
   }

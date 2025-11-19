@@ -6,6 +6,7 @@ import { sendCoachWelcomeEmail } from '../../../src/lib/auth/email.js'
 import { getPostgresClient, getDatabaseUrl } from '../../auth/db-helper.js'
 import { logger } from '../../../src/lib/utils/logger.js'
 import { setCorsHeaders } from '../../../src/lib/utils/cors.js'
+import { validateCoachLimit } from '../../../src/lib/admin/plan-limits.js'
 
 const createCoachSchema = z.object({
   email: z.string().email('Valid email is required'),
@@ -162,6 +163,21 @@ export default async function handler(
       if (existingEmail.length > 0) {
         return res.status(400).json({
           error: 'Email already exists for this tenant'
+        })
+      }
+      
+      // Check plan limits for coaches
+      const currentCoachCount = await sql`
+        SELECT COUNT(*) as count
+        FROM clubs
+        WHERE tenant_id = ${tenantId}
+          AND role = 'coach'
+      `
+      const coachCount = parseInt(currentCoachCount[0]?.count || '0')
+      const planValidation = await validateCoachLimit(tenantId, coachCount)
+      if (!planValidation.isValid) {
+        return res.status(403).json({
+          error: planValidation.error || 'Coach limit reached for this plan'
         })
       }
       

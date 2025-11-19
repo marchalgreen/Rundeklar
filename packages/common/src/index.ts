@@ -139,6 +139,7 @@ export type TenantConfig = {
   subdomain: string // Subdomain for tenant (e.g., "herlev-hjorten" for herlev-hjorten.rundeklar.dk)
   logo: string
   maxCourts: number
+  planId?: 'basic' | 'professional' | 'enterprise' // Subscription plan type
   postgresUrl?: string // Postgres connection string (optional - can use DATABASE_URL env var)
   // Legacy Supabase fields (deprecated, kept for backward compatibility during migration)
   supabaseUrl?: string
