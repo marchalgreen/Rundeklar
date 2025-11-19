@@ -91,20 +91,24 @@ export default async function handler(req: AuthenticatedRequest, res: VercelResp
     const adminViews = adminViewsResult[0]?.count || 0
 
     // Get unique visitors (excluding admin)
+    // Use IP address instead of session_id to count actual unique visitors
+    // IP is already anonymized (last octet removed) for privacy
+    const ipWhere = where ? `${where} AND ip_address IS NOT NULL` : 'WHERE is_admin_view = false AND ip_address IS NOT NULL'
     const uniqueVisitorsResult = params.length > 0
-      ? await sql.unsafe(`SELECT COUNT(DISTINCT session_id)::int as count FROM page_views ${where}`, params)
-      : await sql`SELECT COUNT(DISTINCT session_id)::int as count FROM page_views WHERE is_admin_view = false`
+      ? await sql.unsafe(`SELECT COUNT(DISTINCT ip_address)::int as count FROM page_views ${ipWhere}`, params)
+      : await sql`SELECT COUNT(DISTINCT ip_address)::int as count FROM page_views WHERE is_admin_view = false AND ip_address IS NOT NULL`
     const uniqueVisitors = uniqueVisitorsResult[0]?.count || 0
 
     // Get views by tenant (excluding admin)
+    const tenantIpWhere = where ? `${where} AND ip_address IS NOT NULL` : 'WHERE is_admin_view = false AND ip_address IS NOT NULL'
     const viewsByTenantResult = params.length > 0
       ? await sql.unsafe(`
           SELECT 
             tenant_id,
             COUNT(*)::int as total_views,
-            COUNT(DISTINCT session_id)::int as unique_visitors
+            COUNT(DISTINCT ip_address)::int as unique_visitors
           FROM page_views
-          ${where}
+          ${tenantIpWhere}
           GROUP BY tenant_id
           ORDER BY total_views DESC
         `, params)
@@ -112,9 +116,9 @@ export default async function handler(req: AuthenticatedRequest, res: VercelResp
           SELECT 
             tenant_id,
             COUNT(*)::int as total_views,
-            COUNT(DISTINCT session_id)::int as unique_visitors
+            COUNT(DISTINCT ip_address)::int as unique_visitors
           FROM page_views
-          WHERE is_admin_view = false
+          WHERE is_admin_view = false AND ip_address IS NOT NULL
           GROUP BY tenant_id
           ORDER BY total_views DESC
         `
@@ -150,14 +154,15 @@ export default async function handler(req: AuthenticatedRequest, res: VercelResp
     }))
 
     // Get views over time (daily) - last 30 days (excluding admin)
+    const timeIpWhere = where ? `${where} AND ip_address IS NOT NULL` : 'WHERE is_admin_view = false AND ip_address IS NOT NULL'
     const viewsOverTimeResult = params.length > 0
       ? await sql.unsafe(`
           SELECT 
             DATE(created_at) as date,
             COUNT(*)::int as views,
-            COUNT(DISTINCT session_id)::int as unique_visitors
+            COUNT(DISTINCT ip_address)::int as unique_visitors
           FROM page_views
-          ${where}
+          ${timeIpWhere}
           GROUP BY DATE(created_at)
           ORDER BY date DESC
           LIMIT 30
@@ -166,9 +171,9 @@ export default async function handler(req: AuthenticatedRequest, res: VercelResp
           SELECT 
             DATE(created_at) as date,
             COUNT(*)::int as views,
-            COUNT(DISTINCT session_id)::int as unique_visitors
+            COUNT(DISTINCT ip_address)::int as unique_visitors
           FROM page_views
-          WHERE is_admin_view = false
+          WHERE is_admin_view = false AND ip_address IS NOT NULL
           GROUP BY DATE(created_at)
           ORDER BY date DESC
           LIMIT 30

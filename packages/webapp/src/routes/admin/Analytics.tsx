@@ -369,12 +369,18 @@ export default function AnalyticsPage() {
               {data.recent_views.map((view) => (
                 <tr key={view.id} className="border-b border-[hsl(var(--line)/.5)]">
                   <td className="py-2 px-3 text-sm">
-                    {new Date(view.created_at).toLocaleString('da-DK', {
-                      day: '2-digit',
-                      month: '2-digit',
-                      hour: '2-digit',
-                      minute: '2-digit'
-                    }).replace(/\./g, '/')}
+                    {(() => {
+                      const date = new Date(view.created_at)
+                      const dateStr = date.toLocaleDateString('da-DK', {
+                        day: '2-digit',
+                        month: '2-digit'
+                      }).replace(/\./g, '/')
+                      const timeStr = date.toLocaleTimeString('da-DK', {
+                        hour: '2-digit',
+                        minute: '2-digit'
+                      })
+                      return `${dateStr}, ${timeStr}`
+                    })()}
                   </td>
                   <td className="py-2 px-3 text-sm capitalize">{view.tenant_id}</td>
                   <td className="py-2 px-3 text-sm font-mono text-xs truncate max-w-xs">{view.path}</td>
