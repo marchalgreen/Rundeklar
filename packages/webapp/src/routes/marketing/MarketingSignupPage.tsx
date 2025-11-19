@@ -428,7 +428,7 @@ export default function MarketingSignupPage() {
                         setError(null)
                       }}
                       required
-                      placeholder="fx. Herlev Hjorten Badmintonklub"
+                      placeholder="fx. Herlev/Hjorten Badmintonklub"
                       className="w-full px-4 py-3 border border-[hsl(var(--line))] rounded-lg bg-[hsl(var(--surface))] focus:outline-none focus:ring-2 focus:ring-[hsl(var(--ring))]"
                       disabled={loading}
                     />

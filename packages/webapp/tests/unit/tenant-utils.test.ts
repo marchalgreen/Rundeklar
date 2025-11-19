@@ -7,7 +7,7 @@ import { nameToSubdomain, validateSubdomain } from '../../src/lib/admin/tenant-u
 
 describe('nameToSubdomain', () => {
   it('should convert name to lowercase', () => {
-    expect(nameToSubdomain('Herlev Hjorten')).toBe('herlev-hjorten')
+    expect(nameToSubdomain('Herlev/Hjorten')).toBe('herlev-hjorten')
   })
 
   it('should replace spaces with hyphens', () => {

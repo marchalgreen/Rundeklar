@@ -4,7 +4,7 @@ import { formatCoachUsername } from '../formatting.js'
 
 const RESEND_API_KEY = process.env.RESEND_API_KEY || process.env.VITE_RESEND_API_KEY
 const RESEND_FROM_EMAIL = process.env.RESEND_FROM_EMAIL || 'onboarding@resend.dev'
-const RESEND_FROM_NAME = process.env.RESEND_FROM_NAME || 'Herlev Hjorten'
+const RESEND_FROM_NAME = process.env.RESEND_FROM_NAME || 'Herlev/Hjorten'
 const BASE_DOMAIN = process.env.BASE_DOMAIN || 'rundeklar.dk'
 const APP_URL = process.env.APP_URL || process.env.VITE_APP_URL || 'http://localhost:5173'
 

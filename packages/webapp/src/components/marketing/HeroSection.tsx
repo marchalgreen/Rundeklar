@@ -58,7 +58,7 @@ export const HeroSection: React.FC = () => {
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.8, delay: 0.3 }}
           >
-            For badmintonklubber med faste træningsaftener
+            For klubber med faste træningsaftener
           </motion.p>
 
           {/* Headline */}

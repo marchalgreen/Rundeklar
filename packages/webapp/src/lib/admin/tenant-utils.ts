@@ -58,7 +58,7 @@ function generateShortTenantId(name: string): string {
 
 /**
  * Convert tenant name to valid subdomain
- * @param name - Tenant name (e.g., "Herlev Hjorten")
+ * @param name - Tenant name (e.g., "Herlev/Hjorten")
  * @returns Valid subdomain (e.g., "herlev-hjorten" or "kbdb" for long names)
  */
 export function nameToSubdomain(name: string): string {

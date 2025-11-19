@@ -14,14 +14,14 @@ interface Testimonial {
 
 const testimonials: Testimonial[] = [
   {
-    quote: 'Vi har fået meget bedre ro på træningsaftenerne. Spillerne tjekker selv ind, og vi kan sætte runderne på få minutter.',
+    quote: 'Før sad vi med pen og papir. Nu har vi overblik over baner, spillere og fremmøde på én skærm.',
     author: 'Morten Regaard',
-    role: 'Træner, Herlev Hjorten Badmintonklub'
+    role: 'Træner, Herlev/Hjorten Badmintonklub'
   },
   {
-    quote: 'Før sad vi med pen og papir. Nu har vi overblik over baner, spillere og fremmøde på én skærm.',
+    quote: 'Vi har fået meget bedre ro på træningsaftenerne. Spillerne tjekker selv ind, og vi kan sætte runderne på få minutter.',
     author: 'Kristian Simoni',
-    role: 'Træner, Herlev Hjorten Badmintonklub'
+    role: 'Træner, Herlev/Hjorten Badmintonklub'
   }
 ]
 
@@ -46,7 +46,7 @@ export const TestimonialsSection: React.FC = () => {
             Klubberne mærker forskellen
           </h2>
           <p className="text-lg sm:text-xl text-[hsl(var(--muted))] max-w-2xl mx-auto">
-            Rundeklar bruges allerede i Herlev Hjorten Badmintonklub. Her er hvad trænerne siger.
+            Udviklet i tæt samarbejde med Herlev/Hjorten Badmintonklub. Her er hvad trænerne siger.
           </p>
         </motion.div>
 
@@ -73,7 +73,7 @@ export const TestimonialsSection: React.FC = () => {
             ))}
           </div>
           <p className="text-center text-sm text-[hsl(var(--muted))] mt-6">
-            Brugt i Herlev Hjorten Badmintonklub
+            Brugt i Herlev/Hjorten Badmintonklub
           </p>
         </div>
       </div>

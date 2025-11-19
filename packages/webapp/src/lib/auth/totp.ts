@@ -7,7 +7,7 @@ import QRCode from 'qrcode'
  */
 export function generateTOTPSecret() {
   return speakeasy.generateSecret({
-    name: 'Herlev Hjorten',
+    name: 'Herlev/Hjorten',
     length: 32
   })
 }
@@ -22,7 +22,7 @@ export async function generateQRCode(secret: string, email: string): Promise<str
   const otpauthUrl = speakeasy.otpauthURL({
     secret,
     label: email,
-    issuer: 'Herlev Hjorten'
+    issuer: 'Herlev/Hjorten'
   })
 
   return await QRCode.toDataURL(otpauthUrl)
