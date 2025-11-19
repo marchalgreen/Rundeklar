@@ -27,7 +27,7 @@ export const pricingPlans: PricingPlan[] = [
       'Tjek ind system',
       'Kampprogram med drag & drop',
       'Spilleradministration',
-      'Simple fremmødestatistikker',
+      'Fremmødestatistikker',
       'Email support'
     ],
     limitations: [],
@@ -41,13 +41,13 @@ export const pricingPlans: PricingPlan[] = [
     monthlyPrice: 400,
     yearlyPrice: 4320, // 400 * 12 * 0.9
     features: [
-      'Ubegrænsede træningsgrupper',
+      'Op til 5 træningsgrupper',
       'Ubegrænsede trænerlogins',
       'Egen administrator',
       'Udvidet spilleradministration',
       'Tjek ind system',
       'Kampprogram med drag og drop på alle baner',
-      'Avancerede statistikker',
+      'Fremmødestatistikker',
       'Prioriteret support'
     ],
     limitations: [],
