@@ -1,6 +1,8 @@
 import React from 'react'
 import { useTenant } from '../../contexts/TenantContext'
-import { Mail } from 'lucide-react'
+import { useNavigation } from '../../contexts/NavigationContext'
+import { Button } from '../ui'
+import { Mail, LogIn } from 'lucide-react'
 
 /**
  * Marketing footer component.
@@ -8,6 +10,7 @@ import { Mail } from 'lucide-react'
  */
 export const MarketingFooter: React.FC = () => {
   const { config } = useTenant()
+  const { navigateToAuth } = useNavigation()
   const logoPath = `${import.meta.env.BASE_URL}${config.logo}`
 
   return (
@@ -86,10 +89,19 @@ export const MarketingFooter: React.FC = () => {
 
         {/* Bottom Bar */}
         <div className="mt-12 pt-8 border-t border-[hsl(var(--line)/.12)]">
-          <div className="flex justify-center items-center">
+          <div className="flex flex-col sm:flex-row justify-center items-center gap-4">
             <p className="text-xs text-[hsl(var(--muted))]">
               © {new Date().getFullYear()} Rundeklar. Alle rettigheder forbeholdes.
             </p>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => navigateToAuth('login')}
+              className="flex items-center gap-2"
+            >
+              <LogIn className="w-4 h-4" />
+              Log ind
+            </Button>
           </div>
         </div>
       </div>
