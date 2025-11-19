@@ -1,6 +1,3 @@
-import type { TenantConfig } from '@rundeklar/common'
-import { getTenantConfig } from './tenant-utils.js'
-
 export type PlanId = 'basic' | 'professional' | 'enterprise'
 
 export interface PlanLimits {
@@ -40,26 +37,16 @@ export function getPlanLimits(planId: PlanId | undefined): PlanLimits {
 }
 
 /**
- * Get tenant plan limits
- * @param tenantId - Tenant ID
- * @returns Plan limits for the tenant
- */
-export async function getTenantPlanLimits(tenantId: string): Promise<PlanLimits> {
-  const config = await getTenantConfig(tenantId)
-  return getPlanLimits(config?.planId)
-}
-
-/**
  * Validate if tenant can add another training group
- * @param tenantId - Tenant ID
+ * @param planId - Plan ID ('basic', 'professional', or 'enterprise')
  * @param currentGroupCount - Current number of training groups
  * @returns Object with isValid and error message if invalid
  */
-export async function validateTrainingGroupLimit(
-  tenantId: string,
+export function validateTrainingGroupLimit(
+  planId: PlanId | undefined,
   currentGroupCount: number
-): Promise<{ isValid: boolean; error?: string }> {
-  const limits = await getTenantPlanLimits(tenantId)
+): { isValid: boolean; error?: string } {
+  const limits = getPlanLimits(planId)
   
   if (limits.maxTrainingGroups === null) {
     // Unlimited
@@ -78,15 +65,15 @@ export async function validateTrainingGroupLimit(
 
 /**
  * Validate if tenant can add another coach
- * @param tenantId - Tenant ID
+ * @param planId - Plan ID ('basic', 'professional', or 'enterprise')
  * @param currentCoachCount - Current number of coaches
  * @returns Object with isValid and error message if invalid
  */
-export async function validateCoachLimit(
-  tenantId: string,
+export function validateCoachLimit(
+  planId: PlanId | undefined,
   currentCoachCount: number
-): Promise<{ isValid: boolean; error?: string }> {
-  const limits = await getTenantPlanLimits(tenantId)
+): { isValid: boolean; error?: string } {
+  const limits = getPlanLimits(planId)
   
   if (limits.maxCoaches === null) {
     // Unlimited

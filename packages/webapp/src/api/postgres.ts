@@ -564,8 +564,10 @@ export const createPlayer = async (player: Omit<Player, 'id' | 'createdAt'>): Pr
     if (groupsToAdd.length > 0) {
       // Import validation function dynamically to avoid circular dependencies
       const { validateTrainingGroupLimit } = await import('../lib/admin/plan-limits.js')
+      const { getCurrentTenantConfig } = await import('../lib/postgres.js')
       const currentGroupCount = existingGroups.size
-      const validation = await validateTrainingGroupLimit(tenantId, currentGroupCount)
+      const tenantConfig = getCurrentTenantConfig()
+      const validation = validateTrainingGroupLimit(tenantConfig?.planId, currentGroupCount)
       
       if (!validation.isValid) {
         throw new Error(validation.error || 'Training group limit reached for this plan')
@@ -662,8 +664,10 @@ export const updatePlayer = async (id: string, updates: PlayerUpdateInput['patch
       if (groupsToAdd.length > 0) {
         // Import validation function dynamically to avoid circular dependencies
         const { validateTrainingGroupLimit } = await import('../lib/admin/plan-limits.js')
+        const { getCurrentTenantConfig } = await import('../lib/postgres.js')
         const currentGroupCount = existingGroups.size
-        const validation = await validateTrainingGroupLimit(tenantId, currentGroupCount)
+        const tenantConfig = getCurrentTenantConfig()
+        const validation = validateTrainingGroupLimit(tenantConfig?.planId, currentGroupCount)
         
         if (!validation.isValid) {
           throw new Error(validation.error || 'Training group limit reached for this plan')
