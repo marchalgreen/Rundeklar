@@ -5,36 +5,164 @@ import { useRef } from 'react'
 import { PageCard } from '../ui'
 import { Button } from '../ui'
 import { pricingPlans, type PricingPlan } from '../../lib/marketing/pricing'
-import { Check } from 'lucide-react'
+import { Check, Sparkles, Crown } from 'lucide-react'
 
 /**
- * Pricing card component.
+ * Pricing card component with playful animations.
  */
-const PricingCard: React.FC<{ plan: PricingPlan; isYearly: boolean; index: number }> = ({ plan, isYearly, index }) => {
+const PricingCard: React.FC<{ 
+  plan: PricingPlan
+  isYearly: boolean
+  index: number
+  isHovered: string | null
+  onHover: (id: string | null) => void
+}> = ({ plan, isYearly, index, isHovered, onHover }) => {
   const price = isYearly ? plan.yearlyPrice : plan.monthlyPrice
   const monthlyEquivalent = plan.monthlyPrice === 0 ? null : isYearly ? `${Math.round(plan.yearlyPrice / 12)} kr/måned` : null
+  
+  // Determine power level for icon progression
+  const getPowerLevel = () => {
+    if (plan.id === 'basic') return 1
+    if (plan.id === 'professional') return 3
+    return 5 // enterprise
+  }
+  
+  const powerLevel = getPowerLevel()
+  const isHoveredCard = isHovered === plan.id
+  const isProfessional = plan.id === 'professional'
+  
+  // Hover cascade effect - tilt ONLY when Professional is hovered
+  const getTilt = () => {
+    if (!isHovered || isHoveredCard || isHovered !== 'professional') return 0
+    // When Professional is hovered - Basic and Enterprise tilt towards it
+    if (plan.id === 'basic') return -1.5 // Basic tilts left towards Professional
+    if (plan.id === 'enterprise') return 1.5 // Enterprise tilts right towards Professional
+    return 0
+  }
+
+  // Scale effect - hovered card scales up, others scale down slightly
+  const getScale = () => {
+    if (isHoveredCard) {
+      // Hovered card scales up
+      return isProfessional ? 1.08 : 1.05
+    }
+    if (isHovered && !isHoveredCard) {
+      // Other cards scale down slightly when any card is hovered
+      return 0.98
+    }
+    // Default scale
+    return isProfessional ? 1.05 : 1
+  }
 
   return (
     <motion.div
       initial={{ opacity: 0, y: 30 }}
-      animate={{ opacity: 1, y: 0 }}
-      transition={{ duration: 0.5, delay: index * 0.1 }}
-      className={`h-full ${plan.featured ? 'lg:-mt-4 lg:mb-4' : ''}`}
+      animate={{ 
+        opacity: 1, 
+        y: 0,
+        rotate: getTilt(),
+        scale: getScale()
+      }}
+      transition={{ 
+        duration: 0.5, 
+        delay: index * 0.15,
+        rotate: { duration: 0.3, ease: 'easeOut' },
+        scale: { duration: 0.3, ease: 'easeOut' }
+      }}
+      className={`h-full relative ${plan.featured ? 'lg:-mt-4 lg:mb-4' : ''}`}
+      onMouseEnter={() => onHover(plan.id)}
+      onMouseLeave={() => onHover(null)}
     >
       <PageCard
         hover
-        className={`h-full flex flex-col ${
+        className={`h-full flex flex-col transition-all duration-300 ${
           plan.featured
-            ? 'ring-2 ring-[hsl(var(--primary))] shadow-lg scale-105 lg:scale-110'
+            ? 'ring-2 ring-[hsl(var(--primary))] shadow-lg'
+            : ''
+        } ${
+          isHoveredCard 
+            ? plan.featured 
+              ? 'shadow-2xl ring-2 ring-[hsl(var(--primary))] ring-offset-2' 
+              : 'shadow-xl ring-2 ring-[hsl(var(--muted))]'
             : ''
         }`}
       >
+        {/* Icon progression - Power level indicator */}
+        <motion.div 
+          className="mb-4 flex items-center gap-2"
+          initial={{ opacity: 0, x: -20 }}
+          animate={{ opacity: 1, x: 0 }}
+          transition={{ delay: index * 0.15 + 0.3 }}
+        >
+          <div className="flex gap-1">
+            {[...Array(5)].map((_, i) => (
+              <motion.div
+                key={i}
+                initial={{ scale: 0, opacity: 0 }}
+                animate={{ 
+                  scale: i < powerLevel ? 1 : 0.3,
+                  opacity: i < powerLevel ? 1 : 0.3
+                }}
+                transition={{ 
+                  delay: index * 0.15 + 0.4 + i * 0.05,
+                  type: 'spring',
+                  stiffness: 200,
+                  damping: 10
+                }}
+                className={`w-2 h-2 rounded-full ${
+                  i < powerLevel 
+                    ? 'bg-[hsl(var(--primary))]' 
+                    : 'bg-[hsl(var(--muted))]'
+                }`}
+              />
+            ))}
+          </div>
+          {plan.id === 'professional' && (
+            <motion.div
+              initial={{ scale: 0, rotate: -180 }}
+              animate={{ scale: 1, rotate: 0 }}
+              transition={{ 
+                delay: index * 0.15 + 0.7,
+                type: 'spring',
+                stiffness: 200
+              }}
+              className="ml-1"
+            >
+              <Sparkles className="w-4 h-4 text-[hsl(var(--primary))]" />
+            </motion.div>
+          )}
+          {plan.id === 'enterprise' && (
+            <motion.div
+              initial={{ scale: 0, rotate: -180 }}
+              animate={{ scale: 1, rotate: 0 }}
+              transition={{ 
+                delay: index * 0.15 + 0.7,
+                type: 'spring',
+                stiffness: 200
+              }}
+              className="ml-1"
+            >
+              <Crown className="w-4 h-4 text-[hsl(var(--primary))]" />
+            </motion.div>
+          )}
+        </motion.div>
+
         {plan.featured && (
-          <div className="mb-4">
+          <motion.div 
+            className="mb-4"
+            initial={{ scale: 0, rotate: -10 }}
+            animate={{ scale: 1, rotate: 0 }}
+            transition={{ 
+              delay: index * 0.15 + 0.5,
+              type: 'spring',
+              stiffness: 200
+            }}
+          >
             <span className="inline-block px-3 py-1 rounded-full text-xs font-semibold bg-[hsl(var(--primary))] text-white">
               Mest valgt
             </span>
-          </div>)}
+          </motion.div>
+        )}
 
         <div className="flex-1">
           <h3 className="text-2xl font-bold text-[hsl(var(--foreground))] mb-2">{plan.name}</h3>
@@ -56,10 +184,32 @@ const PricingCard: React.FC<{ plan: PricingPlan; isYearly: boolean; index: numbe
 
           <ul className="space-y-3 mb-8">
             {plan.features.map((feature, idx) => (
-              <li key={idx} className="flex items-start gap-2">
-                <Check className="w-5 h-5 text-[hsl(var(--success))] flex-shrink-0 mt-0.5" />
+              <motion.li 
+                key={idx} 
+                className="flex items-start gap-2"
+                initial={{ opacity: 0, x: -10 }}
+                animate={{ opacity: 1, x: 0 }}
+                transition={{ 
+                  delay: index * 0.15 + 0.5 + idx * 0.05,
+                  type: 'spring',
+                  stiffness: 300,
+                  damping: 20
+                }}
+              >
+                <motion.div
+                  initial={{ scale: 0, rotate: -180 }}
+                  animate={{ scale: 1, rotate: 0 }}
+                  transition={{ 
+                    delay: index * 0.15 + 0.5 + idx * 0.05,
+                    type: 'spring',
+                    stiffness: 300,
+                    damping: 10
+                  }}
+                >
+                  <Check className="w-5 h-5 text-[hsl(var(--success))] flex-shrink-0 mt-0.5" />
+                </motion.div>
                 <span className="text-sm text-[hsl(var(--foreground))]">{feature}</span>
-              </li>
+              </motion.li>
             ))}
             {plan.limitations && plan.limitations.length > 0 && (
               <>
@@ -102,6 +252,7 @@ const PricingCard: React.FC<{ plan: PricingPlan; isYearly: boolean; index: numbe
  */
 export const PricingSection: React.FC = () => {
   const [isYearly, setIsYearly] = useState(false)
+  const [hoveredCard, setHoveredCard] = useState<string | null>(null)
   const ref = useRef(null)
   const isInView = useInView(ref, { once: true, margin: '-100px' })
 
@@ -148,7 +299,14 @@ export const PricingSection: React.FC = () => {
         {/* Pricing Cards */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 sm:gap-8 max-w-6xl mx-auto">
           {pricingPlans.map((plan, index) => (
-            <PricingCard key={plan.id} plan={plan} isYearly={isYearly} index={index} />
+            <PricingCard 
+              key={plan.id} 
+              plan={plan} 
+              isYearly={isYearly} 
+              index={index}
+              isHovered={hoveredCard}
+              onHover={setHoveredCard}
+            />
           ))}
         </div>
 
