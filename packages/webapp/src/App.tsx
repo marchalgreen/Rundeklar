@@ -412,11 +412,11 @@ const AppContent = () => {
       )
     }
     
-    // SIMPLE: Just check sessionStorage directly - no state management
-    // MarketingSignupPage will handle its own state internally
+    // Check URL parameters - more reliable than sessionStorage
+    // URL parameters persist through remounts and are visible/debuggable
     const hasPlanParam = typeof window !== 'undefined' && window.location.search.includes('plan=')
-    const hasSignupInSession = typeof window !== 'undefined' && sessionStorage.getItem('signup_step') === 'success'
-    const shouldShowSignup = hasPlanParam || hasSignupInSession
+    const hasStepParam = typeof window !== 'undefined' && window.location.search.includes('step=')
+    const shouldShowSignup = hasPlanParam || hasStepParam
     
     return (
       <>

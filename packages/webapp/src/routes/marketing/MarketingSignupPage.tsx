@@ -18,28 +18,37 @@ interface SignupData {
 }
 
 export default function MarketingSignupPage() {
-  // Get plan from URL query parameter
+  // Get plan and step from URL query parameters
   const getPlanFromUrl = () => {
     if (typeof window === 'undefined') return ''
     const params = new URLSearchParams(window.location.search)
     return params.get('plan') || ''
   }
 
+  const getStepFromUrl = (): Step | null => {
+    if (typeof window === 'undefined') return null
+    const params = new URLSearchParams(window.location.search)
+    const step = params.get('step')
+    if (step === 'success' || step === 'plan' || step === 'club' || step === 'password') {
+      return step as Step
+    }
+    return null
+  }
+
   const initialPlanId = getPlanFromUrl()
+  const urlStep = getStepFromUrl()
   
-  // Always start with plan selection step (or success if returning)
-  // IMPORTANT: Read from sessionStorage directly in useState initializer to ensure
-  // we always get the correct value, even if component remounts
+  // Use URL step parameter if present (most reliable), otherwise default to 'plan'
+  // URL parameters persist through remounts and are more reliable than sessionStorage
   const [currentStep, setCurrentStep] = useState<Step>(() => {
     if (typeof window === 'undefined') return 'plan'
+    // Priority 1: URL parameter (most reliable - persists through remounts)
+    if (urlStep) {
+      return urlStep
+    }
+    // Priority 2: Fallback to sessionStorage for backwards compatibility
     const savedStep = sessionStorage.getItem('signup_step')
-    const initialStep = savedStep === 'success' ? 'success' : 'plan'
-    console.log('[MarketingSignupPage] useState initializer:', {
-      savedStep,
-      initialStep,
-      timestamp: new Date().toISOString()
-    })
-    return initialStep
+    return savedStep === 'success' ? 'success' : 'plan'
   })
   
   // Track page view on mount
@@ -47,22 +56,13 @@ export default function MarketingSignupPage() {
     trackPageView('marketing')
   }, [])
 
-  // Debug: Log when component mounts/unmounts
+  // Sync state with URL parameter changes (e.g., browser back/forward)
   useEffect(() => {
-    console.log('[MarketingSignupPage] Component MOUNTED', {
-      currentStep,
-      sessionStorageValue: typeof window !== 'undefined' ? sessionStorage.getItem('signup_step') : null,
-      timestamp: new Date().toISOString()
-    })
-    return () => {
-      console.log('[MarketingSignupPage] Component UNMOUNTING', {
-        currentStep,
-        sessionStorageValue: typeof window !== 'undefined' ? sessionStorage.getItem('signup_step') : null,
-        timestamp: new Date().toISOString()
-      })
+    const urlStep = getStepFromUrl()
+    if (urlStep && urlStep !== currentStep) {
+      setCurrentStep(urlStep)
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [])
+  }, [currentStep])
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [signupData, setSignupData] = useState<SignupData>({
@@ -87,62 +87,19 @@ export default function MarketingSignupPage() {
   
   const [createdTenantId, setCreatedTenantId] = useState<string | null>(getInitialTenantId())
   
-  // Restore email if we're on success step
+  // Restore tenant ID and email from sessionStorage when on success step
   useEffect(() => {
-    if (currentStep === 'success' && !signupData.email) {
+    if (currentStep === 'success') {
+      const savedTenantId = getInitialTenantId()
       const savedEmail = getInitialEmail()
-      if (savedEmail) {
+      if (savedTenantId) {
+        setCreatedTenantId(savedTenantId)
+      }
+      if (savedEmail && !signupData.email) {
         setSignupData(prev => ({ ...prev, email: savedEmail }))
       }
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [currentStep])
-  
-  // Sync state with sessionStorage when step changes to success
-  useEffect(() => {
-    console.log('[MarketingSignupPage] currentStep changed:', {
-      currentStep,
-      timestamp: new Date().toISOString()
-    })
-    if (currentStep === 'success' && typeof window !== 'undefined') {
-      // Ensure sessionStorage is set (backup)
-      if (sessionStorage.getItem('signup_step') !== 'success') {
-        sessionStorage.setItem('signup_step', 'success')
-        console.log('[MarketingSignupPage] Set sessionStorage to success (backup)')
-      }
-    }
-  }, [currentStep])
-  
-  // CRITICAL: Continuously listen to sessionStorage changes
-  // This ensures that even if component remounts and starts from 'plan',
-  // it will immediately update to 'success' when sessionStorage is set
-  useEffect(() => {
-    const checkSessionStorage = () => {
-      if (typeof window !== 'undefined') {
-        const savedStep = sessionStorage.getItem('signup_step')
-        if (savedStep === 'success' && currentStep !== 'success') {
-          console.log('[MarketingSignupPage] sessionStorage is success, updating currentStep from', currentStep, 'to success')
-          setCurrentStep('success')
-          // Restore tenant ID and email
-          const savedTenantId = sessionStorage.getItem('signup_tenant_id')
-          const savedEmail = sessionStorage.getItem('signup_email')
-          if (savedTenantId) {
-            setCreatedTenantId(savedTenantId)
-          }
-          if (savedEmail) {
-            setSignupData(prev => ({ ...prev, email: savedEmail }))
-          }
-        }
-      }
-    }
-    
-    // Check immediately
-    checkSessionStorage()
-    
-    // Poll sessionStorage every 50ms to catch changes quickly
-    const interval = setInterval(checkSessionStorage, 50)
-    
-    return () => clearInterval(interval)
   }, [currentStep])
 
   const selectedPlan = pricingPlans.find(p => p.id === signupData.planId)
@@ -238,27 +195,12 @@ export default function MarketingSignupPage() {
 
       const data = await response.json()
 
-      // Store tenant ID before navigating
+      // Store tenant ID and email in sessionStorage for the success page
       const tenantSubdomain = data.tenant?.subdomain || data.tenantId || null
       
-      console.log('[MarketingSignupPage] Signup successful, setting state:', {
-        tenantSubdomain,
-        email: signupData.email,
-        timestamp: new Date().toISOString()
-      })
-      
-      // CRITICAL: Set sessionStorage FIRST, then state, then dispatch event
-      // This ensures that if component remounts, useState initializer will read 'success'
       if (typeof window !== 'undefined') {
-        console.log('[MarketingSignupPage] Setting sessionStorage FIRST...')
-        sessionStorage.setItem('signup_step', 'success')
         sessionStorage.setItem('signup_tenant_id', tenantSubdomain || '')
         sessionStorage.setItem('signup_email', signupData.email)
-        console.log('[MarketingSignupPage] sessionStorage set:', {
-          signup_step: sessionStorage.getItem('signup_step'),
-          signup_tenant_id: sessionStorage.getItem('signup_tenant_id'),
-          signup_email: sessionStorage.getItem('signup_email')
-        })
       }
       
       // Track conversion (signup completed)
@@ -268,14 +210,32 @@ export default function MarketingSignupPage() {
         email: signupData.email
       })
 
-      // Update state AFTER sessionStorage is set
-      // Polling in useEffect will catch this and update currentStep if component remounts
-      console.log('[MarketingSignupPage] Updating state: setCurrentStep("success")')
+      // CRITICAL: Update state FIRST, then URL, then redirect
+      // This ensures success screen shows if component re-renders before redirect
+      
+      // 1. Update state immediately - if component re-renders, it will show success
       setCreatedTenantId(tenantSubdomain)
       setCurrentStep('success')
+      
+      // 2. Update URL to match state
+      const currentUrl = new URL(window.location.href)
+      currentUrl.searchParams.set('step', 'success')
+      if (signupData.planId) {
+        currentUrl.searchParams.set('plan', signupData.planId)
+      }
+      window.history.replaceState({}, '', currentUrl.toString())
+      
+      // 3. Redirect after requestAnimationFrame to ensure React has rendered success screen
+      // This gives browser time to show success screen before redirect happens
+      requestAnimationFrame(() => {
+        requestAnimationFrame(() => {
+          window.location.href = currentUrl.toString()
+        })
+      })
+      
+      return // Exit early - redirect will happen
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Registrering fejlede')
-    } finally {
       setLoading(false)
     }
   }
@@ -634,12 +594,13 @@ export default function MarketingSignupPage() {
                   <Button
                     variant="secondary"
                     onClick={() => {
-                      // Clear sessionStorage when leaving
+                      // Clear sessionStorage and navigate to clean URL (no query params)
                       if (typeof window !== 'undefined') {
                         sessionStorage.removeItem('signup_step')
                         sessionStorage.removeItem('signup_tenant_id')
                         sessionStorage.removeItem('signup_email')
                       }
+                      // Navigate to root without query parameters
                       window.location.href = '/'
                     }}
                   >
