@@ -1,6 +1,5 @@
 import React from 'react'
 import { useTenant } from '../../contexts/TenantContext'
-import { useNavigation } from '../../contexts/NavigationContext'
 import { Button } from '../ui'
 import { Mail, LogIn } from 'lucide-react'
 
@@ -10,7 +9,6 @@ import { Mail, LogIn } from 'lucide-react'
  */
 export const MarketingFooter: React.FC = () => {
   const { config } = useTenant()
-  const { navigateToAuth } = useNavigation()
   const logoPath = `${import.meta.env.BASE_URL}${config.logo}`
 
   return (
@@ -96,7 +94,11 @@ export const MarketingFooter: React.FC = () => {
             <Button
               variant="secondary"
               size="sm"
-              onClick={() => navigateToAuth('login')}
+              onClick={() => {
+                // Redirect to demo tenant login page for admin access
+                // Regular users can still access marketing site after login
+                window.location.href = 'https://demo.rundeklar.dk/#/login'
+              }}
               className="flex items-center gap-2"
             >
               <LogIn className="w-4 h-4" />
