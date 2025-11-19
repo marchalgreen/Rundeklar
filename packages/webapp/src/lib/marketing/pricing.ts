@@ -25,7 +25,7 @@ export const pricingPlans: PricingPlan[] = [
       '1 træningsgruppe',
       '1 trænerlogin',
       'Tjek ind system',
-      'Kampprogram med drag & drop',
+      'Runder med intuitivt drag & drop',
       'Spilleradministration',
       'Fremmødestatistikker',
       'Email support'
@@ -46,7 +46,7 @@ export const pricingPlans: PricingPlan[] = [
       'Egen administrator',
       'Udvidet spilleradministration',
       'Tjek ind system',
-      'Kampprogram med drag og drop på alle baner',
+      'Runder med intuitivt drag & drop',
       'Fremmødestatistikker',
       'Prioriteret support'
     ],
@@ -62,6 +62,7 @@ export const pricingPlans: PricingPlan[] = [
     yearlyPrice: 0,
     features: [
       'Alt fra Professionel',
+      'Ubegrænset antal træningsgrupper',
       'White label branding',
       'Custom funktioner og rapporter',
       'Dedikeret onboarding og support',
