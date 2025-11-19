@@ -51,13 +51,13 @@ Run the migration to create authentication tables in your Neon database:
 
 ```bash
 # Using psql with Neon connection string:
-psql $DATABASE_URL -f supabase/migrations/007_add_club_auth.sql
+psql $DATABASE_URL -f database/migrations/007_add_club_auth.sql
 
 # Or using Neon CLI:
-neonctl db execute --project-id <your-project-id> --database <your-db-name> --file supabase/migrations/007_add_club_auth.sql
+neonctl db execute --project-id <your-project-id> --database <your-db-name> --file database/migrations/007_add_club_auth.sql
 ```
 
-**Note**: The `supabase/migrations/` directory name is historical - these are standard PostgreSQL migrations that work with Neon.
+**Note**: The `database/migrations/` directory name is historical - these are standard PostgreSQL migrations that work with Neon.
 
 ## Setup Steps
 
@@ -82,7 +82,7 @@ neonctl db execute --project-id <your-project-id> --database <your-db-name> --fi
    - Production: Your production domain
 
 5. **Run Database Migration**
-   - Apply `supabase/migrations/007_add_club_auth.sql` to your Neon database
+   - Apply `database/migrations/007_add_club_auth.sql` to your Neon database
    - You can use `psql` with your Neon connection string, or the Neon dashboard SQL editor
 
 6. **Restart Development Server**

@@ -77,9 +77,9 @@ This PR implements a comprehensive multi-tenant system with role-based access co
 - `packages/webapp/scripts/migrate-default-to-herlev-hjorten.ts` - Migration utility
 
 **Migrations:**
-- `supabase/migrations/008_update_clubs_for_multi_tenant.sql` - Multi-tenant schema
-- `supabase/migrations/009_normalize_coach_usernames.sql` - Username normalization
-- `supabase/migrations/010_rename_default_tenant.sql` - Default tenant rename
+- `database/migrations/008_update_clubs_for_multi_tenant.sql` - Multi-tenant schema
+- `database/migrations/009_normalize_coach_usernames.sql` - Username normalization
+- `database/migrations/010_rename_default_tenant.sql` - Default tenant rename
 
 **Documentation:**
 - `CRITICAL_REVIEW.md` - Critical issues review and fixes

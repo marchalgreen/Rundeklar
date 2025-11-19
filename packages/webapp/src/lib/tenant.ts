@@ -105,18 +105,45 @@ export const getCurrentTenantId = (): string => {
     return 'marketing' // Eller håndter særskilt
   }
   
-  // 4. Development mode: Check for tenant query parameter or path
-  // Allows testing different tenants locally: ?tenant=marketing or /marketing
+  // 4. Check for plan parameter - indicates marketing signup flow
+  if (typeof window !== 'undefined') {
+    const urlParams = new URLSearchParams(window.location.search)
+    const planParam = urlParams.get('plan')
+    if (planParam && (planParam === 'basic' || planParam === 'professional')) {
+      return 'marketing'
+    }
+  }
+
+  // 5. Development mode: Default to demo tenant for localhost
+  // Allows testing different tenants locally: ?tenant=herlev-hjorten or /herlev-hjorten/check-in
   if (hostname === 'localhost' || hostname === '127.0.0.1' || hostname.startsWith('192.168.') || hostname.startsWith('10.')) {
-    // Check query parameter first (e.g., ?tenant=marketing)
+    // Check query parameter first (e.g., ?tenant=herlev-hjorten to override default)
     const urlParams = new URLSearchParams(window.location.search)
     const tenantParam = urlParams.get('tenant')
     if (tenantParam) {
       return tenantParam
     }
+    
+    // Check path-based detection for explicit tenant override
+    const pathname = window.location.pathname
+    const hash = window.location.hash
+    
+    // Extract path from hash if using HashRouter
+    const actualPath = hash ? hash.replace(/^#/, '') : pathname
+    const pathTenantId = extractTenantId(actualPath)
+    
+    // If path explicitly specifies a tenant (not a known route), use it
+    const knownRoutes = ['coach', 'check-in', 'match-program', 'players', 'statistics', 'admin']
+    const firstPart = actualPath.replace(/^\/+/, '').split('/')[0]
+    if (firstPart && !knownRoutes.includes(firstPart) && pathTenantId !== 'herlev-hjorten') {
+      return pathTenantId === 'default' ? 'herlev-hjorten' : pathTenantId
+    }
+    
+    // Default to demo tenant for localhost development
+    return 'demo'
   }
   
-  // 5. Fallback (development/localhost) - use path-based detection
+  // 6. Fallback (production) - use path-based detection
   // For HashRouter, pathname is like "/#/demo/check-in" or "/#/check-in"
   // For BrowserRouter, pathname is like "/demo/check-in" or "/check-in"
   const pathname = window.location.pathname

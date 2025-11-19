@@ -178,6 +178,14 @@ async function setupTenantAdminRoutes() {
   app.post('/api/:tenantId/admin/coaches/:id', wrapHandler(coachByIdHandler)) // For PIN reset
 }
 
+// Load marketing route handlers
+async function setupMarketingRoutes() {
+  const signupHandler = (await import('../api/marketing/signup.js')).default
+  
+  // Marketing routes
+  app.post('/api/marketing/signup', wrapHandler(signupHandler))
+}
+
 // API route handler (same as Vercel serverless function)
 app.post('/api/db', async (req, res) => {
   try {
@@ -218,7 +226,8 @@ app.post('/api/db', async (req, res) => {
 Promise.all([
   setupAuthRoutes(),
   setupAdminRoutes(),
-  setupTenantAdminRoutes()
+  setupTenantAdminRoutes(),
+  setupMarketingRoutes()
 ]).then(() => {
   const server = app.listen(PORT, () => {
     console.log(`🚀 API server running on http://127.0.0.1:${PORT}`)
@@ -226,6 +235,7 @@ Promise.all([
     console.log(`   - POST /api/db`)
     console.log(`   - POST /api/auth/register`)
     console.log(`   - POST /api/auth/login`)
+    console.log(`   - POST /api/marketing/signup`)
     console.log(`   - GET /api/admin/tenants`)
     console.log(`   - GET /api/:tenantId/admin/coaches`)
     console.log(`   - ... and other routes`)

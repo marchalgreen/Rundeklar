@@ -64,7 +64,7 @@ Follow this systematic approach.
    - [ ] API docs describe request/response shapes and error cases.
    - [ ] Module README added/updated when introducing or significantly changing a module.
 - **Logic changes:** Run unit tests (`pnpm test`). Add/extend tests under `packages/webapp/tests/` (e.g., `matchmaker.test.ts`) for new edge cases. Reproduce the scenario end-to-end in the UI.
-- **Data/Supabase changes:** Ensure `.env.local` is configured and the SQL migration is applied (see Supabase section). Verify changes in Supabase Table Editor after UI actions.
+- **Data/Neon changes:** Ensure `.env.local` is configured and the SQL migration is applied. Verify changes in Neon SQL Editor after UI actions.
 - **Config changes:** Modify `src/config/tenants/*.json`, restart dev server, and verify branding/court settings are reflected. Rebuild to ensure configs are copied to `dist/`.
 
 ---
@@ -84,18 +84,17 @@ Quality
 pnpm lint
 pnpm test          # Vitest
 
-Supabase (data)
+Neon Database (data)
 
-See `packages/webapp/SUPABASE_SETUP.md` for full setup. Essentials:
+See `docs/VERCEL_NEON_SETUP.md` for full setup. Essentials:
 
 - Create `packages/webapp/.env.local` with:
 
 ```env
-VITE_SUPABASE_URL=https://xxxxx.supabase.co
-VITE_SUPABASE_ANON_KEY=eyJ...
+DATABASE_URL=postgresql://user:password@host:port/database
 ```
 
-- Apply initial schema via Supabase SQL Editor using `supabase/migrations/001_initial_schema.sql` (recommended).
+- Apply initial schema via Neon SQL Editor using `database/migrations/001_initial_schema.sql` (recommended).
 
 Optional seed helpers (run from repo root):
 
@@ -134,7 +133,7 @@ Error paths to try (pick at least one)
 
 - Submit an empty/invalid player form and verify field errors or a toast.
 - Attempt to arrange with fewer than 4 players and confirm graceful handling.
-- Disconnect/revoke Supabase and verify a clear error message is shown/logged.
+- Disconnect/revoke Neon database and verify a clear error message is shown/logged.
 
 ⸻
 

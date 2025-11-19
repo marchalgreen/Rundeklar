@@ -1,6 +1,6 @@
 # How to Apply Database Migrations
 
-This project uses raw SQL migrations (not Prisma). Migrations are located in `supabase/migrations/` and need to be run manually in your database SQL editor.
+This project uses raw SQL migrations (not Prisma). Migrations are located in `database/migrations/` and need to be run manually in your Neon database SQL editor.
 
 ## New Migrations to Apply
 
@@ -20,7 +20,7 @@ After implementing the multi-tenant architecture, you need to apply these migrat
 
 2. **Run Migration 008**
    - Click **New Query**
-   - Open `supabase/migrations/008_update_clubs_for_multi_tenant.sql`
+   - Open `database/migrations/008_update_clubs_for_multi_tenant.sql`
    - Copy the entire contents
    - Paste into SQL Editor
    - Click **Run** (or press Cmd/Ctrl + Enter)
@@ -28,25 +28,13 @@ After implementing the multi-tenant architecture, you need to apply these migrat
 
 3. **Run Migration 010**
    - Click **New Query** again
-   - Open `supabase/migrations/010_rename_default_tenant.sql`
+   - Open `database/migrations/010_rename_default_tenant.sql`
    - Copy the entire contents
    - Paste into SQL Editor
    - Click **Run**
    - Wait for "Success" message
 
-### Option 2: Supabase Database
-
-1. **Open Supabase Dashboard**
-   - Go to [supabase.com](https://supabase.com)
-   - Select your project
-   - Click **SQL Editor** in the left sidebar
-
-2. **Run Migrations**
-   - Follow the same steps as Neon (above)
-   - Copy and paste each migration file
-   - Run them in order (008 first, then 010)
-
-### Option 3: psql Command Line
+### Option 2: psql Command Line
 
 If you have `psql` installed and your database connection string:
 
@@ -55,10 +43,10 @@ If you have `psql` installed and your database connection string:
 export DATABASE_URL="postgresql://user:password@host:port/database?sslmode=require"
 
 # Run migration 008
-psql "$DATABASE_URL" -f supabase/migrations/008_update_clubs_for_multi_tenant.sql
+psql "$DATABASE_URL" -f database/migrations/008_update_clubs_for_multi_tenant.sql
 
 # Run migration 010
-psql "$DATABASE_URL" -f supabase/migrations/010_rename_default_tenant.sql
+psql "$DATABASE_URL" -f database/migrations/010_rename_default_tenant.sql
 ```
 
 ## Verify Migrations
@@ -104,7 +92,7 @@ SELECT COUNT(*) FROM clubs WHERE tenant_id = 'herlev-hjorten';
 
 ### Error: "permission denied"
 - Make sure you're using a database user with sufficient permissions
-- For Neon/Supabase, use the SQL Editor (it has admin permissions)
+- For Neon, use the SQL Editor (it has admin permissions)
 
 ## Migration Order
 

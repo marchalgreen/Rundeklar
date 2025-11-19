@@ -23,7 +23,7 @@ Hver browser får en unik `isolation_id` (UUID) gemt i localStorage. For demo te
 ## Fase 1: Database Migration
 
 ### 1.1 Opret migration fil
-**Fil:** `supabase/migrations/XXX_add_isolation_id.sql`
+**Fil:** `database/migrations/XXX_add_isolation_id.sql`
 
 ```sql
 -- Migration: Add isolation_id for demo tenant browser isolation
@@ -68,7 +68,7 @@ pnpm exec tsx scripts/test-migration.ts XXX_add_isolation_id.sql
 ### 1.3 Anvend migration på demo database
 ```bash
 # Anvend på demo database (ikke produktion endnu!)
-# Via Supabase dashboard SQL Editor eller via CLI
+# Via Neon dashboard SQL Editor eller via CLI
 ```
 
 ---
@@ -620,32 +620,30 @@ ALTER TABLE match_players DROP COLUMN IF EXISTS isolation_id;
 ## Checklist
 
 ### Pre-deployment
-- [ ] Migration fil oprettet og testet lokalt
-- [ ] Isolation utility oprettet
-- [ ] Alle Postgres queries opdateret
-- [ ] Cache invalidation opdateret
-- [ ] TypeScript kompilerer uden fejl
-- [ ] Linting passerer
+- [x] Migration fil oprettet og testet lokalt
+- [x] Isolation utility oprettet
+- [x] Alle Postgres queries opdateret
+- [x] Cache invalidation opdateret
+- [x] TypeScript kompilerer uden fejl
+- [x] Linting passerer
 
 ### Testing
-- [ ] Produktion testet før migration
-- [ ] Migration testet lokalt
-- [ ] Demo isolation testet i to browsers
-- [ ] Produktion testet efter migration
-- [ ] Edge cases testet (session switching, cache invalidation)
+- [x] Migration kørt i Neon database
+- [x] Demo isolation testet i to browsers ✅
+- [x] Verificeret at hver browser får unik isolation_id
+- [x] Verificeret at sessions isoleres korrekt
+- [x] Cache invalidation testet og virker
 
 ### Deployment
-- [ ] Kode deployed til demo
-- [ ] Migration kørt på demo database
-- [ ] Demo isolation verificeret
-- [ ] Kode deployed til produktion
-- [ ] Migration kørt på produktion database
-- [ ] Produktion verificeret
+- [x] Kode implementeret og testet lokalt
+- [x] Migration kørt på Neon database
+- [x] Demo isolation verificeret og virker ✅
+- [x] Localhost default til demo tenant konfigureret
 
 ### Post-deployment
-- [ ] Dokumentation opdateret
-- [ ] Monitoring sat op (hvis relevant)
-- [ ] Stakeholder informeret
+- [x] Dokumentation opdateret
+- [ ] Deploy til produktion (når klar)
+- [ ] Kør migration på produktion database (når klar)
 
 ---
 
@@ -675,4 +673,5 @@ Hvis der opstår problemer:
 2. Verificer at migration er kørt korrekt
 3. Tjek at localStorage indeholder isolation_id for demo tenant
 4. Verificer at queries filtrerer korrekt efter isolation_id
+
 

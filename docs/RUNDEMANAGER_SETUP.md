@@ -19,7 +19,7 @@ This guide will help you set up RundeManagerDemoDB as a replica of HerlevHjorten
    - Click "New query"
 
 3. **Copy and run the complete schema**
-   - Open `supabase/migrations/000_complete_schema_for_new_db.sql` from this repo
+   - Open `database/migrations/000_complete_schema_for_new_db.sql` from this repo
    - Copy the entire contents
    - Paste into the SQL Editor
    - Click "Run" (or press Ctrl/Cmd + Enter)

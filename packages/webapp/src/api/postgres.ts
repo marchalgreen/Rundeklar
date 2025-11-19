@@ -112,6 +112,25 @@ const getTenantId = (): string => {
   }
 }
 
+/**
+ * Gets isolation ID for current tenant (only demo tenant uses this).
+ * @returns Isolation ID or null
+ */
+const getIsolationIdForCurrentTenant = async (): Promise<string | null> => {
+  try {
+    const tenantId = getTenantId()
+    if (tenantId !== 'demo') {
+      return null
+    }
+    
+    const { getIsolationId } = await import('../lib/isolation')
+    return getIsolationId(tenantId)
+  } catch (error) {
+    console.error('[postgres] Failed to get isolation_id:', error)
+    return null
+  }
+}
+
 /** In-memory database state structure (for backward compatibility). */
 export type DatabaseState = {
   players: Player[]
@@ -260,39 +279,112 @@ export const loadState = async (): Promise<DatabaseState> => {
   const sql = getPostgres()
 
   try {
-    // Get tenant ID for filtering
+    // Get tenant ID and isolation ID for filtering
     const tenantId = getTenantId()
+    const isolationId = await getIsolationIdForCurrentTenant()
 
-    // Load all data in parallel (filtered by tenant_id)
+    // Load all data in parallel (filtered by tenant_id and isolation_id)
     const results = await Promise.all([
+      // Players don't need isolation filtering (they're shared across isolation sessions)
       sql`SELECT * FROM players WHERE tenant_id = ${tenantId} ORDER BY name`.catch(err => {
         console.error('[loadState] Error loading players:', err)
         return []
       }),
-      sql`SELECT * FROM training_sessions WHERE tenant_id = ${tenantId} ORDER BY created_at DESC`.catch(err => {
-        console.error('[loadState] Error loading sessions:', err)
-        return []
-      }),
-      sql`SELECT * FROM check_ins WHERE tenant_id = ${tenantId} ORDER BY created_at`.catch(err => {
-        console.error('[loadState] Error loading checkIns:', err)
-        return []
-      }),
+      // Sessions: filter by isolation_id
+      isolationId
+        ? sql`SELECT * FROM training_sessions WHERE tenant_id = ${tenantId} AND isolation_id = ${isolationId} ORDER BY created_at DESC`.catch(err => {
+            console.error('[loadState] Error loading sessions:', err)
+            return []
+          })
+        : sql`SELECT * FROM training_sessions WHERE tenant_id = ${tenantId} AND (isolation_id IS NULL OR isolation_id = '') ORDER BY created_at DESC`.catch(err => {
+            console.error('[loadState] Error loading sessions:', err)
+            return []
+          }),
+      // Check-ins: filter by isolation_id from training_sessions
+      isolationId
+        ? sql`
+            SELECT ci.* FROM check_ins ci
+            INNER JOIN training_sessions ts ON ci.session_id = ts.id
+            WHERE ci.tenant_id = ${tenantId} AND ts.isolation_id = ${isolationId}
+            ORDER BY ci.created_at
+          `.catch(err => {
+            console.error('[loadState] Error loading checkIns:', err)
+            return []
+          })
+        : sql`
+            SELECT ci.* FROM check_ins ci
+            INNER JOIN training_sessions ts ON ci.session_id = ts.id
+            WHERE ci.tenant_id = ${tenantId} AND (ts.isolation_id IS NULL OR ts.isolation_id = '')
+            ORDER BY ci.created_at
+          `.catch(err => {
+            console.error('[loadState] Error loading checkIns:', err)
+            return []
+          }),
+      // Courts don't need isolation filtering (they're shared across isolation sessions)
       sql`SELECT * FROM courts WHERE tenant_id = ${tenantId} ORDER BY idx`.catch(err => {
         console.error('[loadState] Error loading courts:', err)
         return []
       }),
-      sql`SELECT * FROM matches WHERE tenant_id = ${tenantId} ORDER BY started_at`.catch(err => {
-        console.error('[loadState] Error loading matches:', err)
-        return []
-      }),
-      sql`SELECT * FROM match_players WHERE tenant_id = ${tenantId}`.catch(err => {
-        console.error('[loadState] Error loading matchPlayers:', err)
-        return []
-      }),
-      sql`SELECT * FROM statistics_snapshots WHERE tenant_id = ${tenantId} ORDER BY session_date DESC`.catch(err => {
-        console.error('[loadState] Error loading statistics:', err)
-        return []
-      })
+      // Matches: filter by isolation_id from training_sessions
+      isolationId
+        ? sql`
+            SELECT m.* FROM matches m
+            INNER JOIN training_sessions ts ON m.session_id = ts.id
+            WHERE m.tenant_id = ${tenantId} AND ts.isolation_id = ${isolationId}
+            ORDER BY m.started_at
+          `.catch(err => {
+            console.error('[loadState] Error loading matches:', err)
+            return []
+          })
+        : sql`
+            SELECT m.* FROM matches m
+            INNER JOIN training_sessions ts ON m.session_id = ts.id
+            WHERE m.tenant_id = ${tenantId} AND (ts.isolation_id IS NULL OR ts.isolation_id = '')
+            ORDER BY m.started_at
+          `.catch(err => {
+            console.error('[loadState] Error loading matches:', err)
+            return []
+          }),
+      // Match players: filter by isolation_id from training_sessions via matches
+      isolationId
+        ? sql`
+            SELECT mp.* FROM match_players mp
+            INNER JOIN matches m ON mp.match_id = m.id
+            INNER JOIN training_sessions ts ON m.session_id = ts.id
+            WHERE mp.tenant_id = ${tenantId} AND ts.isolation_id = ${isolationId}
+          `.catch(err => {
+            console.error('[loadState] Error loading matchPlayers:', err)
+            return []
+          })
+        : sql`
+            SELECT mp.* FROM match_players mp
+            INNER JOIN matches m ON mp.match_id = m.id
+            INNER JOIN training_sessions ts ON m.session_id = ts.id
+            WHERE mp.tenant_id = ${tenantId} AND (ts.isolation_id IS NULL OR ts.isolation_id = '')
+          `.catch(err => {
+            console.error('[loadState] Error loading matchPlayers:', err)
+            return []
+          }),
+      // Statistics snapshots: filter by isolation_id from training_sessions
+      isolationId
+        ? sql`
+            SELECT ss.* FROM statistics_snapshots ss
+            INNER JOIN training_sessions ts ON ss.session_id = ts.id
+            WHERE ss.tenant_id = ${tenantId} AND ts.isolation_id = ${isolationId}
+            ORDER BY ss.session_date DESC
+          `.catch(err => {
+            console.error('[loadState] Error loading statistics:', err)
+            return []
+          })
+        : sql`
+            SELECT ss.* FROM statistics_snapshots ss
+            INNER JOIN training_sessions ts ON ss.session_id = ts.id
+            WHERE ss.tenant_id = ${tenantId} AND (ts.isolation_id IS NULL OR ts.isolation_id = '')
+            ORDER BY ss.session_date DESC
+          `.catch(err => {
+            console.error('[loadState] Error loading statistics:', err)
+            return []
+          })
     ])
     
     const [players, sessions, checkIns, courts, matches, matchPlayers, statistics] = results
@@ -579,7 +671,25 @@ export const getSessions = async (): Promise<TrainingSession[]> => {
 
   const sql = getPostgres()
   const tenantId = getTenantId()
-  const sessions = await sql`SELECT * FROM training_sessions WHERE tenant_id = ${tenantId} ORDER BY created_at DESC`
+  const isolationId = await getIsolationIdForCurrentTenant()
+  
+  let sessions
+  if (isolationId) {
+    // Demo tenant: filter by isolation_id
+    sessions = await sql`
+      SELECT * FROM training_sessions 
+      WHERE tenant_id = ${tenantId} AND isolation_id = ${isolationId}
+      ORDER BY created_at DESC
+    `
+  } else {
+    // Production tenants: filter by NULL isolation_id
+    sessions = await sql`
+      SELECT * FROM training_sessions 
+      WHERE tenant_id = ${tenantId} AND (isolation_id IS NULL OR isolation_id = '')
+      ORDER BY created_at DESC
+    `
+  }
+  
   const converted = sessions.map(rowToSession)
   
   // Update cache
@@ -597,9 +707,11 @@ export const getSessions = async (): Promise<TrainingSession[]> => {
 export const createSession = async (session: Omit<TrainingSession, 'id' | 'createdAt'>): Promise<TrainingSession> => {
   const sql = getPostgres()
   const tenantId = getTenantId()
+  const isolationId = await getIsolationIdForCurrentTenant()
+  
   const [created] = await sql`
-    INSERT INTO training_sessions (date, status, tenant_id)
-    VALUES (${session.date}, ${session.status}, ${tenantId})
+    INSERT INTO training_sessions (date, status, tenant_id, isolation_id)
+    VALUES (${session.date}, ${session.status}, ${tenantId}, ${isolationId})
     RETURNING *
   `
   const converted = rowToSession(created)
@@ -620,16 +732,28 @@ export const createSession = async (session: Omit<TrainingSession, 'id' | 'creat
  */
 export const updateSession = async (id: string, updates: Partial<Omit<TrainingSession, 'id' | 'createdAt'>>): Promise<TrainingSession> => {
   const sql = getPostgres()
+  const tenantId = getTenantId()
+  const isolationId = await getIsolationIdForCurrentTenant()
   
   const updateData: any = {}
   if (updates.date !== undefined) updateData.date = updates.date
   if (updates.status !== undefined) updateData.status = updates.status
 
-  const tenantId = getTenantId()
-
   if (Object.keys(updateData).length === 0) {
-    const [session] = await sql`SELECT * FROM training_sessions WHERE id = ${id} AND tenant_id = ${tenantId}`
-    return rowToSession(session)
+    // Fetch session with isolation check
+    if (isolationId) {
+      const [session] = await sql`SELECT * FROM training_sessions WHERE id = ${id} AND tenant_id = ${tenantId} AND isolation_id = ${isolationId}`
+      if (!session) {
+        throw new Error('Session not found or isolation mismatch')
+      }
+      return rowToSession(session)
+    } else {
+      const [session] = await sql`SELECT * FROM training_sessions WHERE id = ${id} AND tenant_id = ${tenantId} AND (isolation_id IS NULL OR isolation_id = '')`
+      if (!session) {
+        throw new Error('Session not found')
+      }
+      return rowToSession(session)
+    }
   }
 
   const setClauses: string[] = []
@@ -642,24 +766,48 @@ export const updateSession = async (id: string, updates: Partial<Omit<TrainingSe
     paramIndex++
   }
   
-  values.push(tenantId, id)
-  
-  const [updated] = await sql.unsafe(
-    `UPDATE training_sessions SET ${setClauses.join(', ')} WHERE tenant_id = $${paramIndex} AND id = $${paramIndex + 1} RETURNING *`,
-    values
-  )
-
-  const converted = rowToSession(updated)
-  
-  // Optimistic cache update
-  if (tableCaches.sessions) {
-    tableCaches.sessions = tableCaches.sessions.map(s => s.id === id ? converted : s)
+  // Add isolation filter to WHERE clause
+  if (isolationId) {
+    values.push(tenantId, isolationId, id)
+    const [updated] = await sql.unsafe(
+      `UPDATE training_sessions SET ${setClauses.join(', ')} WHERE tenant_id = $${paramIndex} AND isolation_id = $${paramIndex + 1} AND id = $${paramIndex + 2} RETURNING *`,
+      values
+    )
+    if (!updated) {
+      throw new Error('Session not found or isolation mismatch')
+    }
+    const converted = rowToSession(updated)
+    
+    // Optimistic cache update
+    if (tableCaches.sessions) {
+      tableCaches.sessions = tableCaches.sessions.map(s => s.id === id ? converted : s)
+    }
+    if (cachedState) {
+      cachedState.sessions = cachedState.sessions.map(s => s.id === id ? converted : s)
+    }
+    
+    return converted
+  } else {
+    values.push(tenantId, id)
+    const [updated] = await sql.unsafe(
+      `UPDATE training_sessions SET ${setClauses.join(', ')} WHERE tenant_id = $${paramIndex} AND (isolation_id IS NULL OR isolation_id = '') AND id = $${paramIndex + 1} RETURNING *`,
+      values
+    )
+    if (!updated) {
+      throw new Error('Session not found')
+    }
+    const converted = rowToSession(updated)
+    
+    // Optimistic cache update
+    if (tableCaches.sessions) {
+      tableCaches.sessions = tableCaches.sessions.map(s => s.id === id ? converted : s)
+    }
+    if (cachedState) {
+      cachedState.sessions = cachedState.sessions.map(s => s.id === id ? converted : s)
+    }
+    
+    return converted
   }
-  if (cachedState) {
-    cachedState.sessions = cachedState.sessions.map(s => s.id === id ? converted : s)
-  }
-
-  return converted
 }
 
 /**
@@ -668,7 +816,18 @@ export const updateSession = async (id: string, updates: Partial<Omit<TrainingSe
 export const deleteSession = async (id: string): Promise<void> => {
   const sql = getPostgres()
   const tenantId = getTenantId()
-  await sql`DELETE FROM training_sessions WHERE id = ${id} AND tenant_id = ${tenantId}`
+  const isolationId = await getIsolationIdForCurrentTenant()
+  
+  if (isolationId) {
+    // Demo tenant: verify isolation_id matches before deletion
+    const result = await sql`DELETE FROM training_sessions WHERE id = ${id} AND tenant_id = ${tenantId} AND isolation_id = ${isolationId} RETURNING id`
+    if (result.length === 0) {
+      throw new Error('Session not found or isolation mismatch')
+    }
+  } else {
+    // Production tenants: only delete sessions with NULL isolation_id
+    await sql`DELETE FROM training_sessions WHERE id = ${id} AND tenant_id = ${tenantId} AND (isolation_id IS NULL OR isolation_id = '')`
+  }
   
   // Optimistic cache update
   if (tableCaches.sessions) {
@@ -690,7 +849,29 @@ export const getCheckIns = async (): Promise<CheckIn[]> => {
 
   const sql = getPostgres()
   const tenantId = getTenantId()
-  const checkIns = await sql`SELECT * FROM check_ins WHERE tenant_id = ${tenantId} ORDER BY created_at`
+  const isolationId = await getIsolationIdForCurrentTenant()
+  
+  let checkIns
+  if (isolationId) {
+    // Demo tenant: filter by isolation_id from training_sessions
+    checkIns = await sql`
+      SELECT ci.* FROM check_ins ci
+      INNER JOIN training_sessions ts ON ci.session_id = ts.id
+      WHERE ci.tenant_id = ${tenantId} 
+        AND ts.isolation_id = ${isolationId}
+      ORDER BY ci.created_at
+    `
+  } else {
+    // Production tenants: filter by NULL isolation_id
+    checkIns = await sql`
+      SELECT ci.* FROM check_ins ci
+      INNER JOIN training_sessions ts ON ci.session_id = ts.id
+      WHERE ci.tenant_id = ${tenantId} 
+        AND (ts.isolation_id IS NULL OR ts.isolation_id = '')
+      ORDER BY ci.created_at
+    `
+  }
+  
   const converted = checkIns.map(rowToCheckIn)
   
   // Update cache
@@ -709,12 +890,30 @@ export const getCheckIns = async (): Promise<CheckIn[]> => {
 export const createCheckIn = async (checkIn: Omit<CheckIn, 'id' | 'createdAt'>): Promise<CheckIn> => {
   const sql = getPostgres()
   const tenantId = getTenantId()
+  const isolationId = await getIsolationIdForCurrentTenant()
+  
+  // Get session to verify isolation_id matches (for demo tenant)
+  if (isolationId) {
+    const [session] = await sql`
+      SELECT isolation_id FROM training_sessions 
+      WHERE id = ${checkIn.sessionId} AND tenant_id = ${tenantId}
+    `
+    
+    if (!session) {
+      throw new Error('Session not found')
+    }
+    
+    // Verify isolation_id matches (for demo tenant)
+    if (session.isolation_id !== isolationId) {
+      throw new Error('Session isolation mismatch')
+    }
+  }
   
   // Try to insert, but if it already exists (duplicate key), return the existing one
   // Uses the unique constraint on (session_id, player_id, tenant_id)
   const result = await sql`
-    INSERT INTO check_ins (session_id, player_id, max_rounds, tenant_id)
-    VALUES (${checkIn.sessionId}, ${checkIn.playerId}, ${checkIn.maxRounds ?? null}, ${tenantId})
+    INSERT INTO check_ins (session_id, player_id, max_rounds, tenant_id, isolation_id)
+    VALUES (${checkIn.sessionId}, ${checkIn.playerId}, ${checkIn.maxRounds ?? null}, ${tenantId}, ${isolationId})
     ON CONFLICT ON CONSTRAINT check_ins_session_id_player_id_tenant_id_key DO NOTHING
     RETURNING *
   `
@@ -775,7 +974,18 @@ export const createCheckIn = async (checkIn: Omit<CheckIn, 'id' | 'createdAt'>):
 export const deleteCheckIn = async (id: string): Promise<void> => {
   const sql = getPostgres()
   const tenantId = getTenantId()
-  await sql`DELETE FROM check_ins WHERE id = ${id} AND tenant_id = ${tenantId}`
+  const isolationId = await getIsolationIdForCurrentTenant()
+  
+  if (isolationId) {
+    // Demo tenant: verify isolation_id matches before deletion
+    const result = await sql`DELETE FROM check_ins WHERE id = ${id} AND tenant_id = ${tenantId} AND isolation_id = ${isolationId} RETURNING id`
+    if (result.length === 0) {
+      throw new Error('Check-in not found or isolation mismatch')
+    }
+  } else {
+    // Production tenants: only delete check-ins with NULL isolation_id
+    await sql`DELETE FROM check_ins WHERE id = ${id} AND tenant_id = ${tenantId} AND (isolation_id IS NULL OR isolation_id = '')`
+  }
   
   // Invalidate cache to ensure fresh data on next check
   // This prevents race conditions when checking in immediately after checkout
@@ -857,7 +1067,29 @@ export const getMatches = async (): Promise<Match[]> => {
 
   const sql = getPostgres()
   const tenantId = getTenantId()
-  const matches = await sql`SELECT * FROM matches WHERE tenant_id = ${tenantId} ORDER BY started_at`
+  const isolationId = await getIsolationIdForCurrentTenant()
+  
+  let matches
+  if (isolationId) {
+    // Demo tenant: filter by isolation_id from training_sessions
+    matches = await sql`
+      SELECT m.* FROM matches m
+      INNER JOIN training_sessions ts ON m.session_id = ts.id
+      WHERE m.tenant_id = ${tenantId} 
+        AND ts.isolation_id = ${isolationId}
+      ORDER BY m.started_at
+    `
+  } else {
+    // Production tenants: filter by NULL isolation_id
+    matches = await sql`
+      SELECT m.* FROM matches m
+      INNER JOIN training_sessions ts ON m.session_id = ts.id
+      WHERE m.tenant_id = ${tenantId} 
+        AND (ts.isolation_id IS NULL OR ts.isolation_id = '')
+      ORDER BY m.started_at
+    `
+  }
+  
   const converted = matches.map(rowToMatch)
   
   // Update cache
@@ -875,15 +1107,30 @@ export const getMatches = async (): Promise<Match[]> => {
 export const createMatch = async (match: Omit<Match, 'id'>): Promise<Match> => {
   const sql = getPostgres()
   const tenantId = getTenantId()
+  
+  // Get session to get isolation_id
+  const [session] = await sql`
+    SELECT isolation_id FROM training_sessions 
+    WHERE id = ${match.sessionId} AND tenant_id = ${tenantId}
+  `
+  
+  if (!session) {
+    throw new Error('Session not found')
+  }
+  
+  // Use session's isolation_id (null for production)
+  const matchIsolationId = session.isolation_id
+  
   const [created] = await sql`
-    INSERT INTO matches (session_id, court_id, started_at, ended_at, round, tenant_id)
+    INSERT INTO matches (session_id, court_id, started_at, ended_at, round, tenant_id, isolation_id)
     VALUES (
       ${match.sessionId},
       ${match.courtId},
       ${match.startedAt},
       ${match.endedAt ?? null},
       ${match.round ?? null},
-      ${tenantId}
+      ${tenantId},
+      ${matchIsolationId}
     )
     RETURNING *
   `
@@ -978,7 +1225,29 @@ export const getMatchPlayers = async (): Promise<MatchPlayer[]> => {
 
   const sql = getPostgres()
   const tenantId = getTenantId()
-  const matchPlayers = await sql`SELECT * FROM match_players WHERE tenant_id = ${tenantId}`
+  const isolationId = await getIsolationIdForCurrentTenant()
+  
+  let matchPlayers
+  if (isolationId) {
+    // Demo tenant: filter by isolation_id from training_sessions via matches
+    matchPlayers = await sql`
+      SELECT mp.* FROM match_players mp
+      INNER JOIN matches m ON mp.match_id = m.id
+      INNER JOIN training_sessions ts ON m.session_id = ts.id
+      WHERE mp.tenant_id = ${tenantId} 
+        AND ts.isolation_id = ${isolationId}
+    `
+  } else {
+    // Production tenants: filter by NULL isolation_id
+    matchPlayers = await sql`
+      SELECT mp.* FROM match_players mp
+      INNER JOIN matches m ON mp.match_id = m.id
+      INNER JOIN training_sessions ts ON m.session_id = ts.id
+      WHERE mp.tenant_id = ${tenantId} 
+        AND (ts.isolation_id IS NULL OR ts.isolation_id = '')
+    `
+  }
+  
   const converted = matchPlayers.map(rowToMatchPlayer)
   
   // Update cache
@@ -996,9 +1265,31 @@ export const getMatchPlayers = async (): Promise<MatchPlayer[]> => {
 export const createMatchPlayer = async (matchPlayer: Omit<MatchPlayer, 'id'>): Promise<MatchPlayer> => {
   const sql = getPostgres()
   const tenantId = getTenantId()
+  
+  // Get match to get isolation_id from session
+  const [match] = await sql`
+    SELECT m.isolation_id, ts.isolation_id as session_isolation_id
+    FROM matches m
+    INNER JOIN training_sessions ts ON m.session_id = ts.id
+    WHERE m.id = ${matchPlayer.matchId} AND m.tenant_id = ${tenantId}
+  `
+  
+  if (!match) {
+    throw new Error('Match not found')
+  }
+  
+  // Use session's isolation_id (null for production)
+  const isolationId = match.session_isolation_id
+  
   const [created] = await sql`
-    INSERT INTO match_players (match_id, player_id, slot, tenant_id)
-    VALUES (${matchPlayer.matchId}, ${matchPlayer.playerId}, ${matchPlayer.slot}, ${tenantId})
+    INSERT INTO match_players (match_id, player_id, slot, tenant_id, isolation_id)
+    VALUES (
+      ${matchPlayer.matchId},
+      ${matchPlayer.playerId},
+      ${matchPlayer.slot},
+      ${tenantId},
+      ${isolationId}
+    )
     RETURNING *
   `
   const converted = rowToMatchPlayer(created)

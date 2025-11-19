@@ -32,7 +32,7 @@ Add these to your Vercel project:
 Run the migration SQL in Neon:
 
 1. Go to Neon Dashboard → SQL Editor
-2. Copy contents of `supabase/migrations/000_complete_schema_for_new_db.sql`
+2. Copy contents of `database/migrations/000_complete_schema_for_new_db.sql`
 3. Paste and run in SQL Editor
 
 ### 3. Local Development

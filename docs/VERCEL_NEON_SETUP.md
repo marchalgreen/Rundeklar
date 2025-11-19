@@ -39,7 +39,7 @@ After creating the Neon database:
 
 1. In Vercel project → **Storage** tab → Click on your Neon database
 2. Click "Open in Neon Dashboard" or use the SQL Editor
-3. Copy the contents of `supabase/migrations/000_complete_schema_for_new_db.sql`
+3. Copy the contents of `database/migrations/000_complete_schema_for_new_db.sql`
 4. Paste and run it in the Neon SQL Editor
 5. Verify tables were created (you should see: `players`, `training_sessions`, `courts`, `check_ins`, `matches`, `match_players`, `statistics_snapshots`)
 

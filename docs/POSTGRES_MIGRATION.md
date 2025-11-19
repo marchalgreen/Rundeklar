@@ -78,15 +78,15 @@ Update your tenant config files in `packages/webapp/src/config/tenants/`:
 
 ### Step 3: Apply Database Schema
 
-Your existing SQL migrations in `supabase/migrations/` work with any Postgres database. Apply them to Neon:
+Your existing SQL migrations in `database/migrations/` work with any Postgres database. Apply them to Neon:
 
 1. Use the Neon SQL Editor in the dashboard
-2. Copy the contents of `supabase/migrations/000_complete_schema_for_new_db.sql`
+2. Copy the contents of `database/migrations/000_complete_schema_for_new_db.sql`
 3. Paste and run it in the Neon SQL Editor
 
 Alternatively, use `psql`:
 ```bash
-psql "your-neon-connection-string" < supabase/migrations/000_complete_schema_for_new_db.sql
+psql "your-neon-connection-string" < database/migrations/000_complete_schema_for_new_db.sql
 ```
 
 ### Step 4: Migrate Data (Optional)

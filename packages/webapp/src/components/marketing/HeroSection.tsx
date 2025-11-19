@@ -1,7 +1,7 @@
 import React from 'react'
 import { motion } from 'framer-motion'
 import { Button } from '../ui'
-import { ArrowDown, Play } from 'lucide-react'
+import { ArrowDown, Play, ExternalLink } from 'lucide-react'
 import { useTenant } from '../../contexts/TenantContext'
 
 /**
@@ -81,22 +81,44 @@ export const HeroSection: React.FC = () => {
             Rundeklar samler indtjekning, runder og statistik i ét enkelt system. Mindre administration, slut med pen og papir og mere tid på banen.
           </motion.p>
 
-          {/* CTA */}
+          {/* CTAs */}
           <motion.div
-            className="flex justify-center items-center mb-12 sm:mb-16"
+            className="flex flex-col sm:flex-row gap-4 sm:gap-6 justify-center items-center mb-6 sm:mb-8"
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.8, delay: 0.8 }}
           >
             <Button
               size="md"
+              onClick={() => {
+                window.location.href = '/?plan=professional'
+              }}
+              className="w-full sm:w-auto text-base sm:text-lg px-8 sm:px-10 py-6 sm:py-7"
+            >
+              Start gratis prøveperiode
+            </Button>
+            <Button
+              variant="secondary"
+              size="md"
               onClick={() => window.open('https://demo.rundeklar.dk', '_blank')}
               className="w-full sm:w-auto text-base sm:text-lg px-8 sm:px-10 py-6 sm:py-7"
+              aria-label="Prøv live demo (åbner i nyt vindue)"
             >
               <Play className="w-5 h-5 sm:w-6 sm:h-6" />
               Prøv live demo
+              <ExternalLink className="w-5 h-5 sm:w-6 sm:h-6" />
             </Button>
           </motion.div>
+
+          {/* Microcopy */}
+          <motion.p
+            className="text-sm text-[hsl(var(--muted))] mb-12 sm:mb-16 text-center"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            transition={{ duration: 0.8, delay: 1.0 }}
+          >
+            Ingen kortoplysninger. Klar til brug på under 10 minutter.
+          </motion.p>
 
           {/* Scroll indicator */}
           <motion.div

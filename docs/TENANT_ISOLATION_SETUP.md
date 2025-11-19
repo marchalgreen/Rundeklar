@@ -2,7 +2,7 @@
 
 ## ✅ What's Been Done
 
-### 1. Database Schema (`supabase/migrations/001_add_tenant_isolation.sql`)
+### 1. Database Schema (`database/migrations/001_add_tenant_isolation.sql`)
 - ✅ Added `tenant_id TEXT NOT NULL DEFAULT 'default'` column to all tables:
   - `players`
   - `training_sessions`
@@ -39,7 +39,7 @@ Run the tenant isolation migration on your Neon database:
 
 ```sql
 -- Run this in Neon SQL Editor
--- File: supabase/migrations/001_add_tenant_isolation.sql
+-- File: database/migrations/001_add_tenant_isolation.sql
 ```
 
 This adds `tenant_id` columns and updates constraints.
@@ -170,7 +170,7 @@ Update tenant configuration files to use Neon database:
 
 ## 📚 Related Files
 
-- **Schema Migration**: `supabase/migrations/001_add_tenant_isolation.sql`
+- **Schema Migration**: `database/migrations/001_add_tenant_isolation.sql`
 - **Database Adapter**: `packages/webapp/src/api/postgres.ts`
 - **API Proxy**: `packages/webapp/api/db.ts`
 - **Dev API Server**: `packages/webapp/scripts/dev-api.ts`

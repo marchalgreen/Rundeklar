@@ -6,7 +6,7 @@
 
 1. Go to your **RundeManagerDemoDB** project in Supabase dashboard
 2. Open **SQL Editor** → **New query**
-3. Copy entire contents of `supabase/migrations/000_complete_schema_for_new_db.sql`
+3. Copy entire contents of `database/migrations/000_complete_schema_for_new_db.sql`
 4. Paste and click **Run**
 
 ### 2. Get Your Credentials

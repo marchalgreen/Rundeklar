@@ -54,7 +54,7 @@ console.log('3. Add it to .env.local as VITE_SUPABASE_SERVICE_ROLE_KEY')
 console.log('4. Then modify this script to use the service_role key\n')
 
 // Read the migration file
-const migrationPath = join(__dirname, '../../supabase/migrations/001_initial_schema.sql')
+const migrationPath = join(__dirname, '../../database/migrations/001_initial_schema.sql')
 if (!existsSync(migrationPath)) {
   console.error(`Error: Migration file not found at ${migrationPath}`)
   process.exit(1)

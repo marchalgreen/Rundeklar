@@ -1,9 +1,10 @@
-import React, { createContext, useContext, useEffect, useState, useMemo } from 'react'
+import React, { createContext, useContext, useEffect, useState, useMemo, useRef } from 'react'
 import type { TenantConfig } from '@rundeklar/common'
 import type { PostgresClient } from '../lib/postgres'
 import { loadTenantConfig, buildTenantPath } from '../lib/tenant'
 import { createTenantPostgresClient, setCurrentTenantPostgresClient, setCurrentTenantConfig } from '../lib/postgres'
 import { invalidateCache } from '../api/postgres'
+import { peekIsolationId } from '../lib/isolation'
 
 interface TenantContextValue {
   tenantId: string
@@ -87,6 +88,20 @@ export const TenantProvider: React.FC<TenantProviderProps> = ({ tenantId, childr
   const buildPath = useMemo(() => {
     return (path: string) => buildTenantPath(tenantId, path)
   }, [tenantId])
+
+  // Track isolation_id changes and invalidate cache when it changes
+  const previousIsolationIdRef = useRef<string | null>(null)
+  useEffect(() => {
+    if (!config) return
+    
+    const currentIsolationId = peekIsolationId(tenantId)
+    
+    if (currentIsolationId !== previousIsolationIdRef.current) {
+      // Isolation ID changed - invalidate cache to prevent stale data
+      invalidateCache()
+      previousIsolationIdRef.current = currentIsolationId
+    }
+  }, [config, tenantId])
 
   if (loading) {
     return (

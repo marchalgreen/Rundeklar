@@ -5,7 +5,7 @@ This guide explains how to set up and manage multiple tenants (customers) in the
 ## Overview
 
 The application supports multiple tenants, where each tenant has:
-- Their own Supabase project/database
+- Their own Neon database
 - Custom branding (logo, name)
 - Custom configuration (number of courts, features)
 - Isolated data
@@ -36,8 +36,7 @@ Each tenant config file contains:
   "name": "TENANT NAME",
   "logo": "logo.jpeg",
   "maxCourts": 8,
-  "supabaseUrl": "https://xxxxx.supabase.co",
-  "supabaseKey": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...",
+  "postgresUrl": "postgresql://user:password@host:port/database",
   "features": {}
 }
 ```
@@ -47,15 +46,14 @@ Each tenant config file contains:
 - `name`: Display name shown in header
 - `logo`: Logo filename (must be in `packages/webapp/public/`)
 - `maxCourts`: Maximum number of courts for this tenant
-- `supabaseUrl`: Supabase project URL
-- `supabaseKey`: Supabase anon/public key
+- `postgresUrl`: Neon database connection string
 - `features`: Optional feature flags (for future use)
 
 ## Setting Up a New Tenant
 
-### Step 1: Create Supabase Project
+### Step 1: Create Neon Database
 
-1. Go to [supabase.com](https://supabase.com) and sign in
+1. Go to [console.neon.tech](https://console.neon.tech) and sign in
 2. Click "New Project"
 3. Fill in:
    - **Name**: Your tenant name (e.g., "Customer1 Badminton")
@@ -66,19 +64,17 @@ Each tenant config file contains:
 
 ### Step 2: Run Database Migration
 
-1. In your Supabase project dashboard, go to **SQL Editor**
+1. In your Neon project dashboard, go to **SQL Editor**
 2. Click "New query"
-3. Open the file `supabase/migrations/001_initial_schema.sql` from this repository
+3. Open the file `database/migrations/001_initial_schema.sql` from this repository
 4. Copy and paste the entire SQL content into the SQL Editor
 5. Click "Run" (or press Cmd/Ctrl + Enter)
 6. Verify the migration succeeded (you should see "Success. No rows returned")
 
-### Step 3: Get Supabase Credentials
+### Step 3: Get Neon Database Connection String
 
-1. In your Supabase project dashboard, go to **Settings** → **API**
-2. Find these values:
-   - **Project URL** (e.g., `https://xxxxx.supabase.co`)
-   - **anon/public key** (starts with `eyJ...`)
+1. In your Neon project dashboard, go to **Dashboard** → **Connection Details**
+2. Copy the connection string (e.g., `postgresql://user:password@host:port/database`)
 
 ### Step 4: Create Tenant Config File
 
@@ -91,8 +87,7 @@ Each tenant config file contains:
      "name": "CUSTOMER 1 BADMINTON",
      "logo": "logo.jpeg",
      "maxCourts": 5,
-     "supabaseUrl": "https://xxxxx.supabase.co",
-     "supabaseKey": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...",
+     "postgresUrl": "postgresql://user:password@host:port/database",
      "features": {}
    }
    ```
@@ -120,14 +115,14 @@ If you want to seed initial data (courts, players, etc.), you can:
 
 The demo tenant is pre-configured for sales demonstrations.
 
-### Step 1: Create Demo Supabase Project
+### Step 1: Create Demo Neon Database
 
 Follow the same steps as "Setting Up a New Tenant" but create a project named "Demo Badminton" or similar.
 
 ### Step 2: Update Demo Config
 
 1. Open `packages/webapp/src/config/tenants/demo.json`
-2. Update `supabaseUrl` and `supabaseKey` with your demo Supabase credentials
+2. Update `postgresUrl` with your demo Neon database connection string
 
 ### Step 3: Run Demo Seed Script
 
@@ -150,7 +145,7 @@ Navigate to: `http://127.0.0.1:5173/#/demo/check-in`
 The default tenant (`default.json`) represents the current Herlev/Hjorten setup. It:
 - Uses the root path (no tenant prefix): `/#/check-in`
 - Maintains backward compatibility with existing URLs
-- Can be configured with your production Supabase credentials
+- Can be configured with your production Neon database connection string
 
 ## Environment Variables
 
@@ -179,30 +174,30 @@ When building for production, tenant config files are copied to the `dist` direc
 ### Tenant Not Loading
 
 1. **Check config file exists**: Verify `packages/webapp/src/config/tenants/{tenant-id}.json` exists
-2. **Check Supabase credentials**: Verify `supabaseUrl` and `supabaseKey` are correct
-3. **Check browser console**: Look for error messages about missing config or Supabase connection
+2. **Check Neon credentials**: Verify `postgresUrl` is correct
+3. **Check browser console**: Look for error messages about missing config or database connection
 
 ### Wrong Tenant Loading
 
 1. **Check URL path**: Make sure the tenant ID in the URL matches the config file name
 2. **Check tenant ID**: Verify the `id` field in the config matches the URL path
 
-### Supabase Connection Errors
+### Neon Database Connection Errors
 
-1. **Check credentials**: Verify Supabase URL and key are correct
-2. **Check RLS policies**: Make sure Row Level Security is configured correctly
-3. **Check network**: Verify you can access the Supabase project URL
+1. **Check credentials**: Verify Neon database connection string is correct
+2. **Check database permissions**: Make sure the database user has proper permissions
+3. **Check network**: Verify you can access the Neon database
 
 ### Courts Not Showing Correctly
 
 1. **Check maxCourts**: Verify `maxCourts` in config matches the number of courts in your database
-2. **Check database**: Verify courts are seeded in your Supabase database
+2. **Check database**: Verify courts are seeded in your Neon database
 3. **Check migration**: Make sure the database migration ran successfully
 
 ## Best Practices
 
-1. **Separate Supabase Projects**: Each tenant should have their own Supabase project for complete isolation
-2. **Version Control**: Keep tenant config files in version control (but never commit Supabase keys to public repos)
+1. **Separate Neon Databases**: Each tenant can have their own Neon database for complete isolation (or use tenant_id for multi-tenant)
+2. **Version Control**: Keep tenant config files in version control (but never commit database connection strings to public repos)
 3. **Naming Convention**: Use lowercase, alphanumeric tenant IDs (e.g., `customer1`, `demo`, `tenant-abc`)
 4. **Logo Management**: Store tenant logos in `packages/webapp/public/` with unique names if needed
 5. **Testing**: Test each tenant thoroughly before deploying to production

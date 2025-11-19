@@ -5,6 +5,7 @@ import MatchProgramPage from './routes/MatchProgram'
 import StatisticsPage from './routes/Statistics'
 import LandingPage from './routes/LandingPage'
 import MarketingLandingPage from './routes/MarketingLandingPage'
+import MarketingSignupPage from './routes/marketing/MarketingSignupPage'
 import PrismTestPage from './routes/PrismTest'
 import LoginPage from './routes/auth/Login'
 import RegisterPage from './routes/auth/Register'
@@ -375,10 +376,20 @@ const AppContent = () => {
   
   // Marketing tenant shows marketing page for ALL users
   if (isMarketingTenant) {
+    // SIMPLE: Just check sessionStorage directly - no state management
+    // MarketingSignupPage will handle its own state internally
+    const hasPlanParam = typeof window !== 'undefined' && window.location.search.includes('plan=')
+    const hasSignupInSession = typeof window !== 'undefined' && sessionStorage.getItem('signup_step') === 'success'
+    const shouldShowSignup = hasPlanParam || hasSignupInSession
+    
     return (
       <>
         <TenantTitleUpdater />
-        <MarketingLandingPage />
+        {shouldShowSignup ? (
+          <MarketingSignupPage key="signup" />
+        ) : (
+          <MarketingLandingPage key="landing" />
+        )}
       </>
     )
   }

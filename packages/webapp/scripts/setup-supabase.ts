@@ -21,7 +21,7 @@ import { loadTenantConfig } from '../src/lib/tenant'
  * Reads SQL migration file.
  */
 const readMigrationFile = (): string => {
-  const migrationPath = resolve(__dirname, '../../supabase/migrations/001_initial_schema.sql')
+  const migrationPath = resolve(__dirname, '../../database/migrations/001_initial_schema.sql')
   return readFileSync(migrationPath, 'utf-8')
 }
 
@@ -157,7 +157,7 @@ async function setupSupabase(tenantId: string = 'default') {
     console.log('   1. Go to your Supabase project dashboard')
     console.log('   2. Navigate to SQL Editor')
     console.log('   3. Click "New query"')
-    console.log('   4. Copy and paste the contents of: supabase/migrations/001_initial_schema.sql')
+    console.log('   4. Copy and paste the contents of: database/migrations/001_initial_schema.sql')
     console.log('   5. Click "Run" (or press Cmd/Ctrl + Enter)')
     console.log('   6. Wait for "Success. No rows returned" message')
     console.log('')

@@ -40,7 +40,7 @@ This runs both frontend and API routes together.
 
 1. **Apply Database Schema**
    - Go to Neon Dashboard → SQL Editor
-   - Run `supabase/migrations/000_complete_schema_for_new_db.sql`
+   - Run `database/migrations/000_complete_schema_for_new_db.sql`
 
 2. **Test the App**
    - Open `http://127.0.0.1:5173`

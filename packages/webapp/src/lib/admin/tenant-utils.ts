@@ -1,4 +1,4 @@
-import { readdir, readFile, writeFile } from 'fs/promises'
+import { readdir, readFile, writeFile, mkdir } from 'fs/promises'
 import { join, dirname } from 'path'
 import { fileURLToPath } from 'url'
 import type { TenantConfig } from '@rundeklar/common'
@@ -7,18 +7,88 @@ const __filename = fileURLToPath(import.meta.url)
 const __dirname = dirname(__filename)
 
 /**
+ * Normalize Danish characters to ASCII equivalents
+ * @param str - String to normalize
+ * @returns String with Danish characters converted (æ→ae, ø→oe, å→aa)
+ */
+function normalizeDanishChars(str: string): string {
+  return str
+    .replace(/æ/g, 'ae')
+    .replace(/ø/g, 'oe')
+    .replace(/å/g, 'aa')
+    .replace(/Æ/g, 'Ae')
+    .replace(/Ø/g, 'Oe')
+    .replace(/Å/g, 'Aa')
+}
+
+/**
+ * Generate short tenant ID from initials for long names
+ * @param name - Club name (e.g., "Københavns Bedste Drenge Badmintonklub")
+ * @returns Short tenant ID (e.g., "kbdb")
+ */
+function generateShortTenantId(name: string): string {
+  // Normalize Danish characters first
+  const normalized = normalizeDanishChars(name)
+  
+  // Get all words (including stop words for initials)
+  const allWords = normalized
+    .toLowerCase()
+    .replace(/[^a-z0-9\s]/g, '') // Remove special characters (after normalization)
+    .split(/\s+/)
+    .filter(word => word.length > 0)
+  
+  if (allWords.length === 0) return 'club'
+  
+  // If only one word, use first 8 characters
+  if (allWords.length === 1) {
+    return allWords[0].substring(0, 8)
+  }
+  
+  // Generate initials from first letters of ALL words
+  let initials = allWords.map(word => word[0]).join('')
+  
+  // If initials are too short (< 3), add more letters from first word
+  if (initials.length < 3 && allWords[0].length > 1) {
+    initials = allWords[0].substring(0, Math.min(4, allWords[0].length)) + initials.substring(1)
+  }
+  
+  // Limit to 8 characters max
+  return initials.substring(0, 8)
+}
+
+/**
  * Convert tenant name to valid subdomain
  * @param name - Tenant name (e.g., "Herlev Hjorten")
- * @returns Valid subdomain (e.g., "herlev-hjorten")
+ * @returns Valid subdomain (e.g., "herlev-hjorten" or "kbdb" for long names)
  */
 export function nameToSubdomain(name: string): string {
-  return name
+  // Normalize Danish characters first
+  const normalized = normalizeDanishChars(name)
+  
+  // First, remove stop words to get meaningful words
+  const stopWords = ['badmintonklub', 'badminton', 'klub', 'forening', 'sport', 'club']
+  const meaningfulWords = normalized
     .toLowerCase()
-    .trim()
-    .replace(/[^a-z0-9\s-]/g, '') // Remove special characters
-    .replace(/\s+/g, '-') // Replace spaces with hyphens
+    .replace(/[^a-z0-9\s]/g, '') // Remove special characters (after normalization)
+    .split(/\s+/)
+    .filter(word => word.length > 0 && !stopWords.includes(word))
+  
+  if (meaningfulWords.length === 0) {
+    return 'club'
+  }
+  
+  // Create cleaned version from meaningful words
+  const cleaned = meaningfulWords
+    .join('-') // Join with hyphens
     .replace(/-+/g, '-') // Replace multiple hyphens with single
     .replace(/^-|-$/g, '') // Remove leading/trailing hyphens
+  
+  // If cleaned name is longer than 20 characters, use short version
+  if (cleaned.length > 20) {
+    return generateShortTenantId(name)
+  }
+  
+  return cleaned
 }
 
 /**
@@ -126,14 +196,44 @@ export async function createTenantConfig(tenantData: {
     ...(tenantData.postgresUrl && { postgresUrl: tenantData.postgresUrl })
   }
 
-  // Write config file
-  const configPath = join(
-    process.cwd(),
-    'packages/webapp/src/config/tenants',
-    `${tenantData.id}.json`
-  )
+  // Try multiple possible paths for tenant configs directory
+  const possibleBasePaths = [
+    join(process.cwd(), 'packages/webapp/src/config/tenants'),
+    join(process.cwd(), 'src/config/tenants'),
+    join(__dirname, '../../config/tenants'),
+    join(__dirname, '../../../config/tenants')
+  ]
   
-  await writeFile(configPath, JSON.stringify(config, null, 2), 'utf-8')
+  let configDir: string | null = null
+  for (const basePath of possibleBasePaths) {
+    try {
+      await readdir(basePath)
+      configDir = basePath
+      break
+    } catch {
+      // Try next path
+      continue
+    }
+  }
+  
+  if (!configDir) {
+    // Use the first path and create directory if it doesn't exist
+    configDir = possibleBasePaths[0]
+    try {
+      await mkdir(configDir, { recursive: true })
+    } catch (error) {
+      throw new Error(`Failed to create tenant config directory at ${configDir}: ${error instanceof Error ? error.message : String(error)}`)
+    }
+  }
+
+  // Write config file
+  const configPath = join(configDir, `${tenantData.id}.json`)
+  
+  try {
+    await writeFile(configPath, JSON.stringify(config, null, 2), 'utf-8')
+  } catch (error) {
+    throw new Error(`Failed to write tenant config file at ${configPath}: ${error instanceof Error ? error.message : String(error)}`)
+  }
   
   return config
 }

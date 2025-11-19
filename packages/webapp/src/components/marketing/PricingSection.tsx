@@ -83,8 +83,9 @@ const PricingCard: React.FC<{ plan: PricingPlan; isYearly: boolean; index: numbe
               // Enterprise - open contact form or email
               window.location.href = 'mailto:marchalgreen@gmail.com?subject=Enterprise henvendelse'
             } else {
-              // Open demo
-              window.open('https://demo.rundeklar.dk', '_blank')
+              // Navigate to signup with plan parameter
+              const signupUrl = `/?plan=${plan.id}`
+              window.location.href = signupUrl
             }
           }}
         >

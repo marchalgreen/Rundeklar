@@ -305,7 +305,7 @@ async function main() {
     
     console.log('\n✅ Migration completed successfully!')
     console.log('\nNext steps:')
-    console.log('1. Apply the tenant isolation migration: supabase/migrations/001_add_tenant_isolation.sql')
+    console.log('1. Apply the tenant isolation migration: database/migrations/001_add_tenant_isolation.sql')
     console.log('2. Update all queries in packages/webapp/src/api/postgres.ts to include tenant_id')
     console.log('3. Test the application to ensure tenant isolation works correctly')
     

@@ -5,7 +5,7 @@
 ### 1. Infrastructure Setup
 - ✅ Installed `@supabase/supabase-js` package
 - ✅ Created Supabase client initialization (`src/lib/supabase.ts`)
-- ✅ Created SQL migration file (`supabase/migrations/001_initial_schema.sql`)
+- ✅ Created SQL migration file (`database/migrations/001_initial_schema.sql`)
 
 ### 2. Data Layer Migration
 - ✅ Created new Supabase storage layer (`src/api/supabase.ts`)
@@ -37,7 +37,7 @@
 
 ### Step 1: Set Up Supabase
 1. Create a Supabase account and project
-2. Run the SQL migration from `supabase/migrations/001_initial_schema.sql`
+2. Run the SQL migration from `database/migrations/001_initial_schema.sql`
 3. Get your Project URL and anon key from Supabase dashboard
 
 ### Step 2: Configure Environment Variables
@@ -84,7 +84,7 @@ If you have data in localStorage:
 ### New Files
 - `src/lib/supabase.ts` - Supabase client initialization
 - `src/api/supabase.ts` - Supabase storage layer
-- `supabase/migrations/001_initial_schema.sql` - Database schema
+- `database/migrations/001_initial_schema.sql` - Database schema
 - `scripts/migrate-to-supabase.ts` - Data migration script
 - `SUPABASE_SETUP.md` - Setup guide
 - `.env.example` - Environment variable template

@@ -19,7 +19,7 @@
 **Status:** Fjernet - filen er slettet
 
 ### 2. **Migration 008 - Potentiel Data Corruption** ✅ FIXET
-**Fil:** `supabase/migrations/008_update_clubs_for_multi_tenant.sql`  
+**Fil:** `database/migrations/008_update_clubs_for_multi_tenant.sql`  
 **Problem:** Linje 38 sætter ALLE clubs til 'admin' hvis de er 'coach' eller NULL  
 **Fix:** Opdateret til kun at migrere clubs med password_hash (eksisterende admins), ikke coaches  
 **Status:** Fixet - migration er nu sikker

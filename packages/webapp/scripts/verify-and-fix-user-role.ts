@@ -94,7 +94,7 @@ async function verifyAndFixUserRole() {
       })
       console.log('\n📝 Migration 011 needs to be run to convert super_admin to sysadmin')
       console.log('   Run this SQL in Neon SQL Editor:')
-      console.log('   File: supabase/migrations/011_rename_super_admin_to_sysadmin.sql')
+      console.log('   File: database/migrations/011_rename_super_admin_to_sysadmin.sql')
     } else {
       console.log('✅ No legacy super_admin users found - migration appears to be applied')
     }
