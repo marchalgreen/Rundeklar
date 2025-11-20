@@ -14,7 +14,7 @@ interface Testimonial {
 
 const testimonials: Testimonial[] = [
   {
-    quote: 'Før sad vi med pen og papir. Nu har vi overblik over baner, spillere og fremmøde på én skærm.',
+    quote: 'Før var det pen og papir og en masse råben på tværs af hallen. Nu ligger indtjekning, runder og overblik stille og roligt på én skærm. Det har gjort alt arbejdet omkring runder langt lettere og frigivet tid og ro til selve træningen.',
     author: 'Morten Regaard',
     role: 'Cheftræner, Herlev/Hjorten Badmintonklub'
   },
