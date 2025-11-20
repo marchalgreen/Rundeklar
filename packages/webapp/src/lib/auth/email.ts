@@ -608,7 +608,7 @@ export async function sendColdCallEmail(
     const result = await resendClient.emails.send({
       from: 'Marc Halgreen <marc@rundeklar.dk>',
       to: email,
-      subject: `En lettere måde at styre træningsaftenerne i ${clubName}`,
+      subject: `Vi gjorde vores træningsaftener lettere. Måske kan det også hjælpe i ${clubName}?`,
       html: emailTemplate(content, undefined, { showLogo: false, showAutoFooter: false, showQuestions: false }),
       // Enable click tracking (default is true, but being explicit)
       tags: [

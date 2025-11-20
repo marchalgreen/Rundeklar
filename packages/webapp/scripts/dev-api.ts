@@ -155,6 +155,9 @@ async function setupAdminRoutes() {
   const tenantAdminsHandler = (await import('../api/admin/tenants/[id]/admins.js')).default
   const tenantCoachesHandler = (await import('../api/admin/tenants/[id]/coaches.js')).default
   const analyticsHandler = (await import('../api/admin/analytics.js')).default
+  const coldCallEmailsHandler = (await import('../api/admin/cold-call-emails.js')).default
+  const coldCallEmailByIdHandler = (await import('../api/admin/cold-call-emails/[id].js')).default
+  const allCoachesHandler = (await import('../api/admin/coaches.js')).default
   
   // Admin routes
   app.get('/api/admin/tenants', wrapHandler(tenantsHandler))
@@ -166,6 +169,10 @@ async function setupAdminRoutes() {
   app.post('/api/admin/tenants/:id/admins', wrapHandler(tenantAdminsHandler))
   app.get('/api/admin/tenants/:id/coaches', wrapHandler(tenantCoachesHandler))
   app.get('/api/admin/analytics', wrapHandler(analyticsHandler))
+  app.get('/api/admin/coaches', wrapHandler(allCoachesHandler))
+  app.get('/api/admin/cold-call-emails', wrapHandler(coldCallEmailsHandler))
+  app.post('/api/admin/cold-call-emails', wrapHandler(coldCallEmailsHandler))
+  app.delete('/api/admin/cold-call-emails/:id', wrapHandler(coldCallEmailByIdHandler))
 }
 
 // Load tenant admin route handlers
@@ -174,6 +181,7 @@ async function setupTenantAdminRoutes() {
   const coachByIdHandler = (await import('../api/[tenantId]/admin/coaches/[id].js')).default
   
   // Tenant admin routes (dynamically handle tenantId)
+  // IMPORTANT: These must come AFTER /api/admin/* routes to avoid matching conflicts
   app.get('/api/:tenantId/admin/coaches', wrapHandler(coachesHandler))
   app.post('/api/:tenantId/admin/coaches', wrapHandler(coachesHandler))
   app.get('/api/:tenantId/admin/coaches/:id', wrapHandler(coachByIdHandler))
@@ -252,6 +260,9 @@ Promise.all([
     console.log(`   - POST /api/analytics/track`)
     console.log(`   - GET /api/admin/tenants`)
     console.log(`   - GET /api/admin/analytics`)
+    console.log(`   - GET /api/admin/coaches`)
+    console.log(`   - GET /api/admin/cold-call-emails`)
+    console.log(`   - POST /api/admin/cold-call-emails`)
     console.log(`   - GET /api/:tenantId/admin/coaches`)
     console.log(`   - ... and other routes`)
     console.log(`\n💡 Keep this running while developing`)
