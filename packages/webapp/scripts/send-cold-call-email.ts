@@ -1,4 +1,5 @@
 #!/usr/bin/env tsx
+/// <reference types="node" />
 /**
  * Script to send cold-call emails to club presidents
  * 
@@ -9,6 +10,62 @@
  *   pnpm exec tsx scripts/send-cold-call-email.ts formand@klub.dk "Herlev Badminton" "Lars Nielsen"
  */
 
+// IMPORTANT: Load environment variables BEFORE importing email module
+import { readFileSync, existsSync } from 'fs'
+import { join, dirname } from 'path'
+import { fileURLToPath } from 'url'
+
+const __filename = fileURLToPath(import.meta.url)
+const __dirname = dirname(__filename)
+
+// Load environment variables from .env.local FIRST
+const possiblePaths = [
+  join(__dirname, '../.env.local'),  // packages/webapp/.env.local
+  join(__dirname, '../../.env.local'), // root/.env.local
+  join(process.cwd(), '.env.local')  // current working directory
+]
+
+let envLoaded = false
+for (const envPath of possiblePaths) {
+  if (existsSync(envPath)) {
+    console.log(`📄 Loading environment from: ${envPath}`)
+    const envContent = readFileSync(envPath, 'utf-8')
+    const lines = envContent.split('\n')
+    for (const line of lines) {
+      const trimmed = line.trim()
+      if (trimmed && !trimmed.startsWith('#')) {
+        const [key, ...valueParts] = trimmed.split('=')
+        if (key && valueParts.length > 0) {
+          const value = valueParts.join('=').trim().replace(/^["']|["']$/g, '') // Remove quotes
+          process.env[key.trim()] = value
+        }
+      }
+    }
+    envLoaded = true
+    break
+  }
+}
+
+if (!envLoaded) {
+  console.warn('⚠️  No .env.local file found. Looking in:', possiblePaths)
+  console.warn('⚠️  Make sure RESEND_API_KEY is set in .env.local')
+}
+
+// Fallback: Use VITE_RESEND_API_KEY if RESEND_API_KEY is not set
+if (!process.env.RESEND_API_KEY && process.env.VITE_RESEND_API_KEY) {
+  process.env.RESEND_API_KEY = process.env.VITE_RESEND_API_KEY
+  console.log('📝 Using VITE_RESEND_API_KEY as RESEND_API_KEY')
+}
+
+// Debug: Check if RESEND_API_KEY is loaded
+if (process.env.RESEND_API_KEY) {
+  console.log('✅ RESEND_API_KEY loaded (starts with:', process.env.RESEND_API_KEY.substring(0, 5) + '...)')
+} else {
+  console.error('❌ RESEND_API_KEY not found in environment variables')
+  console.error('   Make sure it exists in .env.local as: RESEND_API_KEY=re_...')
+}
+
+// NOW import email module (after environment variables are loaded)
 import { sendColdCallEmail } from '../src/lib/auth/email.js'
 import { logger } from '../src/lib/utils/logger.js'
 

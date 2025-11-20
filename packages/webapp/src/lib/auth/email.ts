@@ -1,6 +1,10 @@
 import { Resend } from 'resend'
 import { logger } from '../utils/logger.js'
 import { formatCoachUsername } from '../formatting.js'
+import { readFileSync } from 'fs'
+import { join, dirname } from 'path'
+import { fileURLToPath } from 'url'
+import { LOGO_BASE64 } from './email-logo-base64.js'
 
 const RESEND_API_KEY = process.env.RESEND_API_KEY || process.env.VITE_RESEND_API_KEY
 const RESEND_FROM_EMAIL = process.env.RESEND_FROM_EMAIL || 'onboarding@resend.dev'
@@ -67,32 +71,36 @@ function generatePINBoxes(pin: string): string {
 }
 
 /**
- * Builds logo URL for emails
+ * Builds logo as base64 data URI for emails (always embedded for maximum compatibility)
+ * Email clients often block external images, so embedding ensures the logo always displays
+ * Uses pre-embedded base64 logo from email-logo-base64.ts
  * @param _tenantId - Tenant ID (optional, reserved for future tenant-specific logos)
- * @returns Full URL to logo image
+ * @returns Base64 data URI for logo image
  */
 function buildLogoUrl(_tenantId?: string): string {
-  // Use the horizontal logo with text for emails
-  const logoFilename = 'fulllogo_transparent_nobuffer_horizontal.png'
-  
-  // For development/localhost
-  if (APP_URL.includes('localhost') || APP_URL.includes('127.0.0.1')) {
-    return `${APP_URL}/${logoFilename}`
-  }
-
-  // For production, use base domain (logo is same for all tenants)
-  const protocol = process.env.NODE_ENV === 'production' ? 'https' : (APP_URL.startsWith('https') ? 'https' : 'http')
-  return `${protocol}://${BASE_DOMAIN}/${logoFilename}`
+  // Always use embedded base64 logo for maximum email client compatibility
+  // This ensures the logo displays even when email clients block external images
+  const dataUri = `data:image/png;base64,${LOGO_BASE64}`
+  logger.debug(`Logo URL generated: ${dataUri.length} characters (base64: ${LOGO_BASE64.length} chars)`)
+  return dataUri
 }
 
 /**
  * Base email template wrapper with consistent styling
  * @param content - HTML content for the email body
  * @param tenantId - Optional tenant ID for logo URL
+ * @param options - Optional template options
  * @returns Complete HTML email template
  */
-function emailTemplate(content: string, tenantId?: string): string {
-  const logoUrl = buildLogoUrl(tenantId)
+function emailTemplate(
+  content: string,
+  tenantId?: string,
+  options?: { showLogo?: boolean; showAutoFooter?: boolean; showQuestions?: boolean }
+): string {
+  const showLogo = options?.showLogo !== false // Default to true for backward compatibility
+  const showAutoFooter = options?.showAutoFooter !== false // Default to true for backward compatibility
+  const showQuestions = options?.showQuestions !== false // Default to true for backward compatibility
+  const logoUrl = showLogo ? buildLogoUrl(tenantId) : ''
   
   return `
     <!DOCTYPE html>
@@ -106,27 +114,28 @@ function emailTemplate(content: string, tenantId?: string): string {
         <tr>
           <td align="center" style="padding: 20px 0;">
             <table role="presentation" style="width: 100%; max-width: 600px; background-color: #ffffff; border-radius: 12px; box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1); overflow: hidden;">
-              <!-- Logo Header -->
+              ${showLogo ? `<!-- Logo Header -->
               <tr>
                 <td style="padding: 32px 40px 24px 40px; text-align: center; border-bottom: 1px solid #e9ecef;">
                   <img 
                     src="${logoUrl}" 
                     alt="Rundeklar" 
-                    style="max-width: 240px; height: auto; display: block; margin: 0 auto;"
+                    style="max-width: 240px; height: auto; display: block; margin: 0 auto; border: 0; outline: none; text-decoration: none;"
                     width="240"
+                    height="auto"
                   />
                 </td>
-              </tr>
+              </tr>` : ''}
               <!-- Email Content -->
               <tr>
                 <td style="padding: 40px 40px 30px 40px;">
                   ${content}
                 </td>
               </tr>
-              <tr>
+              ${showQuestions || showAutoFooter ? `<tr>
                 <td style="padding: 32px 40px; background-color: #f8f9fa; border-top: 1px solid #e9ecef;">
                   <table role="presentation" style="width: 100%; border-collapse: collapse;">
-                    <tr>
+                    ${showQuestions ? `<tr>
                       <td style="padding: 0 0 16px 0; text-align: center;">
                         <p style="margin: 0; font-size: 13px; font-weight: 600; color: #495057; text-transform: uppercase; letter-spacing: 0.5px;">
                           Har du spørgsmål?
@@ -147,8 +156,8 @@ function emailTemplate(content: string, tenantId?: string): string {
                           ">marchalgreen@gmail.com</a>
                         </p>
                       </td>
-                    </tr>
-                    <tr>
+                    </tr>` : ''}
+                    ${showAutoFooter ? `<tr>
                       <td style="padding: 20px 0 0 0; border-top: 1px solid #e9ecef; text-align: center;">
                         <p style="margin: 0 0 8px 0; font-size: 12px; font-weight: 600; color: #495057;">
                           ${RESEND_FROM_NAME}
@@ -157,10 +166,10 @@ function emailTemplate(content: string, tenantId?: string): string {
                           Denne email blev sendt automatisk. Besvar ikke denne email direkte.
                         </p>
                       </td>
-                    </tr>
+                    </tr>` : ''}
                   </table>
                 </td>
-              </tr>
+              </tr>` : ''}
             </table>
           </td>
         </tr>
@@ -517,7 +526,11 @@ export async function sendColdCallEmail(
   clubName: string,
   presidentName: string
 ): Promise<void> {
-  if (!resend) {
+  // Check environment variable dynamically (in case it was set after module load)
+  const apiKey = process.env.RESEND_API_KEY || process.env.VITE_RESEND_API_KEY
+  const resendClient = apiKey ? (resend || new Resend(apiKey)) : null
+  
+  if (!resendClient) {
     logger.warn('Resend not configured - skipping cold-call email')
     throw new Error('Resend email service is not configured. Please set RESEND_API_KEY environment variable.')
   }
@@ -527,80 +540,80 @@ export async function sendColdCallEmail(
 
   const content = `
     <p style="margin: 0 0 20px 0; font-size: 16px; line-height: 1.6; color: #495057;">
-      Hej ${presidentName},
+      Hej ${presidentName}
     </p>
     
     <p style="margin: 0 0 20px 0; font-size: 16px; line-height: 1.6; color: #495057;">
-      Mit navn er Marc Halgreen. Jeg spiller selv i Herlev Hjorten Badmintonklub, og de sidste par år har jeg arbejdet tæt sammen med vores trænere om at løse en udfordring, som jeg tror I også kender.
+      Jeg håber alt er godt hos jer. Mit navn er Marc, og jeg spiller selv i Herlev/Hjorten Badminton. De sidste par måneder har jeg brugt en del tid sammen med vores trænere på at løse en udfordring, som jeg tror mange klubber kender: de travle aftener hvor man både skal tage imod spillere, holde overblik og samtidig få runderne sat hurtigt og fair.
     </p>
     
     <p style="margin: 0 0 20px 0; font-size: 16px; line-height: 1.6; color: #495057;">
-      På travle træningsaftener forsvinder meget tid på indtjekning, papirlister, overblik over hvem der er mødt op og på at sætte runder hurtigt og fair. Derfor har jeg udviklet Rundeklar sammen med trænerteamet i Herlev Hjorten.
+      Vi endte med at bygge et lille værktøj for at hjælpe os selv, og det voksede sig siden større. I dag hedder det Rundeklar, og vi bruger det fast i Herlev/Hjorten.
     </p>
     
-    <p style="margin: 0 0 24px 0; font-size: 16px; line-height: 1.6; color: #495057; font-weight: 600;">
-      Rundeklar gør tre ting særligt godt:
+    <p style="margin: 0 0 24px 0; font-size: 16px; line-height: 1.6; color: #495057;">
+      Rundeklar er lavet for at give jer overblik og ro på de travle aftener, så energien kan bruges på træningen i stedet for administration.
     </p>
     
     <ul style="margin: 0 0 24px 0; padding-left: 24px; font-size: 16px; line-height: 1.8; color: #495057;">
-      <li style="margin-bottom: 12px;">Spillerne tjekker ind på få sekunder</li>
-      <li style="margin-bottom: 12px;">Runder sættes automatisk på tværs af baner</li>
-      <li style="margin-bottom: 12px;">Trænerne får ro, overblik og mere tid på banen</li>
+      <li style="margin-bottom: 12px;">Spillere tjekker selv ind på få sekunder</li>
+      <li style="margin-bottom: 12px;">Runderne sættes enten automatisk eller med et enkelt klik og et intuitivt drag og drop</li>
+      <li style="margin-bottom: 12px;">Træneren får mere ro og mere tid på gulvet</li>
     </ul>
     
     <div style="margin: 32px 0; padding: 20px; background-color: #f8f9fa; border-left: 4px solid #007bff; border-radius: 4px;">
       <p style="margin: 0 0 12px 0; font-size: 16px; line-height: 1.6; color: #495057; font-style: italic;">
-        "Vi har fået meget bedre ro på træningsaftenerne. Spillerne tjekker selv ind, og vi kan sætte runderne på få minutter."
+        "Før sad vi med pen og papir. Nu har vi overblik over baner, spillere og fremmøde på én skærm."
       </p>
       <p style="margin: 0; font-size: 14px; line-height: 1.6; color: #6c757d; font-weight: 600;">
-        — Morten Regaard, træner
+        — Morten Regaard, træner, Herlev/Hjorten Badmintonklub
       </p>
     </div>
     
-    <p style="margin: 32px 0 24px 0; font-size: 16px; line-height: 1.6; color: #495057; font-weight: 600;">
-      Hvis I vil prøve det
-    </p>
-    
-    <p style="margin: 0 0 20px 0; font-size: 16px; line-height: 1.6; color: #495057;">
-      I kan teste løsningen med det samme på <a href="${demoUrl}" style="color: #007bff; text-decoration: none; font-weight: 600;">demo.rundeklar.dk</a>
+    <p style="margin: 32px 0 20px 0; font-size: 16px; line-height: 1.6; color: #495057;">
+      Hvis I er nysgerrige, kan I prøve det direkte på <a href="${demoUrl}" style="color: #007bff; text-decoration: none; font-weight: 600;">demo.rundeklar.dk</a>.
     </p>
     
     <p style="margin: 0 0 32px 0; font-size: 16px; line-height: 1.6; color: #495057;">
-      Og hvis I vil mærke hvordan det fungerer i jeres egen klub, kan I nu oprette en gratis 14 dages prøveperiode uden binding. Det tager under et minut.
+      Og hvis I vil mærke det i jeres egen klub, kan I oprette en gratis prøveperiode. Det tager få minutter og kræver ingen binding.
     </p>
 
     ${emailButton('Start her', signupUrl)}
 
+    <p style="margin: 16px 0 0 0; font-size: 14px; line-height: 1.6; color: #6c757d; text-align: center;">
+      Direkte link: <a href="${signupUrl}" style="color: #007bff; text-decoration: none; word-break: break-all;">${signupUrl}</a>
+    </p>
+
     <p style="margin: 32px 0 20px 0; font-size: 16px; line-height: 1.6; color: #495057;">
-      Hvis du vil, kan jeg også vise dig løsningen på et kort opkald. Ti minutter er nok til at gennemgå de vigtigste ting.
+      Jeg viser det også gerne på et hurtigt opkald, hvis det er nemmere. Ti minutter er som regel nok til at gennemgå det vigtigste.
     </p>
     
     <p style="margin: 0 0 32px 0; font-size: 16px; line-height: 1.6; color: #495057;">
-      Vil du se en hurtig demo, eller vil I hellere prøve selv først?
+      Hvad tænker I? Er det bedst at prøve selv, eller giver en hurtig gennemgang mest mening?
     </p>
     
     <p style="margin: 32px 0 0 0; font-size: 16px; line-height: 1.6; color: #495057;">
-      De bedste hilsner<br>
+      Bedste hilsner<br>
       <strong style="color: #212529;">Marc Halgreen</strong><br>
       <span style="font-size: 14px; color: #6c757d;">Rundeklar</span>
     </p>
     
     <p style="margin: 24px 0 0 0; font-size: 14px; line-height: 1.6; color: #6c757d;">
-      <a href="tel:+4553696952" style="color: #007bff; text-decoration: none;">+45 53 69 69 52</a><br>
-      <a href="mailto:marchalgreen@gmail.com" style="color: #007bff; text-decoration: none;">marchalgreen@gmail.com</a>
+      <a href="mailto:marc@rundeklar.dk" style="color: #007bff; text-decoration: none;">marc@rundeklar.dk</a><br>
+      +45 53 69 69 52
     </p>
   `
 
   try {
-    const result = await resend.emails.send({
-      from: 'Marc Halgreen <marchalgreen@gmail.com>',
+    const result = await resendClient.emails.send({
+      from: 'Marc Halgreen <marc@rundeklar.dk>',
       to: email,
       subject: `En lettere måde at styre træningsaftenerne i ${clubName}`,
-      html: emailTemplate(content),
+      html: emailTemplate(content, undefined, { showLogo: false, showAutoFooter: false, showQuestions: false }),
       // Enable click tracking (default is true, but being explicit)
       tags: [
-        { name: 'category', value: 'cold-call' },
-        { name: 'club-name', value: clubName }
+        { name: 'category', value: 'cold_call' },
+        { name: 'club_name', value: clubName.replace(/[^a-zA-Z0-9_]/g, '_') }
       ]
     })
     
