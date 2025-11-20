@@ -3,7 +3,7 @@ import { PageCard } from '../../components/ui'
 import { Button } from '../../components/ui'
 import { formatCoachUsername } from '../../lib/formatting'
 import CreateCoachFormForSysAdmin from '../../components/admin/CreateCoachFormForSysAdmin'
-import { Users, Trash2, RotateCcw, Clock, Building2, Plus } from 'lucide-react'
+import { Trash2, RotateCcw, Clock, Building2, Plus } from 'lucide-react'
 
 interface Coach {
   id: string
