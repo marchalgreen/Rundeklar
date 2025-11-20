@@ -337,7 +337,7 @@ export default function ColdCallEmailsPage() {
                   <div className="bg-white rounded-lg p-6 border border-[hsl(var(--line)/.12)] max-w-2xl">
                     <div className="prose prose-sm max-w-none" style={{ fontFamily: 'system-ui, -apple-system, sans-serif' }}>
                       <p style={{ margin: '0 0 20px 0', fontSize: '16px', lineHeight: '1.6', color: '#495057' }}>
-                        Hej {presidentName}
+                        Hej {presidentName.trim().split(/\s+/)[0] || presidentName}
                       </p>
                       <p style={{ margin: '0 0 20px 0', fontSize: '16px', lineHeight: '1.6', color: '#495057' }}>
                         Jeg håber alt er godt hos jer. Mit navn er Marc, og jeg spiller selv i Herlev/Hjorten Badminton. De sidste par måneder har jeg brugt en del tid sammen med vores trænere på at løse en udfordring, som jeg tror mange klubber kender: de travle aftener hvor man både skal tage imod spillere, holde overblik og samtidig få runderne sat hurtigt og fair.

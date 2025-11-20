@@ -538,9 +538,12 @@ export async function sendColdCallEmail(
   const demoUrl = 'https://demo.rundeklar.dk'
   const signupUrl = 'https://rundeklar.dk'
 
+  // Extract first name from full name (take first word)
+  const firstName = presidentName.trim().split(/\s+/)[0] || presidentName
+
   const content = `
     <p style="margin: 0 0 20px 0; font-size: 16px; line-height: 1.6; color: #495057;">
-      Hej ${presidentName}
+      Hej ${firstName}
     </p>
     
     <p style="margin: 0 0 20px 0; font-size: 16px; line-height: 1.6; color: #495057;">
