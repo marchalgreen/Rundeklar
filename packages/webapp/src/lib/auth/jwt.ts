@@ -18,7 +18,7 @@ export interface JWTPayload {
   type: 'access' | 'refresh'
 }
 
-const ACCESS_TOKEN_EXPIRY = '15m'
+const ACCESS_TOKEN_EXPIRY = '2h'
 
 /**
  * Generate an access token for a club
@@ -26,7 +26,7 @@ const ACCESS_TOKEN_EXPIRY = '15m'
  * @param tenantId - Tenant ID
  * @param role - User role (coach, admin, super_admin)
  * @param email - User email
- * @returns JWT access token (15min expiry)
+ * @returns JWT access token (2h expiry)
  */
 export function generateAccessToken(
   clubId: string,
