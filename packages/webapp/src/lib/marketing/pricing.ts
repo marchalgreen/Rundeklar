@@ -23,7 +23,7 @@ export const pricingPlans: PricingPlan[] = [
     yearlyPrice: 2700, // 250 * 12 * 0.9
     features: [
       '1 træningsgruppe',
-      '1 trænerlogin',
+      '2 trænerlogins',
       'Tjek ind system',
       'Runder med intuitivt drag & drop',
       'Spilleradministration',

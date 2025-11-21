@@ -15,7 +15,7 @@ export function getPlanLimits(planId: PlanId | undefined): PlanLimits {
     case 'basic':
       return {
         maxTrainingGroups: 1,
-        maxCoaches: 1
+        maxCoaches: 2
       }
     case 'professional':
       return {
@@ -31,7 +31,7 @@ export function getPlanLimits(planId: PlanId | undefined): PlanLimits {
       // Default to basic if plan not set
       return {
         maxTrainingGroups: 1,
-        maxCoaches: 1
+        maxCoaches: 2
       }
   }
 }
@@ -83,7 +83,7 @@ export function validateCoachLimit(
   if (currentCoachCount >= limits.maxCoaches) {
     return {
       isValid: false,
-      error: `Din pakke tillader maksimalt ${limits.maxCoaches} trænerlogin. Opgrader til Professionel pakke for ubegrænsede trænerlogins.`
+      error: `Din pakke tillader maksimalt ${limits.maxCoaches} trænerlogin${limits.maxCoaches > 1 ? 's' : ''}. Opgrader til Professionel pakke for ubegrænsede trænerlogins.`
     }
   }
   
