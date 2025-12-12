@@ -315,6 +315,14 @@ export const FullScreenMatchProgram: React.FC<FullScreenMatchProgramProps> = ({
                         Indtast resultat
                       </button>
                     )}
+                    
+                    {/* Invisible placeholder for empty courts to maintain visual consistency */}
+                    {!hasPlayers && onEnterResult !== undefined && (
+                      <div className="mb-2 w-full py-2 px-3 flex items-center justify-center gap-2 text-xs font-medium opacity-0 pointer-events-none" aria-hidden="true">
+                        <Trophy className="h-4 w-4" />
+                        <span>Indtast resultat</span>
+                      </div>
+                    )}
                   </>
                 )
               })()}
