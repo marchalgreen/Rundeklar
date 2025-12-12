@@ -182,65 +182,63 @@ const Header = () => {
               {isMenuOpen ? <X size={24} /> : <Menu size={24} />}
             </button>
 
-            {/* Desktop: Right section - User menu or login (hidden on demo tenant) */}
-            {!isDemoTenant && (
-              <div className="hidden lg:flex items-center justify-end flex-shrink-0" style={{ width: '200px', minWidth: '200px', flexBasis: '200px' }}>
-                {isAuthenticated ? (
-                  <div className="relative" ref={userMenuRef}>
-                    <button
-                      onClick={() => setIsUserMenuOpen(!isUserMenuOpen)}
-                      className="flex items-center gap-2 px-3 py-2 rounded-md hover:bg-[hsl(var(--surface-2))] transition-colors whitespace-nowrap"
-                      aria-label="Bruger menu"
-                    >
-                      <User size={20} />
-                      <span className="text-sm truncate max-w-[120px]">
-                        {club?.role === 'coach' && club?.username 
-                          ? formatCoachUsername(club.username) 
-                          : club?.email}
-                      </span>
-                    </button>
-                    {isUserMenuOpen && (
-                      <div className="absolute right-0 mt-2 w-48 bg-[hsl(var(--surface))] border border-[hsl(var(--line))] rounded-md shadow-lg z-50">
-                        <button
-                          type="button"
-                          onClick={() => {
-                            navigateToAuth('account')
-                            setIsUserMenuOpen(false)
-                          }}
-                          className="w-full text-left block px-4 py-2 hover:bg-[hsl(var(--surface-2))] text-sm"
-                        >
-                          <div className="flex items-center gap-2">
-                            <User size={16} />
-                            Kontoindstillinger
-                          </div>
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => {
-                            logout()
-                            setIsUserMenuOpen(false)
-                          }}
-                          className="w-full text-left px-4 py-2 hover:bg-[hsl(var(--surface-2))] text-sm text-red-600 dark:text-red-400"
-                        >
-                          <div className="flex items-center gap-2">
-                            <LogOut size={16} />
-                            Log ud
-                          </div>
-                        </button>
-                      </div>
-                    )}
-                  </div>
-                ) : (
-                  <Button 
-                    size="sm" 
-                    onClick={() => navigateToAuth('login')}
-                    className="flex-shrink-0"
+            {/* Desktop: Right section - User menu or login */}
+            <div className="hidden lg:flex items-center justify-end flex-shrink-0" style={{ width: '200px', minWidth: '200px', flexBasis: '200px' }}>
+              {isAuthenticated ? (
+                <div className="relative" ref={userMenuRef}>
+                  <button
+                    onClick={() => setIsUserMenuOpen(!isUserMenuOpen)}
+                    className="flex items-center gap-2 px-3 py-2 rounded-md hover:bg-[hsl(var(--surface-2))] transition-colors whitespace-nowrap"
+                    aria-label="Bruger menu"
                   >
-                    Log ind
-                  </Button>
-                )}
-              </div>
-            )}
+                    <User size={20} />
+                    <span className="text-sm truncate max-w-[120px]">
+                      {club?.role === 'coach' && club?.username 
+                        ? formatCoachUsername(club.username) 
+                        : club?.email}
+                    </span>
+                  </button>
+                  {isUserMenuOpen && (
+                    <div className="absolute right-0 mt-2 w-48 bg-[hsl(var(--surface))] ring-1 ring-[hsl(var(--line)/.12)] rounded-md shadow-lg z-50">
+                      <button
+                        type="button"
+                        onClick={() => {
+                          navigateToAuth('account')
+                          setIsUserMenuOpen(false)
+                        }}
+                        className="w-full text-left block px-4 py-2 hover:bg-[hsl(var(--surface-2))] text-sm text-[hsl(var(--foreground))]"
+                      >
+                        <div className="flex items-center gap-2">
+                          <User size={16} />
+                          Kontoindstillinger
+                        </div>
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          logout()
+                          setIsUserMenuOpen(false)
+                        }}
+                        className="w-full text-left px-4 py-2 hover:bg-[hsl(var(--surface-2))] text-sm text-[hsl(var(--danger))]"
+                      >
+                        <div className="flex items-center gap-2">
+                          <LogOut size={16} />
+                          Log ud
+                        </div>
+                      </button>
+                    </div>
+                  )}
+                </div>
+              ) : (
+                <Button 
+                  size="sm" 
+                  onClick={() => navigateToAuth('login')}
+                  className="flex-shrink-0"
+                >
+                  Log ind
+                </Button>
+              )}
+            </div>
           </div>
       </header>
 
@@ -281,6 +279,47 @@ const Header = () => {
               ))}
             </div>
           </nav>
+
+          {/* Mobile: User menu or login */}
+          <div className="shadow-[inset_0_1px_0_hsl(var(--line)/.08)] p-4">
+            {isAuthenticated ? (
+              <div className="flex flex-col gap-2">
+                <button
+                  type="button"
+                  onClick={() => {
+                    navigateToAuth('account')
+                    setIsMenuOpen(false)
+                  }}
+                  className="flex items-center gap-3 px-4 py-3 rounded-lg hover:bg-[hsl(var(--surface-2))] text-sm text-[hsl(var(--foreground))] transition-colors"
+                >
+                  <User size={18} />
+                  Kontoindstillinger
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    logout()
+                    setIsMenuOpen(false)
+                  }}
+                  className="flex items-center gap-3 px-4 py-3 rounded-lg hover:bg-[hsl(var(--surface-2))] text-sm text-[hsl(var(--danger))] transition-colors"
+                >
+                  <LogOut size={18} />
+                  Log ud
+                </button>
+              </div>
+            ) : (
+              <Button 
+                size="md" 
+                onClick={() => {
+                  navigateToAuth('login')
+                  setIsMenuOpen(false)
+                }}
+                className="w-full"
+              >
+                Log ind
+              </Button>
+            )}
+          </div>
         </div>
       </div>
 
