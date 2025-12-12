@@ -14,6 +14,7 @@ import { getPlayerUiVariant, VARIANT_CHANGED_EVENT, type PlayerUiVariant } from 
 import { useEffect, useState, useMemo } from 'react'
 import { formatCategoryLetter, formatPlayerCardName } from '../../lib/formatting'
 import { PLAYER_CATEGORIES } from '../../constants'
+import { Info } from 'lucide-react'
 
 /**
  * Props for PlayerCard component.
@@ -35,10 +36,16 @@ interface PlayerCardProps {
   isAnimatingIn: boolean
   
   /** Callback when player is clicked to check in. */
-  onCheckIn: (player: Player, maxRounds?: number) => void
+  onCheckIn: (player: Player, maxRounds?: number, notes?: string | null) => void
   
   /** Callback when "one round only" checkbox changes. */
   onOneRoundOnlyChange: (playerId: string, checked: boolean) => void
+  
+  /** Callback to open notes modal for this player (before check-in). */
+  onEditNotes: (player: Player, opener: HTMLElement) => void
+  
+  /** Optional notes for this player (if they have pending notes before check-in). */
+  pendingNotes?: string | null
 }
 
 /**
@@ -90,7 +97,9 @@ export const PlayerCard: React.FC<PlayerCardProps> = ({
   isAnimatingOut,
   isAnimatingIn,
   onCheckIn,
-  onOneRoundOnlyChange
+  onOneRoundOnlyChange,
+  onEditNotes,
+  pendingNotes
 }) => {
   const [variant, setVariant] = useState<PlayerUiVariant>(() => getPlayerUiVariant())
   useEffect(() => {
@@ -112,7 +121,7 @@ export const PlayerCard: React.FC<PlayerCardProps> = ({
   return (
     <div
       onClick={() => {
-        onCheckIn(player, oneRoundOnly ? 1 : undefined)
+        onCheckIn(player, oneRoundOnly ? 1 : undefined, pendingNotes ?? null)
         // Clear checkbox after check-in
         onOneRoundOnlyChange(player.id, false)
       }}
@@ -137,12 +146,48 @@ export const PlayerCard: React.FC<PlayerCardProps> = ({
       <div className="flex items-center gap-1.5 sm:gap-2 min-w-0 flex-1">
         <InitialsAvatar seed={player.id} name={player.name} gender={player.gender ?? null} />
         <div className="min-w-0 flex-1">
-          <p className={`font-semibold text-[hsl(var(--foreground))] truncate text-sm sm:text-base md:text-lg`}>
-            {formatPlayerCardName(player.name, player.alias)}
-          </p>
+          <div className="flex items-center gap-1.5 sm:gap-2 min-w-0">
+            <p className={`font-semibold text-[hsl(var(--foreground))] truncate text-sm sm:text-base md:text-lg`}>
+              {formatPlayerCardName(player.name, player.alias)}
+            </p>
+            <button
+              type="button"
+              className={clsx(
+                "inline-flex items-center gap-1 transition-colors flex-shrink-0",
+                pendingNotes 
+                  ? "text-[hsl(var(--foreground))]" 
+                  : "text-[hsl(var(--muted))] hover:text-[hsl(var(--foreground))]"
+              )}
+              onClick={(e) => {
+                e.stopPropagation()
+                onEditNotes(player, e.currentTarget)
+              }}
+              aria-label={`Tilføj eller rediger noter for ${player.name}`}
+              title={pendingNotes || 'Tilføj noter'}
+            >
+              <Info size={14} className="flex-shrink-0" />
+            </button>
+          </div>
+          {pendingNotes && (
+            <p className="text-[10px] sm:text-xs text-[hsl(var(--muted))] truncate mt-0.5">
+              {pendingNotes}
+            </p>
+          )}
         </div>
       </div>
       <div className="flex items-center gap-1 sm:gap-1.5 sm:gap-2 flex-shrink-0">
+        <button
+          type="button"
+          className="inline-flex items-center justify-center w-7 h-7 sm:w-8 sm:h-8 rounded hover:bg-[hsl(var(--surface-2)/.5)] transition-colors text-[hsl(var(--muted))] hover:text-[hsl(var(--foreground))] flex-shrink-0"
+          onClick={(e) => {
+            e.stopPropagation()
+            onEditNotes(player, e.currentTarget)
+          }}
+          aria-label={`Tilføj eller rediger noter for ${player.name}`}
+          title={pendingNotes || 'Tilføj noter'}
+        >
+          <Info size={16} className="flex-shrink-0" />
+        </button>
         <label
           className="flex items-center gap-1 sm:gap-2 cursor-pointer px-1.5 sm:px-2 py-1 sm:py-1.5 rounded hover:bg-[hsl(var(--surface-2)/.5)] transition-colors"
           onClick={(e) => e.stopPropagation()}
@@ -164,7 +209,7 @@ export const PlayerCard: React.FC<PlayerCardProps> = ({
           size="sm"
           onClick={(e) => {
             e.stopPropagation()
-            onCheckIn(player, oneRoundOnly ? 1 : undefined)
+            onCheckIn(player, oneRoundOnly ? 1 : undefined, pendingNotes ?? null)
             onOneRoundOnlyChange(player.id, false)
           }}
           className={clsx('ring-2 ring-[hsl(var(--accent)/.2)]', 'text-[10px] sm:text-xs px-2 sm:px-3 py-1 sm:py-1.5')}
