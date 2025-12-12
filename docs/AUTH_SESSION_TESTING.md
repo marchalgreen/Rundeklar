@@ -8,7 +8,8 @@ This guide explains how to test the authentication session management system, es
 
 In development mode, the system uses shorter intervals for easier testing:
 
-- **Auto-refresh interval**: 1 minute (instead of 110 minutes)
+- **Auto-refresh interval**: 1 minute (instead of 30 minutes)
+- **Proactive refresh check**: 30 seconds (instead of 15 minutes)
 - **Activity threshold**: 30 seconds (instead of 5 minutes)
 - **Activity debounce**: 5 seconds (instead of 30 seconds)
 
@@ -36,6 +37,14 @@ In development mode, the system uses shorter intervals for easier testing:
    [Auth] Auto-refresh result: success
    ```
 
+6. **Wait 30 seconds** - you should see proactive refresh check (if token is expiring soon):
+   ```
+   [Auth] Proactive refresh: token expires in X minutes
+   [Auth] Attempting token refresh...
+   [Auth] Token refresh successful
+   [Auth] Proactive refresh result: success
+   ```
+
 6. **Test activity-based refresh:**
    - Wait 30 seconds without interacting
    - Move mouse or press a key
@@ -53,17 +62,22 @@ In development mode, the system uses shorter intervals for easier testing:
 In production, the system uses longer intervals:
 
 - **Access token expiry**: 2 hours
-- **Auto-refresh interval**: 110 minutes (refreshes before expiry)
+- **Auto-refresh interval**: 30 minutes (refreshes frequently to prevent expiry)
+- **Proactive refresh check**: Every 15 minutes (refreshes if token expires within 1 hour)
 - **Activity threshold**: 5 minutes
 - **Activity debounce**: 30 seconds
 
 ## Manual Testing Checklist
 
 - [ ] Login works correctly
-- [ ] Auto-refresh happens every 1 minute (dev) / 110 minutes (prod)
+- [ ] Auto-refresh happens every 1 minute (dev) / 30 minutes (prod)
+- [ ] Proactive refresh checks token age every 30 seconds (dev) / 15 minutes (prod)
+- [ ] Proactive refresh refreshes token if it expires within 1 hour
 - [ ] Activity-based refresh triggers after inactivity
 - [ ] Token refresh retries on network errors (check console)
-- [ ] User stays logged in during 2-hour session
+- [ ] User stays logged in during 3+ hour training session
+- [ ] User stays logged in after computer restart (if refresh token still valid)
+- [ ] Network errors don't cause logout (only permanent 401 errors do)
 - [ ] Logout works correctly
 
 ## Troubleshooting
@@ -99,9 +113,14 @@ localStorage.getItem('auth_refresh_token')
 ## Expected Behavior
 
 1. **User logs in** → Access token (2h) and refresh token (7d) stored
-2. **Every 110 minutes** → Access token refreshed automatically
-3. **After 5 min inactivity + activity** → Token refreshed on activity
-4. **On API 401 error** → Token refreshed automatically, request retried
-5. **After 2 hours** → Token still valid (refreshed before expiry)
-6. **After 7 days** → Refresh token expires, user must log in again
+2. **Every 30 minutes** → Access token refreshed automatically (interval-based)
+3. **Every 15 minutes** → System checks token age, refreshes if expiring within 1 hour (proactive)
+4. **After 5 min inactivity + activity** → Token refreshed on activity
+5. **On API 401 error** → Token refreshed automatically, request retried
+6. **On network error during refresh** → Retry with exponential backoff, don't log out
+7. **After 2 hours** → Token still valid (refreshed before expiry via proactive check)
+8. **After 3+ hours** → User still logged in (tokens refreshed proactively)
+9. **After 7 days** → Refresh token expires, user must log in again
+10. **After computer restart** → User automatically logged in if refresh token still valid
+
 
