@@ -59,6 +59,8 @@ export const useCheckIns = (sessionId: string | null): UseCheckInsReturn => {
   
   // Operation locking: prevent concurrent operations on the same player
   const pendingOperationsRef = useRef<Set<string>>(new Set())
+  // Track if we're in the middle of a check-in operation to prevent unnecessary reloads
+  const isCheckingInRef = useRef<Set<string>>(new Set())
 
   /**
    * Loads checked-in players from the API.
@@ -75,7 +77,42 @@ export const useCheckIns = (sessionId: string | null): UseCheckInsReturn => {
     
     try {
       const result = await api.checkIns.listActive()
-      setCheckedIn(result)
+      // Only update state if the data actually changed to prevent unnecessary re-renders
+      setCheckedIn(prev => {
+        // Skip update if we're currently checking in players (optimistic update already handled it)
+        if (isCheckingInRef.current.size > 0) {
+          // Check if all checking-in players are already in the result
+          const allPresent = [...isCheckingInRef.current].every(id => 
+            result.some(p => p.id === id)
+          )
+          if (allPresent) {
+            // All players we're checking in are already in result, skip update to prevent blink
+            return prev
+          }
+        }
+        
+        // Compare arrays by IDs to avoid unnecessary updates
+        const prevIds = new Set(prev.map(p => p.id))
+        const resultIds = new Set(result.map(p => p.id))
+        const idsMatch = prevIds.size === resultIds.size && 
+                         [...prevIds].every(id => resultIds.has(id))
+        
+        // If IDs match and no pending operations, skip update to prevent blinking
+        if (idsMatch && pendingOperationsRef.current.size === 0) {
+          // Still check if any player data changed (e.g., maxRounds, checkInAt)
+          const hasChanges = result.some(newPlayer => {
+            const oldPlayer = prev.find(p => p.id === newPlayer.id)
+            return !oldPlayer || 
+                   oldPlayer.maxRounds !== newPlayer.maxRounds ||
+                   oldPlayer.checkInAt !== newPlayer.checkInAt
+          })
+          if (!hasChanges) {
+            return prev // Return same reference to prevent re-render
+          }
+        }
+        
+        return result
+      })
     } catch (err) {
       const normalizedError = normalizeError(err)
       setError(normalizedError.message)
@@ -114,6 +151,7 @@ export const useCheckIns = (sessionId: string | null): UseCheckInsReturn => {
     }
     
     pendingOperationsRef.current.add(playerId)
+    isCheckingInRef.current.add(playerId)
     setError(null)
     
     try {
@@ -153,12 +191,19 @@ export const useCheckIns = (sessionId: string | null): UseCheckInsReturn => {
       // Sync with database in background
       try {
         await api.checkIns.add({ playerId, maxRounds })
-        // Reload to ensure consistency (will update if player data was missing)
-        await loadCheckIns()
+        // Don't reload - the optimistic update already has the correct data
+        // Reloading would cause unnecessary re-renders and UI blinking
+        // Only reload if player data was missing (shouldn't happen in normal flow)
+        if (!playerData) {
+          await loadCheckIns()
+        }
+        // Remove from checking-in ref after successful API call
+        isCheckingInRef.current.delete(playerId)
         return true
       } catch (err) {
         // Rollback optimistic update on error
         setCheckedIn(prev => prev.filter(p => p.id !== playerId))
+        isCheckingInRef.current.delete(playerId)
         
         // Check if it's a duplicate key error - if so, reload to sync state
         const errorMessage = err instanceof Error ? err.message : String(err)
