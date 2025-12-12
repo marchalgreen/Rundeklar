@@ -6,6 +6,8 @@ import type {
   CourtWithPlayers,
   Match,
   MatchMovePayload,
+  MatchResult,
+  BadmintonScoreData,
   Player,
   PlayerCreateInput,
   PlayerListFilters,
@@ -33,7 +35,13 @@ import {
   getMatchPlayers,
   createMatchPlayer as createMatchPlayerInDb,
   updateMatchPlayer as updateMatchPlayerInDb,
-  deleteMatchPlayer as deleteMatchPlayerInDb
+  deleteMatchPlayer as deleteMatchPlayerInDb,
+  getMatchResults,
+  getMatchResult as getMatchResultInDb,
+  getMatchResultsBySession,
+  createMatchResult as createMatchResultInDb,
+  updateMatchResult as updateMatchResultInDb,
+  deleteMatchResult as deleteMatchResultInDb
 } from './postgres'
 // (No star import needed)
 import { getCurrentTenantConfig } from '../lib/postgres'
@@ -2048,13 +2056,74 @@ const movePlayer = async (payload: MatchMovePayload, round?: number): Promise<vo
     })
 }
 
+/**
+ * Marks a match as finished by setting endedAt timestamp.
+ */
+const markMatchFinished = async (matchId: string): Promise<Match> => {
+  const endedAt = new Date().toISOString()
+  return await updateMatchInDb(matchId, { endedAt })
+}
+
+/**
+ * Creates a match result.
+ */
+const createMatchResult = async (
+  matchId: string,
+  scoreData: BadmintonScoreData | Record<string, any>,
+  sport: 'badminton' | 'tennis' | 'padel',
+  winnerTeam: 'team1' | 'team2'
+): Promise<MatchResult> => {
+  return await createMatchResultInDb(matchId, scoreData, sport, winnerTeam)
+}
+
+/**
+ * Gets a match result by match ID.
+ */
+const getMatchResult = async (matchId: string): Promise<MatchResult | null> => {
+  return await getMatchResultInDb(matchId)
+}
+
+/**
+ * Updates a match result.
+ */
+const updateMatchResult = async (
+  id: string,
+  updates: Partial<Pick<MatchResult, 'scoreData' | 'winnerTeam'>>
+): Promise<MatchResult> => {
+  return await updateMatchResultInDb(id, updates)
+}
+
+/**
+ * Deletes a match result.
+ */
+const deleteMatchResult = async (id: string): Promise<void> => {
+  return await deleteMatchResultInDb(id)
+}
+
+/**
+ * Gets match results by session ID.
+ */
+const getMatchResultsBySessionId = async (sessionId: string): Promise<MatchResult[]> => {
+  return await getMatchResultsBySession(sessionId)
+}
+
 /** Matches API — manages court assignments and player matching. */
 const matchesApi = {
     autoArrange: (round?: number, unavailablePlayerIds?: Set<string>, activatedOneRoundPlayers?: Set<string>, lockedCourtIdxs?: Set<number>, isReshuffle?: boolean, currentMatches?: CourtWithPlayers[], extendedCapacityCourts?: Map<number, number>) => autoArrangeMatches(round, unavailablePlayerIds, activatedOneRoundPlayers, lockedCourtIdxs, isReshuffle, currentMatches, extendedCapacityCourts),
   list: (round?: number) => listMatches(round),
   reset: resetMatches,
   resetForRound: resetMatchesForRound,
-  move: movePlayer
+  move: movePlayer,
+  markFinished: markMatchFinished
+}
+
+/** Match Results API — manages match scores and results. */
+const matchResultsApi = {
+  create: createMatchResult,
+  get: getMatchResult,
+  update: updateMatchResult,
+  delete: deleteMatchResult,
+  getBySession: getMatchResultsBySessionId
 }
 
 /** Main API client — exports all API modules. */
@@ -2063,6 +2132,7 @@ const api = {
   session: sessionApi,
   checkIns: checkInsApi,
   matches: matchesApi,
+  matchResults: matchResultsApi,
   database: {
     createBackup,
     restoreFromBackup,
