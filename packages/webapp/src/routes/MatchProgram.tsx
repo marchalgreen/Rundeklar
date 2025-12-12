@@ -19,8 +19,9 @@ import { CourtCard } from '../components/matchprogram/CourtCard'
 import { PreviousRoundsPopup } from '../components/matchprogram/PreviousRoundsPopup'
 import { MatchProgramHeader } from '../components/matchprogram/MatchProgramHeader'
 import { MatchResultInput } from '../components/matchprogram/MatchResultInput'
+import { NotesModal } from '../components/checkin/NotesModal'
 import { getMatches, getCourts } from '../api/postgres'
-import type { Match } from '@rundeklar/common'
+import type { Match, CheckedInPlayer } from '@rundeklar/common'
 import { normalizeError } from '../lib/errors'
 import { useToast } from '../components/ui/Toast'
 import type { PlayerSortType } from '../lib/matchProgramUtils'
@@ -57,7 +58,7 @@ const MatchProgramPage = () => {
   
   // Data hooks
   const { session, loading: sessionLoading, startSession, endSession } = useSession()
-  const { checkedIn, loading: checkInsLoading } = useCheckIns(session?.id ?? null)
+  const { checkedIn, loading: checkInsLoading, updateNotes } = useCheckIns(session?.id ?? null)
 
   // Keep screen awake when session is active
   useWakeLock(session !== null)
@@ -66,6 +67,11 @@ const MatchProgramPage = () => {
   
   // Player sorting state
   const [playerSortType, setPlayerSortType] = React.useState<PlayerSortType>('gender-category')
+  
+  // Notes modal state
+  const [notesModalOpen, setNotesModalOpen] = React.useState(false)
+  const [notesModalPlayer, setNotesModalPlayer] = React.useState<CheckedInPlayer | null>(null)
+  const [notesModalOpener, setNotesModalOpener] = React.useState<HTMLElement | null>(null)
   
   // Match program hook - manages all state and operations
   const matchProgram = useMatchProgram({
@@ -145,6 +151,26 @@ const MatchProgramPage = () => {
     handleSaveMatchResult,
     handleDeleteMatchResult
   } = matchProgram
+
+  /**
+   * Handles opening notes modal for a player.
+   */
+  const handleEditNotes = React.useCallback((player: CheckedInPlayer, opener?: HTMLElement | null) => {
+    setNotesModalPlayer(player)
+    setNotesModalOpener(opener ?? null)
+    setNotesModalOpen(true)
+  }, [])
+
+  /**
+   * Handles saving notes for a player.
+   */
+  const handleSaveNotes = React.useCallback(async (notes: string | null) => {
+    if (!notesModalPlayer) return
+    await updateNotes(notesModalPlayer.id, notes)
+    setNotesModalOpen(false)
+    setNotesModalPlayer(null)
+    setNotesModalOpener(null)
+  }, [notesModalPlayer, updateNotes])
   
   // Get sport from tenant config
   const sport = getTenantSport(config)
@@ -422,6 +448,7 @@ const MatchProgramPage = () => {
           onInactiveDrop={handleInactiveDrop}
           onMarkAvailable={handleMarkAvailable}
           onActivateOneRoundPlayer={handleActivateOneRoundPlayer}
+          onEditNotes={handleEditNotes}
         />
 
         {/* Courts */}
@@ -509,6 +536,21 @@ const MatchProgramPage = () => {
           />
         )
       })()}
+
+      {/* Notes Modal */}
+      {notesModalPlayer && (
+        <NotesModal
+          isOpen={notesModalOpen}
+          onClose={() => {
+            setNotesModalOpen(false)
+            setTimeout(() => notesModalOpener?.focus(), 0)
+          }}
+          currentNotes={notesModalPlayer.notes}
+          onSave={handleSaveNotes}
+          playerName={notesModalPlayer.name}
+          returnFocusTo={notesModalOpener}
+        />
+      )}
     </section>
   )
 }
