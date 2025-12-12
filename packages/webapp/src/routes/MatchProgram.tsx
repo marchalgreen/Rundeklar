@@ -355,10 +355,10 @@ const MatchProgramPage = () => {
               existingResult={result}
               sport={sport}
               onSave={async ({ scoreData, winnerTeam }) => {
-                await handleSaveMatchResult(match.id, scoreData, winnerTeam, sport)
+                await handleSaveMatchResult(match.id, scoreData, winnerTeam, sport, court.courtIdx)
               }}
               onDelete={result ? async () => {
-                await handleDeleteMatchResult(match.id)
+                await handleDeleteMatchResult(match.id, court.courtIdx)
               } : undefined}
             />
           )
@@ -494,10 +494,10 @@ const MatchProgramPage = () => {
             existingResult={result}
             sport={sport}
             onSave={async ({ scoreData, winnerTeam }) => {
-              await handleSaveMatchResult(match.id, scoreData, winnerTeam, sport)
+              await handleSaveMatchResult(match.id, scoreData, winnerTeam, sport, court.courtIdx)
             }}
             onDelete={result ? async () => {
-              await handleDeleteMatchResult(match.id)
+              await handleDeleteMatchResult(match.id, court.courtIdx)
             } : undefined}
           />
         )

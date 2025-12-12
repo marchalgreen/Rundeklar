@@ -167,8 +167,8 @@ interface UseMatchProgramReturn {
   matchResults: Map<string, MatchResult>
   openResultInputMatchId: string | null
   setOpenResultInputMatchId: (matchId: string | null) => void
-  handleSaveMatchResult: (matchId: string, scoreData: BadmintonScoreData, winnerTeam: 'team1' | 'team2', sport?: 'badminton' | 'tennis' | 'padel') => Promise<void>
-  handleDeleteMatchResult: (matchId: string) => Promise<void>
+  handleSaveMatchResult: (matchId: string, scoreData: BadmintonScoreData, winnerTeam: 'team1' | 'team2', sport?: 'badminton' | 'tennis' | 'padel', courtIdx?: number) => Promise<void>
+  handleDeleteMatchResult: (matchId: string, courtIdx?: number) => Promise<void>
   handleMarkMatchFinished: (matchId: string) => Promise<void>
 }
 
@@ -1192,19 +1192,22 @@ export const useMatchProgram = ({
    * Handler to save match result.
    * 
    * Creates a new match result or updates an existing one.
+   * Automatically locks the court when a result is saved.
    * Shows success/error toast notifications.
    * 
    * @param matchId - Match ID to save result for
    * @param scoreData - Badminton score data
    * @param winnerTeam - Winning team ('team1' or 'team2')
    * @param sport - Sport type (defaults to 'badminton')
+   * @param courtIdx - Court index to lock (optional, but recommended)
    * @throws Error if save operation fails
    */
   const handleSaveMatchResult = useCallback(async (
     matchId: string,
     scoreData: BadmintonScoreData,
     winnerTeam: 'team1' | 'team2',
-    sport: 'badminton' | 'tennis' | 'padel' = 'badminton'
+    sport: 'badminton' | 'tennis' | 'padel' = 'badminton',
+    courtIdx?: number
   ) => {
     try {
       const existingResult = matchResults.get(matchId)
@@ -1237,6 +1240,20 @@ export const useMatchProgram = ({
           title: 'Resultat gemt'
         })
       }
+      
+      // Automatically lock the court when a result is saved
+      if (courtIdx !== undefined) {
+        setLockedCourts((prev) => {
+          const roundLocks = prev[selectedRound] || new Set<number>()
+          // Only lock if not already locked
+          if (!roundLocks.has(courtIdx)) {
+            const newSet = new Set(roundLocks)
+            newSet.add(courtIdx)
+            return { ...prev, [selectedRound]: newSet }
+          }
+          return prev
+        })
+      }
     } catch (err: unknown) {
       const normalizedError = normalizeError(err)
       notify({
@@ -1246,10 +1263,19 @@ export const useMatchProgram = ({
       })
       throw err
     }
-  }, [matchResults, notify])
+  }, [matchResults, notify, selectedRound])
   
-  // Handler to delete match result
-  const handleDeleteMatchResult = useCallback(async (matchId: string) => {
+  /**
+   * Handler to delete match result.
+   * 
+   * Deletes a match result and automatically unlocks the court.
+   * Shows success/error toast notifications.
+   * 
+   * @param matchId - Match ID to delete result for
+   * @param courtIdx - Court index to unlock (optional, but recommended)
+   * @throws Error if delete operation fails
+   */
+  const handleDeleteMatchResult = useCallback(async (matchId: string, courtIdx?: number) => {
     try {
       const existingResult = matchResults.get(matchId)
       if (!existingResult) return
@@ -1264,6 +1290,20 @@ export const useMatchProgram = ({
         variant: 'success',
         title: 'Resultat slettet'
       })
+      
+      // Automatically unlock the court when result is deleted
+      if (courtIdx !== undefined) {
+        setLockedCourts((prev) => {
+          const roundLocks = prev[selectedRound] || new Set<number>()
+          // Only unlock if currently locked
+          if (roundLocks.has(courtIdx)) {
+            const newSet = new Set(roundLocks)
+            newSet.delete(courtIdx)
+            return { ...prev, [selectedRound]: newSet }
+          }
+          return prev
+        })
+      }
     } catch (err: unknown) {
       const normalizedError = normalizeError(err)
       notify({
@@ -1273,7 +1313,7 @@ export const useMatchProgram = ({
       })
       throw err
     }
-  }, [matchResults, notify])
+  }, [matchResults, notify, selectedRound])
   
   // UI handlers
   const handleMouseDown = useCallback((e: React.MouseEvent<HTMLDivElement>) => {
