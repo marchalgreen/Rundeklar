@@ -67,9 +67,9 @@ function buildWhereClause(
         params.push(ips[0])
         paramIndex++
       } else {
-        // For multiple IPs, use NOT IN with array
+        // For multiple IPs, use NOT = ANY(ARRAY[...]) to exclude all IPs
         const placeholders = ips.map((_, i) => `$${paramIndex + i}::inet`).join(', ')
-        conditions.push(`ip_address IS DISTINCT FROM ALL(ARRAY[${placeholders}])`)
+        conditions.push(`NOT (ip_address = ANY(ARRAY[${placeholders}]))`)
         params.push(...ips)
         paramIndex += ips.length
       }
