@@ -208,7 +208,8 @@ const rowToCheckIn = (row: any): CheckIn => ({
   sessionId: row.session_id,
   playerId: row.player_id,
   maxRounds: row.max_rounds,
-  createdAt: row.created_at
+  createdAt: row.created_at,
+  notes: row.notes ?? null
 })
 
 /**
@@ -1021,8 +1022,8 @@ export const createCheckIn = async (checkIn: Omit<CheckIn, 'id' | 'createdAt'>):
   // Try to insert, but if it already exists (duplicate key), return the existing one
   // Uses the unique constraint on (session_id, player_id, tenant_id)
   const result = await sql`
-    INSERT INTO check_ins (session_id, player_id, max_rounds, tenant_id, isolation_id)
-    VALUES (${checkIn.sessionId}, ${checkIn.playerId}, ${checkIn.maxRounds ?? null}, ${tenantId}, ${isolationId})
+    INSERT INTO check_ins (session_id, player_id, max_rounds, notes, tenant_id, isolation_id)
+    VALUES (${checkIn.sessionId}, ${checkIn.playerId}, ${checkIn.maxRounds ?? null}, ${checkIn.notes ?? null}, ${tenantId}, ${isolationId})
     ON CONFLICT ON CONSTRAINT check_ins_session_id_player_id_tenant_id_key DO NOTHING
     RETURNING *
   `
@@ -1075,6 +1076,87 @@ export const createCheckIn = async (checkIn: Omit<CheckIn, 'id' | 'createdAt'>):
   }
   
   return converted
+}
+
+/**
+ * Updates a check-in in Postgres.
+ */
+export const updateCheckIn = async (id: string, updates: Partial<Pick<CheckIn, 'maxRounds' | 'notes'>>): Promise<CheckIn> => {
+  const sql = getPostgres()
+  const tenantId = getTenantId()
+  const isolationId = await getIsolationIdForCurrentTenant()
+  
+  const updateData: any = {}
+  if (updates.maxRounds !== undefined) updateData.max_rounds = updates.maxRounds
+  if (updates.notes !== undefined) updateData.notes = updates.notes
+
+  if (Object.keys(updateData).length === 0) {
+    // No updates, just fetch and return
+    const [checkIn] = await sql`
+      SELECT * FROM check_ins 
+      WHERE id = ${id} AND tenant_id = ${tenantId}
+      LIMIT 1
+    `
+    if (!checkIn) {
+      throw new Error('Check-in not found')
+    }
+    return rowToCheckIn(checkIn)
+  }
+
+  // Build UPDATE query with isolation check
+  const setClauses: string[] = []
+  const values: any[] = []
+  let paramIndex = 1
+  
+  for (const [key, value] of Object.entries(updateData)) {
+    setClauses.push(`${key} = $${paramIndex}`)
+    values.push(value)
+    paramIndex++
+  }
+  
+  if (isolationId) {
+    // Demo tenant: verify isolation_id matches
+    values.push(tenantId, isolationId, id)
+    const [updated] = await sql.unsafe(
+      `UPDATE check_ins SET ${setClauses.join(', ')} WHERE tenant_id = $${paramIndex} AND isolation_id = $${paramIndex + 1} AND id = $${paramIndex + 2} RETURNING *`,
+      values
+    )
+    if (!updated) {
+      throw new Error('Check-in not found or isolation mismatch')
+    }
+    const converted = rowToCheckIn(updated)
+    
+    // Update cache
+    if (tableCaches.checkIns) {
+      tableCaches.checkIns = tableCaches.checkIns.map(c => c.id === id ? converted : c)
+    }
+    if (cachedState) {
+      cachedState.checkIns = cachedState.checkIns.map(c => c.id === id ? converted : c)
+    }
+    
+    return converted
+  } else {
+    // Production tenants: only update check-ins with NULL isolation_id
+    values.push(tenantId, id)
+    const [updated] = await sql.unsafe(
+      `UPDATE check_ins SET ${setClauses.join(', ')} WHERE tenant_id = $${paramIndex} AND (isolation_id IS NULL OR isolation_id = '') AND id = $${paramIndex + 1} RETURNING *`,
+      values
+    )
+    if (!updated) {
+      throw new Error('Check-in not found')
+    }
+    const converted = rowToCheckIn(updated)
+    
+    // Update cache
+    if (tableCaches.checkIns) {
+      tableCaches.checkIns = tableCaches.checkIns.map(c => c.id === id ? converted : c)
+    }
+    if (cachedState) {
+      cachedState.checkIns = cachedState.checkIns.map(c => c.id === id ? converted : c)
+    }
+    
+    return converted
+  }
 }
 
 /**

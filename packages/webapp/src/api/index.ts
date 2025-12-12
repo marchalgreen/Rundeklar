@@ -27,6 +27,7 @@ import {
   updateSession as updateSessionInDb,
   getCheckIns,
   createCheckIn as createCheckInInDb,
+  updateCheckIn as updateCheckInInDb,
   deleteCheckIn as deleteCheckInInDb,
   getMatches,
   createMatch as createMatchInDb,
@@ -106,6 +107,12 @@ const playerUpdateSchema = z.object({
     })
     .refine((value) => Object.keys(value).length > 0, 'patch must update mindst ét felt')
 })
+
+/** Zod schema for check-in notes validation. */
+const checkInNotesSchema = z.string()
+  .max(500, 'Noter må maksimalt være 500 tegn')
+  .nullable()
+  .optional()
 
 /**
  * Lists players with optional filters (search, active status).
@@ -428,15 +435,22 @@ const sessionApi = {
 /**
  * Adds a player check-in for the active session.
  * 
- * @param input - Check-in input (playerId, optional maxRounds)
+ * @param input - Check-in input (playerId, optional maxRounds, optional notes)
  * @returns Created check-in
+ * @throws {ValidationError} If notes validation fails
  * @throws {SessionError} If no active session exists
  * @throws {PlayerError} If player not found or inactive
  * @throws {SessionError} If player already checked in
  * @throws {DatabaseError} If database operation fails
  */
-const addCheckIn = async (input: { playerId: string; maxRounds?: number }) => {
+const addCheckIn = async (input: { playerId: string; maxRounds?: number; notes?: string | null }) => {
   try {
+  // Validate notes if provided
+  let validatedNotes: string | null | undefined = input.notes
+  if (input.notes !== undefined && input.notes !== null) {
+    validatedNotes = checkInNotesSchema.parse(input.notes)
+  }
+  
   const session = await ensureActiveSession()
   const players = await getPlayers()
   const player = players.find((item) => item.id === input.playerId)
@@ -461,7 +475,8 @@ const addCheckIn = async (input: { playerId: string; maxRounds?: number }) => {
   const checkIn = await createCheckInInDb({
     sessionId: session.id,
     playerId: input.playerId,
-    maxRounds: input.maxRounds ?? null
+    maxRounds: input.maxRounds ?? null,
+    notes: validatedNotes ?? null
   })
     
   return checkIn
@@ -469,6 +484,14 @@ const addCheckIn = async (input: { playerId: string; maxRounds?: number }) => {
     // Re-throw AppError instances as-is
     if (error instanceof Error && 'code' in error) {
       throw error
+    }
+    // Handle Zod validation errors
+    if (error instanceof z.ZodError) {
+      throw new ValidationError(
+        error.errors.map((e) => e.message).join(', '),
+        undefined,
+        error
+      )
     }
     throw normalizeError(error)
   }
@@ -491,7 +514,8 @@ const listActiveCheckIns = async (): Promise<CheckedInPlayer[]> => {
       return {
         ...normalisePlayer(player),
         checkInAt: checkIn.createdAt,
-        maxRounds: checkIn.maxRounds ?? null
+        maxRounds: checkIn.maxRounds ?? null,
+        notes: checkIn.notes ?? null
       }
     })
 }
@@ -530,9 +554,66 @@ const removeCheckIn = async (input: { playerId: string }) => {
   }
 }
 
+/**
+ * Updates a player check-in for the active session.
+ * 
+ * @param input - Update input (playerId, optional maxRounds, optional notes)
+ * @returns Updated check-in
+ * @throws {ValidationError} If notes validation fails
+ * @throws {SessionError} If no active session exists
+ * @throws {SessionError} If player not checked in
+ * @throws {DatabaseError} If database operation fails
+ */
+const updateCheckIn = async (input: { playerId: string; maxRounds?: number; notes?: string | null }) => {
+  try {
+    // Validate notes if provided
+    let validatedNotes: string | null | undefined = input.notes
+    if (input.notes !== undefined && input.notes !== null) {
+      validatedNotes = checkInNotesSchema.parse(input.notes)
+    }
+    
+    const session = await ensureActiveSession()
+    const checkIns = await getCheckIns()
+    const checkIn = checkIns.find(
+      (ci: CheckIn) => ci.sessionId === session.id && ci.playerId === input.playerId
+    )
+    
+    if (!checkIn) {
+      // Try to get player name for better error message
+      const players = await getPlayers()
+      const player = players.find((p: Player) => p.id === input.playerId)
+      const playerName = player?.name ?? input.playerId
+      throw createCheckInNotFoundError(playerName)
+    }
+    
+    const updateData: Partial<Pick<CheckIn, 'maxRounds' | 'notes'>> = {}
+    if (input.maxRounds !== undefined) updateData.maxRounds = input.maxRounds
+    if (input.notes !== undefined) updateData.notes = validatedNotes ?? null
+    
+    const updated = await updateCheckInInDb(checkIn.id, updateData)
+    
+    return updated
+  } catch (error) {
+    // Re-throw AppError instances as-is
+    if (error instanceof Error && 'code' in error) {
+      throw error
+    }
+    // Handle Zod validation errors
+    if (error instanceof z.ZodError) {
+      throw new ValidationError(
+        error.errors.map((e) => e.message).join(', '),
+        undefined,
+        error
+      )
+    }
+    throw normalizeError(error)
+  }
+}
+
 /** Check-ins API — manages player check-ins for training sessions. */
 const checkInsApi = {
   add: addCheckIn,
+  update: updateCheckIn,
   remove: removeCheckIn,
   listActive: listActiveCheckIns
 }

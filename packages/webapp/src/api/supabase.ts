@@ -77,7 +77,8 @@ const rowToCheckIn = (row: any): CheckIn => ({
   sessionId: row.session_id,
   playerId: row.player_id,
   createdAt: row.created_at,
-  maxRounds: row.max_rounds ?? null
+  maxRounds: row.max_rounds ?? null,
+  notes: row.notes ?? null
 })
 
 /**
@@ -406,11 +407,32 @@ export const createCheckIn = async (checkIn: Omit<CheckIn, 'id' | 'createdAt'>):
     .insert({
       session_id: checkIn.sessionId,
       player_id: checkIn.playerId,
-      max_rounds: checkIn.maxRounds
+      max_rounds: checkIn.maxRounds,
+      notes: checkIn.notes ?? null
     })
     .select()
     .single()
   if (error) throw new Error(`Failed to create check-in: ${error.message}`)
+  invalidateCache()
+  return rowToCheckIn(data)
+}
+
+/**
+ * Updates a check-in in Supabase.
+ */
+export const updateCheckIn = async (id: string, updates: Partial<Pick<CheckIn, 'maxRounds' | 'notes'>>): Promise<CheckIn> => {
+  const supabase = getSupabase()
+  const updateData: any = {}
+  if (updates.maxRounds !== undefined) updateData.max_rounds = updates.maxRounds
+  if (updates.notes !== undefined) updateData.notes = updates.notes
+  
+  const { data, error } = await supabase
+    .from('check_ins')
+    .update(updateData)
+    .eq('id', id)
+    .select()
+    .single()
+  if (error) throw new Error(`Failed to update check-in: ${error.message}`)
   invalidateCache()
   return rowToCheckIn(data)
 }
