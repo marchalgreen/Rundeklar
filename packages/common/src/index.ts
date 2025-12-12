@@ -56,6 +56,25 @@ export type MatchPlayer = {
   slot: number
 }
 
+export type BadmintonScoreData = {
+  sets: Array<{ team1: number; team2: number }>
+  winner: 'team1' | 'team2'
+}
+
+// Placeholder for future sports
+export type TennisScoreData = Record<string, any>
+export type PadelScoreData = Record<string, any>
+
+export type MatchResult = {
+  id: string
+  matchId: string
+  sport: 'badminton' | 'tennis' | 'padel'
+  scoreData: BadmintonScoreData | TennisScoreData | PadelScoreData
+  winnerTeam: 'team1' | 'team2'
+  createdAt: string
+  updatedAt: string
+}
+
 export type CourtWithPlayers = {
   courtIdx: number
   slots: Array<{ slot: number; player: Player }>
@@ -109,6 +128,7 @@ export type StatisticsSnapshot = {
   matches: Match[]
   matchPlayers: MatchPlayer[]
   checkIns: CheckIn[]
+  matchResults?: MatchResult[] // Optional for backward compatibility
   createdAt: string
 }
 
@@ -139,6 +159,7 @@ export type TenantConfig = {
   subdomain: string // Subdomain for tenant (e.g., "herlev-hjorten" for herlev-hjorten.rundeklar.dk)
   logo: string
   maxCourts: number
+  sport?: 'badminton' | 'tennis' | 'padel' // Default: 'badminton'
   planId?: 'basic' | 'professional' | 'enterprise' // Subscription plan type
   postgresUrl?: string // Postgres connection string (optional - can use DATABASE_URL env var)
   // Legacy Supabase fields (deprecated, kept for backward compatibility during migration)
