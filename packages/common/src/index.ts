@@ -33,6 +33,7 @@ export type CheckIn = {
   playerId: string
   createdAt: string
   maxRounds?: number | null
+  notes?: string | null
 }
 
 export type Court = {
@@ -80,7 +81,7 @@ export type CourtWithPlayers = {
   slots: Array<{ slot: number; player: Player }>
 }
 
-export type CheckedInPlayer = Player & { checkInAt: string; maxRounds?: number | null }
+export type CheckedInPlayer = Player & { checkInAt: string; maxRounds?: number | null; notes?: string | null }
 
 export type PlayerListFilters = {
   q?: string
