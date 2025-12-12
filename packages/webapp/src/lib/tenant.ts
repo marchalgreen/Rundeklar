@@ -177,3 +177,12 @@ export const buildTenantPath = (tenantId: string, path: string): string => {
   return `/${tenantId}/${cleanPath}`
 }
 
+/**
+ * Gets the sport type for a tenant configuration.
+ * @param config - Tenant configuration
+ * @returns Sport type (defaults to 'badminton')
+ */
+export const getTenantSport = (config: TenantConfig): 'badminton' | 'tennis' | 'padel' => {
+  return config.sport || 'badminton'
+}
+
