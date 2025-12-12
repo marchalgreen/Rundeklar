@@ -28,10 +28,13 @@ export interface UseCheckInsReturn {
   refetch: () => Promise<void>
   
   /** Function to check in a player. */
-  checkIn: (playerId: string, maxRounds?: number) => Promise<boolean>
+  checkIn: (playerId: string, maxRounds?: number, notes?: string | null) => Promise<boolean>
   
   /** Function to check out a player. */
   checkOut: (playerId: string) => Promise<boolean>
+  
+  /** Function to update check-in notes. */
+  updateNotes: (playerId: string, notes: string | null) => Promise<boolean>
   
   /** Function to clear the current error. */
   clearError: () => void
@@ -99,12 +102,13 @@ export const useCheckIns = (sessionId: string | null): UseCheckInsReturn => {
         
         // If IDs match and no pending operations, skip update to prevent blinking
         if (idsMatch && pendingOperationsRef.current.size === 0) {
-          // Still check if any player data changed (e.g., maxRounds, checkInAt)
+          // Still check if any player data changed (e.g., maxRounds, checkInAt, notes)
           const hasChanges = result.some(newPlayer => {
             const oldPlayer = prev.find(p => p.id === newPlayer.id)
             return !oldPlayer || 
                    oldPlayer.maxRounds !== newPlayer.maxRounds ||
-                   oldPlayer.checkInAt !== newPlayer.checkInAt
+                   oldPlayer.checkInAt !== newPlayer.checkInAt ||
+                   oldPlayer.notes !== newPlayer.notes
           })
           if (!hasChanges) {
             return prev // Return same reference to prevent re-render
@@ -132,11 +136,13 @@ export const useCheckIns = (sessionId: string | null): UseCheckInsReturn => {
    * 
    * @param playerId - ID of player to check in
    * @param maxRounds - Optional maximum rounds (1 for "kun 1 runde")
+   * @param notes - Optional notes from player about training preferences
    * @returns True if successful, false otherwise
    */
   const checkIn = useCallback(async (
     playerId: string,
-    maxRounds?: number
+    maxRounds?: number,
+    notes?: string | null
   ): Promise<boolean> => {
     // Operation locking: prevent concurrent operations on same player
     if (pendingOperationsRef.current.has(playerId)) {
@@ -176,13 +182,15 @@ export const useCheckIns = (sessionId: string | null): UseCheckInsReturn => {
         const checkedInPlayer: CheckedInPlayer = playerData ? {
           ...playerData,
           checkInAt: new Date().toISOString(),
-          maxRounds: maxRounds ?? null
+          maxRounds: maxRounds ?? null,
+          notes: notes ?? null
         } : {
           id: playerId,
           name: 'Loading...', // Fallback if player data not available
           active: true,
           checkInAt: new Date().toISOString(),
-          maxRounds: maxRounds ?? null
+          maxRounds: maxRounds ?? null,
+          notes: notes ?? null
         } as CheckedInPlayer
         
         return [...prev, checkedInPlayer]
@@ -190,7 +198,7 @@ export const useCheckIns = (sessionId: string | null): UseCheckInsReturn => {
       
       // Sync with database in background
       try {
-        await api.checkIns.add({ playerId, maxRounds })
+        await api.checkIns.add({ playerId, maxRounds, notes })
         // Don't reload - the optimistic update already has the correct data
         // Reloading would cause unnecessary re-renders and UI blinking
         // Only reload if player data was missing (shouldn't happen in normal flow)
@@ -287,6 +295,54 @@ export const useCheckIns = (sessionId: string | null): UseCheckInsReturn => {
   }, [checkedIn, notify])
 
   /**
+   * Updates check-in notes for a player.
+   * 
+   * @param playerId - ID of player whose notes to update
+   * @param notes - New notes value (null to clear)
+   * @returns True if successful, false otherwise
+   */
+  const updateNotes = useCallback(async (playerId: string, notes: string | null): Promise<boolean> => {
+    if (!sessionId) {
+      return false
+    }
+    
+    // Operation locking: prevent concurrent operations on same player
+    if (pendingOperationsRef.current.has(playerId)) {
+      return false
+    }
+    
+    pendingOperationsRef.current.add(playerId)
+    setError(null)
+    
+    try {
+      // Optimistic update: Update player in UI immediately
+      setCheckedIn(prev => prev.map(p => 
+        p.id === playerId ? { ...p, notes } : p
+      ))
+      
+      // Sync with database in background
+      try {
+        await api.checkIns.update({ playerId, notes })
+        return true
+      } catch (err) {
+        // Rollback optimistic update on error
+        await loadCheckIns()
+        
+        const normalizedError = normalizeError(err)
+        setError(normalizedError.message)
+        notify({
+          variant: 'danger',
+          title: 'Kunne ikke opdatere noter',
+          description: normalizedError.message
+        })
+        return false
+      }
+    } finally {
+      pendingOperationsRef.current.delete(playerId)
+    }
+  }, [sessionId, loadCheckIns, notify])
+
+  /**
    * Clears the current error state.
    */
   const clearError = useCallback(() => {
@@ -306,6 +362,7 @@ export const useCheckIns = (sessionId: string | null): UseCheckInsReturn => {
     refetch: loadCheckIns,
     checkIn,
     checkOut,
+    updateNotes,
     clearError
   }
 }
