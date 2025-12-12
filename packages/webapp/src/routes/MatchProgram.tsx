@@ -6,9 +6,10 @@
  * utilities for state persistence.
  */
 
-import React from 'react'
+import React, { useMemo } from 'react'
 import { PageCard } from '../components/ui'
 import { useTenant } from '../contexts/TenantContext'
+import { getTenantSport } from '../lib/tenant'
 import courtsSettings from '../services/courtsSettings'
 import { useSession, useCheckIns, useWakeLock } from '../hooks'
 import { useMatchProgram } from '../hooks/useMatchProgram'
@@ -17,6 +18,9 @@ import { BenchSection } from '../components/matchprogram/BenchSection'
 import { CourtCard } from '../components/matchprogram/CourtCard'
 import { PreviousRoundsPopup } from '../components/matchprogram/PreviousRoundsPopup'
 import { MatchProgramHeader } from '../components/matchprogram/MatchProgramHeader'
+import { MatchResultInput } from '../components/matchprogram/MatchResultInput'
+import { getMatches, getCourts } from '../api/postgres'
+import type { Match } from '@rundeklar/common'
 
 /**
  * Match program page component.
@@ -126,8 +130,121 @@ const MatchProgramPage = () => {
     handleInactiveDrop,
     handleCourtDragOver,
     handleCourtDragLeave,
-    handleCourtDrop
+    handleCourtDrop,
+    matchResults,
+    openResultInputMatchId,
+    setOpenResultInputMatchId,
+    handleSaveMatchResult,
+    handleDeleteMatchResult
   } = matchProgram
+  
+  // Get sport from tenant config
+  const sport = getTenantSport(config)
+  
+  // Get Match objects and create maps for lookup
+  const [matchObjects, setMatchObjects] = React.useState<Match[]>([])
+  const [matchByCourtIdx, setMatchByCourtIdx] = React.useState<Map<number, Match>>(new Map())
+  
+  React.useEffect(() => {
+    if (!session) {
+      setMatchObjects([])
+      setMatchByCourtIdx(new Map())
+      return
+    }
+    
+    const loadMatches = async () => {
+      try {
+        const [allMatches, courts] = await Promise.all([getMatches(), getCourts()])
+        const sessionMatches = allMatches.filter(m => m.sessionId === session.id && m.round === selectedRound)
+        setMatchObjects(sessionMatches)
+        
+        // Create map of courtIdx -> Match
+        const courtMap = new Map<number, Match>()
+        
+        for (const match of sessionMatches) {
+          const court = courts.find(c => c.id === match.courtId)
+          if (court) {
+            courtMap.set(court.idx, match)
+          }
+        }
+        
+        setMatchByCourtIdx(courtMap)
+      } catch (err) {
+        console.error('Failed to load matches:', err)
+      }
+    }
+    
+    loadMatches()
+  }, [session, selectedRound])
+  
+  // Handler to ensure match exists and open result input
+  const handleEnterResult = React.useCallback(async (courtIdx: number) => {
+    if (!session) return
+    
+    let match = matchByCourtIdx.get(courtIdx)
+    
+    // If no match exists, create one
+    if (!match) {
+      try {
+        const [courts] = await Promise.all([getCourts()])
+        const court = courts.find(c => c.idx === courtIdx)
+        if (!court) {
+          console.error('Court not found for courtIdx:', courtIdx)
+          return
+        }
+        
+        // Create match
+        const { createMatch } = await import('../api/postgres')
+        match = await createMatch({
+          sessionId: session.id,
+          courtId: court.id,
+          startedAt: new Date().toISOString(),
+          endedAt: null,
+          round: selectedRound
+        })
+        
+        // Create match players for all slots with players
+        const courtData = matches.find(c => c.courtIdx === courtIdx)
+        if (courtData) {
+          const { createMatchPlayer } = await import('../api/postgres')
+          for (const slot of courtData.slots) {
+            if (slot.player) {
+              await createMatchPlayer({
+                matchId: match.id,
+                playerId: slot.player.id,
+                slot: slot.slot
+              })
+            }
+          }
+        }
+        
+        // Update local state
+        setMatchObjects(prev => [...prev, match!])
+        setMatchByCourtIdx(prev => new Map(prev).set(courtIdx, match!))
+      } catch (err) {
+        console.error('Failed to create match:', err)
+        return
+      }
+    }
+    
+    // Open result input modal
+    if (match) {
+      setOpenResultInputMatchId(match.id)
+    }
+  }, [session, selectedRound, matches, matchByCourtIdx, setOpenResultInputMatchId])
+  
+  // Get the match and result for a court
+  const getMatchForCourt = useMemo(() => {
+    return (courtIdx: number) => {
+      const match = matchByCourtIdx.get(courtIdx)
+      if (!match) return { match: null, result: null, isFinished: false }
+      
+      const result = matchResults.get(match.id) || null
+      const isFinished = Boolean(match.endedAt)
+      
+      return { match, result, isFinished }
+    }
+  }, [matchByCourtIdx, matchResults])
 
   // Calculate if there are matches (courts with players) - must be before any conditional returns
   const hasMatches = React.useMemo(() => {
@@ -175,24 +292,60 @@ const MatchProgramPage = () => {
   // Full-screen view mode
   if (isFullScreen && session) {
     return (
-      <FullScreenMatchProgram
-        courts={matches}
-        selectedRound={selectedRound}
-        onRoundChange={setSelectedRound}
-        onExitFullScreen={() => setIsFullScreen(false)}
-        viewportSize={viewportSize}
-        extendedCapacityCourts={extendedCapacityCourts}
-        courtsWithDuplicatesSet={courtsWithDuplicatesSet}
-        duplicatePlayersMap={duplicatePlayersMap}
-        dragOverSlot={dragOverSlot}
-        dragOverCourt={dragOverCourt}
-        recentlySwappedPlayers={recentlySwappedPlayers}
-        onSlotDragStart={handleSlotDragStart}
-        onSlotDragEnd={handleSlotDragEnd}
-        onSlotDragOver={handleSlotDragOver}
-        onSlotDragLeave={handleSlotDragLeave}
-        onSlotDrop={handleSlotDrop}
-      />
+      <>
+        <FullScreenMatchProgram
+          courts={matches}
+          selectedRound={selectedRound}
+          onRoundChange={setSelectedRound}
+          onExitFullScreen={() => setIsFullScreen(false)}
+          viewportSize={viewportSize}
+          extendedCapacityCourts={extendedCapacityCourts}
+          courtsWithDuplicatesSet={courtsWithDuplicatesSet}
+          duplicatePlayersMap={duplicatePlayersMap}
+          dragOverSlot={dragOverSlot}
+          dragOverCourt={dragOverCourt}
+          recentlySwappedPlayers={recentlySwappedPlayers}
+          onSlotDragStart={handleSlotDragStart}
+          onSlotDragEnd={handleSlotDragEnd}
+          onSlotDragOver={handleSlotDragOver}
+          onSlotDragLeave={handleSlotDragLeave}
+          onSlotDrop={handleSlotDrop}
+          getMatchForCourt={getMatchForCourt}
+          onEnterResult={handleEnterResult}
+          sport={sport}
+        />
+        
+        {/* Match Result Input Modal (also available in fullscreen) */}
+        {openResultInputMatchId && (() => {
+          const match = matchObjects.find(m => m.id === openResultInputMatchId)
+          if (!match) return null
+          
+          const court = matches.find(c => {
+            const matchForCourt = matchByCourtIdx.get(c.courtIdx)
+            return matchForCourt?.id === match.id
+          })
+          if (!court) return null
+          
+          const result = matchResults.get(match.id) || null
+          
+          return (
+            <MatchResultInput
+              isOpen={true}
+              onClose={() => setOpenResultInputMatchId(null)}
+              matchId={match.id}
+              court={court}
+              existingResult={result}
+              sport={sport}
+              onSave={async ({ scoreData, winnerTeam }) => {
+                await handleSaveMatchResult(match.id, scoreData, winnerTeam, sport)
+              }}
+              onDelete={result ? async () => {
+                await handleDeleteMatchResult(match.id)
+              } : undefined}
+            />
+          )
+        })()}
+      </>
     )
   }
 
@@ -248,29 +401,37 @@ const MatchProgramPage = () => {
 
         {/* Courts */}
         <section className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3 xl:gap-2.5 pb-2">
-          {Array.isArray(matches) ? matches.map((court) => (
-            <CourtCard
-              key={court.courtIdx}
-              court={court}
-              extendedCapacityCourts={extendedCapacityCourts}
-              onExtendedCapacityChange={handleExtendedCapacityChange}
-              hasDuplicates={courtsWithDuplicatesSet.has(court.courtIdx)}
-              isLocked={currentRoundLockedCourts.has(court.courtIdx)}
-              onToggleLock={handleToggleCourtLock}
-              dragOverCourt={dragOverCourt}
-              dragOverSlot={dragOverSlot}
-              recentlySwappedPlayers={recentlySwappedPlayers}
-              duplicatePlayersMap={duplicatePlayersMap}
-              onCourtDragOver={handleCourtDragOver}
-              onCourtDragLeave={handleCourtDragLeave}
-              onCourtDrop={handleCourtDrop}
-              onSlotDragStart={handleSlotDragStart}
-              onSlotDragEnd={handleSlotDragEnd}
-              onSlotDragOver={handleSlotDragOver}
-              onSlotDragLeave={handleSlotDragLeave}
-              onSlotDrop={handleSlotDrop}
-            />
-          )) : (
+          {Array.isArray(matches) ? matches.map((court) => {
+            const { match, result, isFinished } = getMatchForCourt(court.courtIdx)
+            
+            return (
+              <CourtCard
+                key={court.courtIdx}
+                court={court}
+                extendedCapacityCourts={extendedCapacityCourts}
+                onExtendedCapacityChange={handleExtendedCapacityChange}
+                hasDuplicates={courtsWithDuplicatesSet.has(court.courtIdx)}
+                isLocked={currentRoundLockedCourts.has(court.courtIdx)}
+                onToggleLock={handleToggleCourtLock}
+                dragOverCourt={dragOverCourt}
+                dragOverSlot={dragOverSlot}
+                recentlySwappedPlayers={recentlySwappedPlayers}
+                duplicatePlayersMap={duplicatePlayersMap}
+                onCourtDragOver={handleCourtDragOver}
+                onCourtDragLeave={handleCourtDragLeave}
+                onCourtDrop={handleCourtDrop}
+                onSlotDragStart={handleSlotDragStart}
+                onSlotDragEnd={handleSlotDragEnd}
+                onSlotDragOver={handleSlotDragOver}
+                onSlotDragLeave={handleSlotDragLeave}
+                onSlotDrop={handleSlotDrop}
+                matchResult={result}
+                isMatchFinished={isFinished}
+                onEnterResult={() => handleEnterResult(court.courtIdx)}
+                sport={sport}
+              />
+            )
+          }) : (
             <div className="col-span-full text-center text-red-500 p-4">
               Error: matches is not an array. {error || 'Unknown error'}
             </div>
@@ -292,6 +453,37 @@ const MatchProgramPage = () => {
         onMouseDown={handleMouseDown}
         onResizeStart={handleResizeStart}
       />
+      
+      {/* Match Result Input Modal */}
+      {openResultInputMatchId && (() => {
+        const match = matchObjects.find(m => m.id === openResultInputMatchId)
+        if (!match) return null
+        
+        const court = matches.find(c => {
+          const matchForCourt = matchByCourtIdx.get(c.courtIdx)
+          return matchForCourt?.id === match.id
+        })
+        if (!court) return null
+        
+        const result = matchResults.get(match.id) || null
+        
+        return (
+          <MatchResultInput
+            isOpen={true}
+            onClose={() => setOpenResultInputMatchId(null)}
+            matchId={match.id}
+            court={court}
+            existingResult={result}
+            sport={sport}
+            onSave={async ({ scoreData, winnerTeam }) => {
+              await handleSaveMatchResult(match.id, scoreData, winnerTeam, sport)
+            }}
+            onDelete={result ? async () => {
+              await handleDeleteMatchResult(match.id)
+            } : undefined}
+          />
+        )
+      })()}
     </section>
   )
 }
