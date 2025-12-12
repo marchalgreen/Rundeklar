@@ -6,11 +6,11 @@
  */
 
 import React, { useCallback, useEffect, useMemo, useState } from 'react'
-import type { Player } from '@rundeklar/common'
+import type { Player, CheckedInPlayer } from '@rundeklar/common'
 import { UsersRound } from 'lucide-react'
 import { PageCard, EmptyState, Button } from '../components/ui'
 import { TableSearch } from '../components/ui/Table'
-import { PlayerCard, CheckedInPlayerCard, LetterFilters, AnimatedList } from '../components/checkin'
+import { PlayerCard, CheckedInPlayerCard, LetterFilters, AnimatedList, NotesModal } from '../components/checkin'
 import { useSession, useCheckIns, usePlayers, useWakeLock } from '../hooks'
 import { LETTER_FILTERS, UI_CONSTANTS } from '../constants'
 import coachLandingApi from '../services/coachLandingApi'
@@ -30,7 +30,7 @@ const CheckInPage = () => {
   // Data hooks
   const { session, loading: sessionLoading } = useSession()
   const { players, loading: playersLoading, refetch: refetchPlayers } = usePlayers({ active: true })
-  const { checkedIn, checkIn, checkOut } = useCheckIns(session?.id ?? null)
+  const { checkedIn, checkIn, checkOut, updateNotes } = useCheckIns(session?.id ?? null)
 
   // Keep screen awake when session is active
   useWakeLock(session !== null)
@@ -54,6 +54,13 @@ const CheckInPage = () => {
   const [searchOpener, setSearchOpener] = useState<HTMLElement | null>(null)
   // Confirm action modal for picked cross-group player
   const [confirmPlayerId, setConfirmPlayerId] = useState<string | null>(null)
+  // Notes modal state
+  const [notesModalOpen, setNotesModalOpen] = useState(false)
+  const [notesModalPlayer, setNotesModalPlayer] = useState<Player | CheckedInPlayer | null>(null)
+  const [notesModalOpener, setNotesModalOpener] = useState<HTMLElement | null>(null)
+  const [isNotesModalForCheckedIn, setIsNotesModalForCheckedIn] = useState(false)
+  // Pending notes for players not yet checked in
+  const [pendingNotes, setPendingNotes] = useState<Map<string, string | null>>(new Map())
   // Derived prevent-pick set (extra allowed + already checked-in)
   const pickedIdsSet = useMemo(() => {
     const ids = new Set<string>(extraAllowedIds)
@@ -109,9 +116,10 @@ const CheckInPage = () => {
    * 
    * @param player - Player to check in
    * @param maxRounds - Optional max rounds (1 for "kun 1 runde")
+   * @param notes - Optional notes for the check-in
    */
   const handleCheckIn = useCallback(
-    async (player: Player, maxRounds?: number) => {
+    async (player: Player, maxRounds?: number, notes?: string | null) => {
       if (!session) return
 
       // Add animation state for moving out of main list
@@ -122,7 +130,16 @@ const CheckInPage = () => {
       // Wait for exit animation to complete before API call
       await new Promise((resolve) => setTimeout(resolve, UI_CONSTANTS.CHECK_IN_ANIMATION_DURATION_MS))
 
-      const success = await checkIn(player.id, maxRounds)
+      const success = await checkIn(player.id, maxRounds, notes ?? null)
+      
+      // Clear pending notes after successful check-in
+      if (success) {
+        setPendingNotes((prev) => {
+          const newMap = new Map(prev)
+          newMap.delete(player.id)
+          return newMap
+        })
+      }
 
       if (success) {
         // Add animation state for moving into checked-in section
@@ -222,6 +239,73 @@ const CheckInPage = () => {
       return newSet
     })
   }, [])
+
+  /**
+   * Handles opening notes modal for a player (checked-in or not).
+   */
+  const handleEditNotes = useCallback((player: Player | CheckedInPlayer, opener: HTMLElement) => {
+    const isCheckedIn = 'checkInAt' in player
+    setNotesModalPlayer(player)
+    setNotesModalOpener(opener)
+    setIsNotesModalForCheckedIn(isCheckedIn)
+    setNotesModalOpen(true)
+  }, [])
+
+  /**
+   * Handles saving notes for a player.
+   */
+  const handleSaveNotes = useCallback(async (notes: string | null) => {
+    if (!notesModalPlayer) return
+    
+    if (isNotesModalForCheckedIn) {
+      // For checked-in players, update via API
+      await updateNotes(notesModalPlayer.id, notes)
+    } else {
+      // For non-checked-in players, store in pending notes
+      setPendingNotes((prev) => {
+        const newMap = new Map(prev)
+        if (notes) {
+          newMap.set(notesModalPlayer.id, notes)
+        } else {
+          newMap.delete(notesModalPlayer.id)
+        }
+        return newMap
+      })
+    }
+    
+    setNotesModalOpen(false)
+    setNotesModalPlayer(null)
+    setNotesModalOpener(null)
+    setIsNotesModalForCheckedIn(false)
+  }, [notesModalPlayer, isNotesModalForCheckedIn, updateNotes])
+
+  /**
+   * Handles saving notes and checking in a non-checked-in player.
+   */
+  const handleSaveAndCheckIn = useCallback(async (notes: string | null) => {
+    if (!notesModalPlayer || isNotesModalForCheckedIn || !session) return
+    
+    // Close modal first
+    setNotesModalOpen(false)
+    const player = notesModalPlayer as Player
+    const opener = notesModalOpener
+    
+    // Clear modal state
+    setNotesModalPlayer(null)
+    setNotesModalOpener(null)
+    setIsNotesModalForCheckedIn(false)
+    
+    // Check in the player with notes
+    await handleCheckIn(player, oneRoundOnlyPlayers.has(player.id) ? 1 : undefined, notes)
+    
+    // Clear one-round-only state if it was set
+    if (oneRoundOnlyPlayers.has(player.id)) {
+      handleOneRoundOnlyChange(player.id, false)
+    }
+    
+    // Return focus to opener if available
+    setTimeout(() => opener?.focus(), 0)
+  }, [notesModalPlayer, isNotesModalForCheckedIn, session, handleCheckIn, oneRoundOnlyPlayers, handleOneRoundOnlyChange, notesModalOpener])
 
   /** Memoized Set of checked-in player IDs for fast lookup. */
   const checkedInIds = useMemo(() => new Set(checkedIn.map((player) => player.id)), [checkedIn])
@@ -332,6 +416,7 @@ const CheckInPage = () => {
                         isAnimatingOut={animatingOut.has(player.id)}
                         isAnimatingIn={animatingIn.has(player.id)}
                         onCheckOut={handleCheckOut}
+                        onEditNotes={handleEditNotes}
                       />
                     ))}
                   </div>
@@ -354,6 +439,7 @@ const CheckInPage = () => {
                         isAnimatingOut={animatingOut.has(player.id)}
                         isAnimatingIn={animatingIn.has(player.id)}
                         onCheckOut={handleCheckOut}
+                        onEditNotes={handleEditNotes}
                       />
                     ))}
                   </div>
@@ -378,6 +464,7 @@ const CheckInPage = () => {
                   isAnimatingOut={animatingOut.has(player.id)}
                   isAnimatingIn={animatingIn.has(player.id)}
                   onCheckOut={handleCheckOut}
+                  onEditNotes={handleEditNotes}
                 />
                     ))}
                   </div>
@@ -437,6 +524,8 @@ const CheckInPage = () => {
                     isAnimatingIn={animatingIn.has(player.id)}
                     onCheckIn={handleCheckIn}
                     onOneRoundOnlyChange={handleOneRoundOnlyChange}
+                    onEditNotes={handleEditNotes}
+                    pendingNotes={pendingNotes.get(player.id) ?? null}
                   />
                 )}
               />
@@ -545,6 +634,27 @@ const CheckInPage = () => {
           </div>
         )
       })()}
+
+      {/* Notes Modal */}
+      {notesModalPlayer && (
+        <NotesModal
+          isOpen={notesModalOpen}
+          onClose={() => {
+            setNotesModalOpen(false)
+            setTimeout(() => notesModalOpener?.focus(), 0)
+          }}
+          currentNotes={
+            isNotesModalForCheckedIn
+              ? ('notes' in notesModalPlayer ? notesModalPlayer.notes : null)
+              : pendingNotes.get(notesModalPlayer.id) ?? null
+          }
+          onSave={handleSaveNotes}
+          playerName={notesModalPlayer.name}
+          returnFocusTo={notesModalOpener}
+          isForNonCheckedInPlayer={!isNotesModalForCheckedIn}
+          onSaveAndCheckIn={handleSaveAndCheckIn}
+        />
+      )}
     </section>
   )
 }
