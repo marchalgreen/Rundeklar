@@ -6,7 +6,8 @@
 
 import React, { useEffect, useState } from 'react'
 import type { CheckedInPlayer } from '@rundeklar/common'
-import { PageCard } from '../ui'
+import { Info } from 'lucide-react'
+import { PageCard, Tooltip } from '../ui'
 import { getCategoryBadge, getPlayerSlotBgColor, type PlayerSortType } from '../../lib/matchProgramUtils'
 import { formatPlayerCardName } from '../../lib/formatting'
 import { getSeedHue } from '../ui/PlayerAvatar'
@@ -55,6 +56,8 @@ interface BenchSectionProps {
   onMarkAvailable: (playerId: string) => void
   /** Handler to activate one-round player */
   onActivateOneRoundPlayer: (playerId: string) => void
+  /** Optional callback when notes icon is clicked to edit notes */
+  onEditNotes?: (player: CheckedInPlayer) => void
 }
 
 /**
@@ -109,7 +112,8 @@ export const BenchSection: React.FC<BenchSectionProps> = ({
   onInactiveDragLeave,
   onInactiveDrop,
   onMarkAvailable,
-  onActivateOneRoundPlayer
+  onActivateOneRoundPlayer,
+  onEditNotes
 }) => {
   const [variant, setVariant] = useState<PlayerUiVariant>(() => getPlayerUiVariant())
   useEffect(() => {
@@ -207,6 +211,13 @@ export const BenchSection: React.FC<BenchSectionProps> = ({
                     <div className="flex items-center gap-2.5">
                       {getCategoryBadge(player.primaryCategory)}
                       <p className="text-sm sm:text-base font-semibold text-[hsl(var(--foreground))] truncate">{formatPlayerCardName(player.name, player.alias)}</p>
+                      {player.notes && (
+                        <Tooltip content={player.notes} position="top">
+                          <span className="flex-shrink-0 inline-flex items-center">
+                            <Info className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-[hsl(var(--muted))]" />
+                          </span>
+                        </Tooltip>
+                      )}
                     </div>
                   </div>
                 </div>
@@ -241,6 +252,13 @@ export const BenchSection: React.FC<BenchSectionProps> = ({
                     <div className="flex items-center gap-2.5">
                       {getCategoryBadge(player.primaryCategory)}
                       <p className="text-sm sm:text-base font-semibold text-[hsl(var(--foreground))] truncate">{formatPlayerCardName(player.name, player.alias)}</p>
+                      {player.notes && (
+                        <Tooltip content={player.notes} position="top">
+                          <span className="flex-shrink-0 inline-flex items-center">
+                            <Info className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-[hsl(var(--muted))]" />
+                          </span>
+                        </Tooltip>
+                      )}
                     </div>
                   </div>
                 </div>
@@ -274,6 +292,13 @@ export const BenchSection: React.FC<BenchSectionProps> = ({
                     <div className="flex items-center gap-2.5">
                       {getCategoryBadge(player.primaryCategory)}
                       <p className="text-sm sm:text-base font-semibold text-[hsl(var(--foreground))] truncate">{formatPlayerCardName(player.name, player.alias)}</p>
+                      {player.notes && (
+                        <Tooltip content={player.notes} position="top">
+                          <span className="flex-shrink-0 inline-flex items-center">
+                            <Info className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-[hsl(var(--muted))]" />
+                          </span>
+                        </Tooltip>
+                      )}
                     </div>
                   </div>
                 </div>
@@ -309,6 +334,13 @@ export const BenchSection: React.FC<BenchSectionProps> = ({
                     <div className="flex items-center gap-2.5">
                       {getCategoryBadge(player.primaryCategory)}
                       <p className="text-sm sm:text-base font-semibold text-[hsl(var(--foreground))] truncate">{formatPlayerCardName(player.name, player.alias)}</p>
+                      {player.notes && (
+                        <Tooltip content={player.notes} position="top">
+                          <span className="flex-shrink-0 inline-flex items-center">
+                            <Info className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-[hsl(var(--muted))]" />
+                          </span>
+                        </Tooltip>
+                      )}
                     </div>
                   </div>
                 </div>
@@ -416,6 +448,13 @@ export const BenchSection: React.FC<BenchSectionProps> = ({
                               )}
                               {isUnavailable && (
                                 <span className="text-[9px] sm:text-[10px] font-normal text-[hsl(var(--destructive))] whitespace-nowrap flex-shrink-0">Inaktiv</span>
+                              )}
+                              {player.notes && (
+                                <Tooltip content={player.notes} position="top">
+                                  <span className="flex-shrink-0 inline-flex items-center">
+                                    <Info className="w-3 h-3 sm:w-3.5 sm:h-3.5 text-[hsl(var(--muted))]" />
+                                  </span>
+                                </Tooltip>
                               )}
                             </div>
                           </div>
