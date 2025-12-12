@@ -7,7 +7,7 @@
 import React from 'react'
 import type { CheckedInPlayer } from '@rundeklar/common'
 import { PageCard } from '../ui'
-import { getCategoryLetter, getCategoryBadge, getPlayerSlotBgColor } from '../../lib/matchProgramUtils'
+import { getCategoryLetter, getCategoryBadge, getPlayerSlotBgColor, type PlayerSortType } from '../../lib/matchProgramUtils'
 import { formatPlayerCardName } from '../../lib/formatting'
 
 interface BenchSectionProps {
@@ -19,6 +19,10 @@ interface BenchSectionProps {
   selectedRound: number
   /** Set of unavailable player IDs */
   unavailablePlayers: Set<string>
+  /** Current sort type for players */
+  sortType: PlayerSortType
+  /** Handler for sort type change */
+  onSortTypeChange: (sortType: PlayerSortType) => void
   /** Drag over state for bench */
   dragOverBench: boolean
   /** Drag over state for inactive section */
@@ -87,6 +91,8 @@ export const BenchSection: React.FC<BenchSectionProps> = ({
   inactivePlayers,
   selectedRound,
   unavailablePlayers,
+  sortType,
+  onSortTypeChange,
   dragOverBench,
   dragOverInactive,
   dragSource,
@@ -103,10 +109,13 @@ export const BenchSection: React.FC<BenchSectionProps> = ({
   onMarkAvailable,
   onActivateOneRoundPlayer
 }) => {
-  // Split bench players by gender
-  const malePlayers = bench.filter((p) => p.gender === 'Herre')
-  const femalePlayers = bench.filter((p) => p.gender === 'Dame')
-  const playersWithoutGender = bench.filter((p) => !p.gender || (p.gender !== 'Herre' && p.gender !== 'Dame'))
+  // Split bench players by gender (when using gender-category or gender-alphabetical sort)
+  // When sorting alphabetically only, show all players together
+  const shouldGroupByGender = sortType === 'gender-category' || sortType === 'gender-alphabetical'
+  const malePlayers = shouldGroupByGender ? bench.filter((p) => p.gender === 'Herre') : []
+  const femalePlayers = shouldGroupByGender ? bench.filter((p) => p.gender === 'Dame') : []
+  const playersWithoutGender = shouldGroupByGender ? bench.filter((p) => !p.gender || (p.gender !== 'Herre' && p.gender !== 'Dame')) : []
+  const allPlayersAlphabetical = !shouldGroupByGender ? bench : []
 
   return (
     <PageCard 
@@ -120,11 +129,23 @@ export const BenchSection: React.FC<BenchSectionProps> = ({
         outlineOffset: '-2px'
       } : undefined}
     >
-      <header className="flex items-center justify-between flex-shrink-0">
+      <header className="flex items-center justify-between flex-shrink-0 gap-2">
         <h3 className="text-sm sm:text-base font-semibold">BÆNK</h3>
-        <span className="rounded-full bg-[hsl(var(--surface-2))] px-2.5 py-1 text-xs sm:text-sm font-medium">
-          {bench.length}
-        </span>
+        <div className="flex items-center gap-2">
+          <select
+            value={sortType}
+            onChange={(e) => onSortTypeChange(e.target.value as PlayerSortType)}
+            aria-label="Sorter spillere"
+            className="dropdown-chevron relative rounded-lg px-2 py-1 sm:px-2.5 sm:py-1.5 pr-6 sm:pr-7 text-[10px] sm:text-xs font-medium bg-[hsl(var(--surface-2))] text-[hsl(var(--foreground))] ring-1 ring-[hsl(var(--line)/.12)] hover:ring-[hsl(var(--line)/.2)] focus:ring-2 focus:ring-[hsl(var(--ring))] focus:ring-offset-1 outline-none transition-all duration-200 ease-[cubic-bezier(.2,.8,.2,1)] motion-reduce:transition-none cursor-pointer appearance-none min-w-[100px] sm:min-w-[120px] whitespace-nowrap"
+          >
+            <option value="gender-category">Køn + Kategori</option>
+            <option value="gender-alphabetical">Køn + Alfabetisk</option>
+            <option value="alphabetical">Alfabetisk</option>
+          </select>
+          <span className="rounded-full bg-[hsl(var(--surface-2))] px-2.5 py-1 text-xs sm:text-sm font-medium">
+            {bench.length}
+          </span>
+        </div>
       </header>
       <div 
         className="flex flex-col space-y-4 max-h-[calc(100vh-440px)] sm:max-h-[calc(100vh-400px)] xl:max-h-[calc(100vh-360px)] overflow-y-auto scrollbar-thin min-w-0 min-h-0"
@@ -149,8 +170,35 @@ export const BenchSection: React.FC<BenchSectionProps> = ({
           </p>
         )}
         
+        {/* Alphabetical sort - show all players together */}
+        {!shouldGroupByGender && allPlayersAlphabetical.length > 0 && (
+          <div className="space-y-2">
+            {allPlayersAlphabetical.map((player) => {
+              const catLetter = getCategoryLetter(player.primaryCategory)
+              return (
+                <div
+                  key={player.id}
+                  className={`flex items-center gap-2 rounded-md px-3 py-1.5 sm:px-4 sm:py-2 h-[52px] sm:h-[56px] w-full hover:shadow-sm cursor-grab active:cursor-grabbing transition-all ring-1 ring-[hsl(var(--line)/.12)] ${getPlayerSlotBgColor()} ${catLetter ? 'cat-rail' : ''}`}
+                  data-cat={catLetter || undefined}
+                  draggable
+                  onDragStart={(event) => onBenchDragStart(event, player.id)}
+                  onDragEnd={onBenchDragEnd}
+                >
+                  <div className="min-w-0 flex-1">
+                    <div className="flex items-center gap-2.5">
+                      {getCategoryBadge(player.primaryCategory)}
+                      <p className="text-sm sm:text-base font-semibold text-[hsl(var(--foreground))] truncate">{formatPlayerCardName(player.name, player.alias)}</p>
+                    </div>
+                  </div>
+                </div>
+              )
+            })}
+          </div>
+        )}
+        
+        {/* Gender-category sort - show players grouped by gender */}
         {/* Female players section */}
-        {femalePlayers.length > 0 && (
+        {shouldGroupByGender && femalePlayers.length > 0 && (
           <div className="space-y-2">
             <div className="flex items-center gap-2 py-1">
               <div className="flex-1 h-px bg-[hsl(var(--line)/.2)]"></div>
@@ -183,7 +231,7 @@ export const BenchSection: React.FC<BenchSectionProps> = ({
         )}
 
         {/* Male players section */}
-        {malePlayers.length > 0 && (
+        {shouldGroupByGender && malePlayers.length > 0 && (
           <div className="space-y-2">
             <div className="flex items-center gap-2 py-1">
               <div className="flex-1 h-px bg-[hsl(var(--line)/.2)]"></div>
@@ -216,7 +264,7 @@ export const BenchSection: React.FC<BenchSectionProps> = ({
         )}
 
         {/* Players without gender (fallback) */}
-        {playersWithoutGender.length > 0 && (
+        {shouldGroupByGender && playersWithoutGender.length > 0 && (
           <div className="space-y-2">
             {malePlayers.length > 0 || femalePlayers.length > 0 ? (
               <div className="flex items-center gap-2 py-1">
