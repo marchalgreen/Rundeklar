@@ -316,6 +316,43 @@ export const BenchSection: React.FC<BenchSectionProps> = ({
             })}
           </div>
         )}
+        
+        {/* Category Legend - only show if there are players with categories */}
+        {bench.length > 0 && bench.some(p => p.primaryCategory) && (() => {
+          const hasSingle = bench.some(p => p.primaryCategory === 'Single')
+          const hasDouble = bench.some(p => p.primaryCategory === 'Double')
+          const hasBegge = bench.some(p => p.primaryCategory === 'Begge')
+          
+          if (!hasSingle && !hasDouble && !hasBegge) return null
+          
+          return (
+            <div className="mt-2 pt-2 border-t border-[hsl(var(--line)/.06)]">
+              <div className="flex items-center justify-center gap-2.5 sm:gap-3 flex-wrap px-1">
+                <span className="text-[9px] sm:text-[10px] text-[hsl(var(--muted))] opacity-70">Kategorier:</span>
+                <div className="flex items-center gap-2 sm:gap-2.5">
+                  {hasSingle && (
+                    <div className="flex items-center gap-1">
+                      {getCategoryBadge('Single')}
+                      <span className="text-[9px] sm:text-[10px] text-[hsl(var(--muted))] opacity-80">Single</span>
+                    </div>
+                  )}
+                  {hasDouble && (
+                    <div className="flex items-center gap-1">
+                      {getCategoryBadge('Double')}
+                      <span className="text-[9px] sm:text-[10px] text-[hsl(var(--muted))] opacity-80">Double</span>
+                    </div>
+                  )}
+                  {hasBegge && (
+                    <div className="flex items-center gap-1">
+                      {getCategoryBadge('Begge')}
+                      <span className="text-[9px] sm:text-[10px] text-[hsl(var(--muted))] opacity-80">Begge</span>
+                    </div>
+                  )}
+                </div>
+              </div>
+            </div>
+          )
+        })()}
             
             {/* Inactive Players Section */}
             <div 
