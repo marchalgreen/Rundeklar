@@ -60,6 +60,38 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     localStorage.removeItem(REFRESH_TOKEN_KEY)
   }, [])
 
+  /**
+   * Decodes JWT token to check expiry time
+   * @param token - JWT token string
+   * @returns Expiry time in milliseconds or null if token is invalid
+   */
+  const getTokenExpiry = useCallback((token: string): number | null => {
+    try {
+      const payload = JSON.parse(atob(token.split('.')[1]))
+      if (payload.exp) {
+        return payload.exp * 1000 // Convert to milliseconds
+      }
+      return null
+    } catch {
+      return null
+    }
+  }, [])
+
+  /**
+   * Checks if token expires within the specified time threshold
+   * @param token - JWT token string
+   * @param thresholdMs - Time threshold in milliseconds
+   * @returns True if token expires within threshold
+   */
+  const isTokenExpiringSoon = useCallback((token: string, thresholdMs: number): boolean => {
+    const expiryTime = getTokenExpiry(token)
+    if (!expiryTime) return true // If we can't decode, assume it's expiring soon
+    
+    const now = Date.now()
+    const timeUntilExpiry = expiryTime - now
+    return timeUntilExpiry < thresholdMs
+  }, [getTokenExpiry])
+
   // Refresh access token with retry logic
   const refreshToken = useCallback(async (retryCount = 0): Promise<boolean> => {
     const isDev = import.meta.env.DEV
@@ -104,12 +136,17 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         await new Promise(resolve => setTimeout(resolve, RETRY_DELAYS[retryCount]))
         return refreshToken(retryCount + 1)
       } else {
-        // Permanent failure (401 after retries, or other error)
+        // Permanent failure (401 after retries means refresh token is invalid/expired)
+        // Only log out if we've exhausted retries - this indicates refresh token is truly expired
         if (isDev) {
           console.error('[Auth] Token refresh permanently failed:', response.status, response.statusText)
         }
-        setClub(null)
-        clearTokens()
+        // Only clear tokens if refresh token is actually expired (401 after retries)
+        // Don't log out on other errors as they might be temporary
+        if (response.status === 401) {
+          setClub(null)
+          clearTokens()
+        }
         return false
       }
     } catch (error) {
@@ -122,9 +159,10 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         return refreshToken(retryCount + 1)
       }
       
-      console.error('[Auth] Token refresh failed after retries:', error)
-      setClub(null)
-      clearTokens()
+      // After max retries, don't log out on network errors
+      // Network errors are temporary and user should stay logged in
+      // Only log out if refresh token is actually expired (handled above)
+      console.error('[Auth] Token refresh failed after retries (network error):', error)
       return false
     }
   }, [getRefreshToken, getApiUrl, clearTokens])
@@ -310,7 +348,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
   }, [fetchClubInfo])
 
-  // Auto-refresh token before expiry (every 110 minutes for 2h token)
+  // Auto-refresh token before expiry (every 30 minutes for 2h token)
+  // Reduced from 110 minutes to ensure more frequent refresh and prevent logout issues
   // In development, use shorter interval for testing (1 minute)
   useEffect(() => {
     if (!club) return
@@ -318,7 +357,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     const isDev = import.meta.env.DEV
     const intervalMs = isDev 
       ? 1 * 60 * 1000  // 1 minute in dev for testing
-      : 110 * 60 * 1000  // 110 minutes in production (refresh before 2h expiry)
+      : 30 * 60 * 1000  // 30 minutes in production (refresh frequently to prevent expiry)
 
     if (isDev) {
       console.log('[Auth] Auto-refresh interval set to 1 minute (dev mode)')
@@ -332,6 +371,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         if (isDev) {
           console.log('[Auth] Auto-refresh result:', success ? 'success' : 'failed')
         }
+      }).catch(err => {
+        console.warn('[Auto-refresh] Failed to refresh token:', err)
       })
     }, intervalMs)
 
@@ -400,6 +441,46 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       }
     }
   }, [club, refreshToken])
+
+  // Proactive refresh: check token age periodically and refresh if expiring soon
+  // This ensures tokens are refreshed based on actual expiry time, not just time since last refresh
+  useEffect(() => {
+    if (!club) return
+
+    const isDev = import.meta.env.DEV
+    // Check every 15 minutes in production, 30 seconds in dev
+    const PROACTIVE_CHECK_INTERVAL = isDev ? 30 * 1000 : 15 * 60 * 1000
+    // Refresh if token expires within 1 hour
+    const EXPIRY_THRESHOLD = 60 * 60 * 1000 // 1 hour in milliseconds
+
+    const proactiveCheckInterval = setInterval(() => {
+      const token = getAccessToken()
+      if (!token) {
+        return
+      }
+
+      // Check if token is expiring soon
+      if (isTokenExpiringSoon(token, EXPIRY_THRESHOLD)) {
+        if (isDev) {
+          const expiryTime = getTokenExpiry(token)
+          if (expiryTime) {
+            const timeUntilExpiry = expiryTime - Date.now()
+            console.log('[Auth] Proactive refresh: token expires in', Math.round(timeUntilExpiry / 1000 / 60), 'minutes')
+          }
+        }
+        
+        refreshToken().then(success => {
+          if (isDev) {
+            console.log('[Auth] Proactive refresh result:', success ? 'success' : 'failed')
+          }
+        }).catch(err => {
+          console.warn('[Proactive refresh] Failed to refresh token:', err)
+        })
+      }
+    }, PROACTIVE_CHECK_INTERVAL)
+
+    return () => clearInterval(proactiveCheckInterval)
+  }, [club, getAccessToken, isTokenExpiringSoon, getTokenExpiry, refreshToken])
 
   const value: AuthContextValue = {
     club,
