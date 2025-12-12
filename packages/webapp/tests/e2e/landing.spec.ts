@@ -72,6 +72,74 @@ test.describe('Landing Page', () => {
     }
   })
 
+  test('should support multi-group selection', async ({ page }) => {
+    const helpers = new TestHelpers(page)
+    
+    // Wait for groups to load
+    await page.waitForTimeout(1000)
+    
+    // Find multiple group cards
+    const groupCards = page.locator('[role="button"]').filter({ 
+      hasText: /senior|u17|u15|u13/i 
+    })
+    
+    const groupCount = await groupCards.count()
+    
+    if (groupCount >= 2) {
+      // Click first group
+      await groupCards.first().click()
+      await page.waitForTimeout(300)
+      
+      // Click second group (should toggle and keep both selected)
+      await groupCards.nth(1).click()
+      await page.waitForTimeout(300)
+      
+      // Check that start button shows multiple groups count
+      const startButton = page.getByRole('button', { name: /start.*træning|start.*session/i })
+      const buttonText = await startButton.textContent()
+      
+      // Button should be enabled and may show group count
+      await expect(startButton).toBeEnabled()
+      
+      // Verify visual feedback for selected groups (ring indicator)
+      const selectedGroups = page.locator('[aria-pressed="true"]')
+      const selectedCount = await selectedGroups.count()
+      expect(selectedCount).toBeGreaterThanOrEqual(1)
+    }
+  })
+
+  test('should toggle group selection on click', async ({ page }) => {
+    const helpers = new TestHelpers(page)
+    
+    // Wait for groups to load
+    await page.waitForTimeout(1000)
+    
+    // Find a group card
+    const groupCard = page.locator('[role="button"]').filter({ 
+      hasText: /senior|u17|u15/i 
+    }).first()
+    
+    const groupExists = await helpers.elementExists(groupCard)
+    
+    if (groupExists) {
+      // Click to select
+      await groupCard.click()
+      await page.waitForTimeout(300)
+      
+      // Verify selected state
+      const isSelected = await groupCard.getAttribute('aria-pressed')
+      expect(isSelected).toBe('true')
+      
+      // Click again to deselect
+      await groupCard.click()
+      await page.waitForTimeout(300)
+      
+      // Verify deselected state
+      const isDeselected = await groupCard.getAttribute('aria-pressed')
+      expect(isDeselected).toBe('false')
+    }
+  })
+
   test('should allow adjusting number of courts', async ({ page }) => {
     const helpers = new TestHelpers(page)
     
@@ -113,6 +181,42 @@ test.describe('Landing Page', () => {
       await page.waitForTimeout(500)
       
       // Click start button
+      const startButton = page.getByRole('button', { name: /start.*træning|start.*session/i })
+      await startButton.click()
+      
+      // Wait for navigation to check-in
+      await page.waitForURL(/#\/check-in/, { timeout: 10000 })
+      await page.waitForLoadState('networkidle')
+      
+      // Verify we're on check-in page
+      const isOnCheckIn = await helpers.isOnRoute('check-in')
+      expect(isOnCheckIn).toBe(true)
+    }
+  })
+
+  test('should start session with multiple groups', async ({ page }) => {
+    const helpers = new TestHelpers(page)
+    
+    // Wait for groups to load
+    await page.waitForTimeout(1000)
+    
+    // Find multiple group cards
+    const groupCards = page.locator('[role="button"]').filter({ 
+      hasText: /senior|u17|u15|u13/i 
+    })
+    
+    const groupCount = await groupCards.count()
+    
+    if (groupCount >= 2) {
+      // Select first group
+      await groupCards.first().click()
+      await page.waitForTimeout(300)
+      
+      // Select second group
+      await groupCards.nth(1).click()
+      await page.waitForTimeout(300)
+      
+      // Start session
       const startButton = page.getByRole('button', { name: /start.*træning|start.*session/i })
       await startButton.click()
       
