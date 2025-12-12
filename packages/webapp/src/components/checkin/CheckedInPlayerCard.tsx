@@ -7,7 +7,8 @@
 import React, { useEffect, useMemo, useState } from 'react'
 import type { CheckedInPlayer } from '@rundeklar/common'
 import { clsx } from 'clsx'
-import { Button } from '../ui'
+import { Info } from 'lucide-react'
+import { Button, Tooltip } from '../ui'
 import { formatCategoryLetter, formatPlayerCardName } from '../../lib/formatting'
 import { PLAYER_CATEGORIES } from '../../constants'
 import { InitialsAvatar, getSeedHue } from '../ui/PlayerAvatar'
@@ -28,6 +29,9 @@ interface CheckedInPlayerCardProps {
   
   /** Callback when player is checked out. */
   onCheckOut: (player: CheckedInPlayer) => void
+  
+  /** Optional callback when notes icon is clicked to edit notes. */
+  onEditNotes?: (player: CheckedInPlayer, opener: HTMLElement) => void
 }
 
 /**
@@ -74,7 +78,8 @@ export const CheckedInPlayerCard: React.FC<CheckedInPlayerCardProps> = ({
   player,
   isAnimatingOut,
   isAnimatingIn,
-  onCheckOut
+  onCheckOut,
+  onEditNotes
 }) => {
   const isOneRoundOnly = player.maxRounds === 1
   const [variant, setVariant] = useState<PlayerUiVariant>(() => getPlayerUiVariant())
@@ -121,6 +126,21 @@ export const CheckedInPlayerCard: React.FC<CheckedInPlayerCardProps> = ({
               <span className="inline-flex items-center rounded-full bg-[hsl(var(--surface-2)/.7)] backdrop-blur-sm text-[hsl(var(--muted))] border-hair px-1.5 sm:px-2 py-0.5 sm:py-1 text-[10px] sm:text-xs whitespace-nowrap">
                 1 runde
               </span>
+            )}
+            {player.notes && (
+              <Tooltip content={player.notes} position="top">
+                <button
+                  type="button"
+                  onClick={(e) => {
+                    e.stopPropagation()
+                    onEditNotes?.(player, e.currentTarget)
+                  }}
+                  className="flex-shrink-0 p-0.5 sm:p-1 rounded hover:bg-[hsl(var(--surface-2)/.5)] transition-colors"
+                  aria-label="Vis eller rediger noter"
+                >
+                  <Info className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-[hsl(var(--muted))] hover:text-[hsl(var(--foreground))]" />
+                </button>
+              </Tooltip>
             )}
           </div>
         </div>
