@@ -6,6 +6,167 @@
 import { test, expect } from './fixtures'
 import { TestHelpers } from './fixtures'
 
+test.describe('Player Sorting', () => {
+  test.beforeEach(async ({ page }) => {
+    await page.goto('/#/rounds')
+    await page.waitForLoadState('networkidle')
+    await page.waitForTimeout(1000) // Wait for session check
+  })
+
+  test('should display sort dropdown in bench section', async ({ page }) => {
+    const helpers = new TestHelpers(page)
+    
+    const benchSection = page.locator('text=/bænk|bench/i')
+    const exists = await helpers.elementExists(benchSection)
+    
+    if (exists) {
+      // Look for sort dropdown
+      const sortDropdown = page.getByLabel('Sorter spillere').or(
+        page.locator('select').filter({ hasText: /køn.*kategori|alfabetisk/i })
+      )
+      const dropdownExists = await helpers.elementExists(sortDropdown)
+      
+      if (dropdownExists) {
+        await expect(sortDropdown).toBeVisible()
+      }
+    }
+  })
+
+  test('should allow selecting gender-alphabetical sort', async ({ page }) => {
+    const helpers = new TestHelpers(page)
+    
+    const benchSection = page.locator('text=/bænk|bench/i')
+    const exists = await helpers.elementExists(benchSection)
+    
+    if (exists) {
+      const sortDropdown = page.getByLabel('Sorter spillere').or(
+        page.locator('select').filter({ hasText: /køn.*kategori|alfabetisk/i })
+      )
+      const dropdownExists = await helpers.elementExists(sortDropdown)
+      
+      if (dropdownExists) {
+        await sortDropdown.selectOption('gender-alphabetical')
+        await page.waitForTimeout(300) // Wait for sort to apply
+        
+        // Verify dropdown value changed
+        const value = await sortDropdown.inputValue()
+        expect(value).toBe('gender-alphabetical')
+      }
+    }
+  })
+
+  test('should allow selecting alphabetical sort', async ({ page }) => {
+    const helpers = new TestHelpers(page)
+    
+    const benchSection = page.locator('text=/bænk|bench/i')
+    const exists = await helpers.elementExists(benchSection)
+    
+    if (exists) {
+      const sortDropdown = page.getByLabel('Sorter spillere').or(
+        page.locator('select').filter({ hasText: /køn.*kategori|alfabetisk/i })
+      )
+      const dropdownExists = await helpers.elementExists(sortDropdown)
+      
+      if (dropdownExists) {
+        await sortDropdown.selectOption('alphabetical')
+        await page.waitForTimeout(300) // Wait for sort to apply
+        
+        // Verify dropdown value changed
+        const value = await sortDropdown.inputValue()
+        expect(value).toBe('alphabetical')
+      }
+    }
+  })
+
+  test('should allow selecting gender-category sort', async ({ page }) => {
+    const helpers = new TestHelpers(page)
+    
+    const benchSection = page.locator('text=/bænk|bench/i')
+    const exists = await helpers.elementExists(benchSection)
+    
+    if (exists) {
+      const sortDropdown = page.getByLabel('Sorter spillere').or(
+        page.locator('select').filter({ hasText: /køn.*kategori|alfabetisk/i })
+      )
+      const dropdownExists = await helpers.elementExists(sortDropdown)
+      
+      if (dropdownExists) {
+        // First set to alphabetical
+        await sortDropdown.selectOption('alphabetical')
+        await page.waitForTimeout(300)
+        
+        // Then change back to gender-category
+        await sortDropdown.selectOption('gender-category')
+        await page.waitForTimeout(300)
+        
+        // Verify dropdown value changed
+        const value = await sortDropdown.inputValue()
+        expect(value).toBe('gender-category')
+      }
+    }
+  })
+
+  test('should apply sorting to bench players', async ({ page }) => {
+    const helpers = new TestHelpers(page)
+    
+    const benchSection = page.locator('text=/bænk|bench/i')
+    const exists = await helpers.elementExists(benchSection)
+    
+    if (exists) {
+      // Get initial player order
+      const players = page.locator('[data-testid="bench-player"]').or(
+        page.locator('text=/damer|herrer/i').locator('..').locator('p').filter({ hasText: /./ })
+      )
+      const playerCount = await players.count()
+      
+      if (playerCount >= 2) {
+        const sortDropdown = page.getByLabel('Sorter spillere').or(
+          page.locator('select').filter({ hasText: /køn.*kategori|alfabetisk/i })
+        )
+        const dropdownExists = await helpers.elementExists(sortDropdown)
+        
+        if (dropdownExists) {
+          // Change to alphabetical sort
+          await sortDropdown.selectOption('alphabetical')
+          await page.waitForTimeout(500) // Wait for sort to apply
+          
+          // Verify players are still visible (sorting applied)
+          const playersAfterSort = page.locator('[data-testid="bench-player"]').or(
+            page.locator('text=/damer|herrer/i').locator('..').locator('p').filter({ hasText: /./ })
+          )
+          const countAfterSort = await playersAfterSort.count()
+          expect(countAfterSort).toBe(playerCount)
+        }
+      }
+    }
+  })
+
+  test('should apply sorting to inactive players', async ({ page }) => {
+    const helpers = new TestHelpers(page)
+    
+    const inactiveSection = page.locator('text=/inaktive|inactive/i')
+    const exists = await helpers.elementExists(inactiveSection)
+    
+    if (exists) {
+      const sortDropdown = page.getByLabel('Sorter spillere').or(
+        page.locator('select').filter({ hasText: /køn.*kategori|alfabetisk/i })
+      )
+      const dropdownExists = await helpers.elementExists(sortDropdown)
+      
+      if (dropdownExists) {
+        // Change to alphabetical sort
+        await sortDropdown.selectOption('alphabetical')
+        await page.waitForTimeout(500) // Wait for sort to apply
+        
+        // Verify inactive section still exists
+        const inactiveAfterSort = page.locator('text=/inaktive|inactive/i')
+        const stillExists = await helpers.elementExists(inactiveAfterSort)
+        expect(stillExists).toBe(true)
+      }
+    }
+  })
+})
+
 test.describe('Match Program Page', () => {
   test.beforeEach(async ({ page }) => {
     await page.goto('/#/rounds')

@@ -28,6 +28,7 @@ import {
   getOccupiedCourts,
   ensureAllCourts
 } from '../services/matchProgramService'
+import type { PlayerSortType } from '../lib/matchProgramUtils'
 import { localAutoMatch } from '../services/localAutoMatch'
 
 interface UseMatchProgramProps {
@@ -36,6 +37,7 @@ interface UseMatchProgramProps {
   maxCourts: number
   startSession: () => Promise<TrainingSession | null>
   endSession: (matchesData?: Array<{ round: number; matches: CourtWithPlayers[] }>) => Promise<void>
+  sortType?: PlayerSortType
 }
 
 interface UseMatchProgramReturn {
@@ -183,7 +185,8 @@ export const useMatchProgram = ({
   checkedIn,
   maxCourts,
   startSession,
-  endSession
+  endSession,
+  sortType = 'gender-category'
 }: UseMatchProgramProps): UseMatchProgramReturn => {
   const { notify } = useToast()
   
@@ -289,8 +292,8 @@ export const useMatchProgram = ({
   }, [matches])
   
   const bench = useMemo(
-    () => filterBenchPlayers(checkedIn, assignedIds, selectedRound, unavailablePlayers, activatedOneRoundPlayers),
-    [checkedIn, assignedIds, selectedRound, unavailablePlayers, activatedOneRoundPlayers]
+    () => filterBenchPlayers(checkedIn, assignedIds, selectedRound, unavailablePlayers, activatedOneRoundPlayers, sortType),
+    [checkedIn, assignedIds, selectedRound, unavailablePlayers, activatedOneRoundPlayers, sortType]
   )
 
   // Track when bench becomes empty and show toast reminder
@@ -319,8 +322,8 @@ export const useMatchProgram = ({
   }, [bench.length, matches, session, notify])
   
   const inactivePlayers = useMemo<CheckedInPlayer[]>(
-    () => filterInactivePlayers(checkedIn, assignedIds, selectedRound, unavailablePlayers, activatedOneRoundPlayers),
-    [checkedIn, assignedIds, selectedRound, unavailablePlayers, activatedOneRoundPlayers]
+    () => filterInactivePlayers(checkedIn, assignedIds, selectedRound, unavailablePlayers, activatedOneRoundPlayers, sortType),
+    [checkedIn, assignedIds, selectedRound, unavailablePlayers, activatedOneRoundPlayers, sortType]
   )
   
   const genderBreakdown = useMemo(() => {

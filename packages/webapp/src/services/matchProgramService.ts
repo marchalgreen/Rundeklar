@@ -5,7 +5,7 @@
  */
 
 import type { CheckedInPlayer, CourtWithPlayers } from '@rundeklar/common'
-import { sortPlayersForDisplay, ensureAllCourtsPresent } from '../lib/matchProgramUtils'
+import { sortPlayers, ensureAllCourtsPresent, type PlayerSortType } from '../lib/matchProgramUtils'
 
 /**
  * Filters players for the bench (available players not assigned to courts).
@@ -15,6 +15,7 @@ import { sortPlayersForDisplay, ensureAllCourtsPresent } from '../lib/matchProgr
  * @param selectedRound - Current round number
  * @param unavailablePlayers - Set of unavailable player IDs
  * @param activatedOneRoundPlayers - Set of activated one-round player IDs
+ * @param sortType - Type of sorting to apply (default: 'gender-category')
  * @returns Filtered and sorted bench players
  */
 export const filterBenchPlayers = (
@@ -22,7 +23,8 @@ export const filterBenchPlayers = (
   assignedIds: Set<string>,
   selectedRound: number,
   unavailablePlayers: Set<string>,
-  activatedOneRoundPlayers: Set<string>
+  activatedOneRoundPlayers: Set<string>,
+  sortType: PlayerSortType = 'gender-category'
 ): CheckedInPlayer[] => {
   const filtered: CheckedInPlayer[] = checkedIn.filter((player) => {
     // Exclude players already assigned to a court
@@ -34,8 +36,8 @@ export const filterBenchPlayers = (
     if (unavailablePlayers.has(player.id)) return false
     return true
   })
-  // sortPlayersForDisplay is generic and preserves the input type
-  return sortPlayersForDisplay<CheckedInPlayer>(filtered)
+  // sortPlayers is generic and preserves the input type
+  return sortPlayers<CheckedInPlayer>(filtered, sortType)
 }
 
 /**
@@ -46,6 +48,7 @@ export const filterBenchPlayers = (
  * @param selectedRound - Current round number
  * @param unavailablePlayers - Set of unavailable player IDs
  * @param activatedOneRoundPlayers - Set of activated one-round player IDs
+ * @param sortType - Type of sorting to apply (default: 'gender-category')
  * @returns Filtered and sorted inactive players
  */
 export const filterInactivePlayers = (
@@ -53,7 +56,8 @@ export const filterInactivePlayers = (
   assignedIds: Set<string>,
   selectedRound: number,
   unavailablePlayers: Set<string>,
-  activatedOneRoundPlayers: Set<string>
+  activatedOneRoundPlayers: Set<string>,
+  sortType: PlayerSortType = 'gender-category'
 ): CheckedInPlayer[] => {
   const filtered: CheckedInPlayer[] = checkedIn.filter((player) => {
     // Exclude players already assigned to a court
@@ -65,8 +69,8 @@ export const filterInactivePlayers = (
     const isUnavailable = unavailablePlayers.has(player.id)
     return isOneRoundOnly || isUnavailable
   })
-  // sortPlayersForDisplay is generic and preserves the input type
-  return sortPlayersForDisplay<CheckedInPlayer>(filtered)
+  // sortPlayers is generic and preserves the input type
+  return sortPlayers<CheckedInPlayer>(filtered, sortType)
 }
 
 /**

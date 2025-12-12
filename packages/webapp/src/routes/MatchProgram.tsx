@@ -23,6 +23,7 @@ import { getMatches, getCourts } from '../api/postgres'
 import type { Match } from '@rundeklar/common'
 import { normalizeError } from '../lib/errors'
 import { useToast } from '../components/ui/Toast'
+import type { PlayerSortType } from '../lib/matchProgramUtils'
 
 /**
  * Match program page component.
@@ -63,13 +64,17 @@ const MatchProgramPage = () => {
   
   const loading = sessionLoading || checkInsLoading
   
+  // Player sorting state
+  const [playerSortType, setPlayerSortType] = React.useState<PlayerSortType>('gender-category')
+  
   // Match program hook - manages all state and operations
   const matchProgram = useMatchProgram({
     session,
     checkedIn,
     maxCourts,
     startSession,
-    endSession
+    endSession,
+    sortType: playerSortType
   })
   
   // Destructure hook return for easier access
@@ -400,6 +405,8 @@ const MatchProgramPage = () => {
           inactivePlayers={inactivePlayers}
           selectedRound={selectedRound}
           unavailablePlayers={unavailablePlayers}
+          sortType={playerSortType}
+          onSortTypeChange={setPlayerSortType}
           dragOverBench={dragOverBench}
           dragOverInactive={dragOverInactive}
           dragSource={dragSource}

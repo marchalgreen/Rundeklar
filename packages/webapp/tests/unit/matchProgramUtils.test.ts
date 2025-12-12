@@ -9,6 +9,9 @@ import {
   calculateGenderBreakdown,
   getAssignedPlayerIds,
   sortPlayersForDisplay,
+  sortPlayersAlphabetically,
+  sortPlayersByGenderAlphabetically,
+  sortPlayers,
   ensureAllCourtsPresent
 } from '../../src/lib/matchProgramUtils'
 import type { CourtWithPlayers, Player } from '@rundeklar/common'
@@ -230,6 +233,254 @@ describe('sortPlayersForDisplay', () => {
     ]
     const originalOrder = players.map(p => p.id)
     sortPlayersForDisplay(players)
+    expect(players.map(p => p.id)).toEqual(originalOrder)
+  })
+})
+
+describe('sortPlayersAlphabetically', () => {
+  it('should sort players alphabetically by name', () => {
+    const players: Player[] = [
+      { id: '1', name: 'Zimmermann' } as Player,
+      { id: '2', name: 'Andersen' } as Player,
+      { id: '3', name: 'Bøgh' } as Player
+    ]
+    const result = sortPlayersAlphabetically(players)
+    expect(result[0].name).toBe('Andersen')
+    expect(result[1].name).toBe('Bøgh')
+    expect(result[2].name).toBe('Zimmermann')
+  })
+
+  it('should handle Danish characters correctly (æ, ø, å)', () => {
+    const players: Player[] = [
+      { id: '1', name: 'Åberg' } as Player,
+      { id: '2', name: 'Østergaard' } as Player,
+      { id: '3', name: 'Ærø' } as Player,
+      { id: '4', name: 'Andersen' } as Player
+    ]
+    const result = sortPlayersAlphabetically(players)
+    expect(result[0].name).toBe('Andersen')
+    expect(result[1].name).toBe('Ærø')
+    expect(result[2].name).toBe('Østergaard')
+    expect(result[3].name).toBe('Åberg')
+  })
+
+  it('should be case-insensitive', () => {
+    const players: Player[] = [
+      { id: '1', name: 'andersen' } as Player,
+      { id: '2', name: 'BØGH' } as Player,
+      { id: '3', name: 'Zimmermann' } as Player
+    ]
+    const result = sortPlayersAlphabetically(players)
+    expect(result[0].name).toBe('andersen')
+    expect(result[1].name).toBe('BØGH')
+    expect(result[2].name).toBe('Zimmermann')
+  })
+
+  it('should handle players without names (sort last)', () => {
+    const players: Player[] = [
+      { id: '1', name: 'Andersen' } as Player,
+      { id: '2', name: null } as Player,
+      { id: '3', name: 'Bøgh' } as Player,
+      { id: '4', name: undefined } as Player
+    ]
+    const result = sortPlayersAlphabetically(players)
+    expect(result[0].name).toBe('Andersen')
+    expect(result[1].name).toBe('Bøgh')
+    // Players without names should be sorted last
+    expect(result[2].name).toBeNull()
+    expect(result[3].name).toBeUndefined()
+  })
+
+  it('should handle empty array', () => {
+    const result = sortPlayersAlphabetically([])
+    expect(result).toEqual([])
+  })
+
+  it('should preserve input type', () => {
+    const players: Player[] = [
+      { id: '1', name: 'Player 1' } as Player
+    ]
+    const result = sortPlayersAlphabetically(players)
+    expect(result).toBeInstanceOf(Array)
+    expect(result.length).toBe(1)
+  })
+
+  it('should not mutate original array', () => {
+    const players: Player[] = [
+      { id: '1', name: 'Zimmermann' } as Player,
+      { id: '2', name: 'Andersen' } as Player
+    ]
+    const originalOrder = players.map(p => p.id)
+    sortPlayersAlphabetically(players)
+    expect(players.map(p => p.id)).toEqual(originalOrder)
+  })
+
+  it('should handle names with leading/trailing whitespace', () => {
+    const players: Player[] = [
+      { id: '1', name: '  Bøgh  ' } as Player,
+      { id: '2', name: 'Andersen' } as Player
+    ]
+    const result = sortPlayersAlphabetically(players)
+    expect(result[0].name).toBe('Andersen')
+    expect(result[1].name).toBe('  Bøgh  ')
+  })
+})
+
+describe('sortPlayersByGenderAlphabetically', () => {
+  it('should sort by gender first (Dame before Herre)', () => {
+    const players: Player[] = [
+      { id: '1', name: 'Zimmermann', gender: 'Herre' } as Player,
+      { id: '2', name: 'Andersen', gender: 'Dame' } as Player,
+      { id: '3', name: 'Bøgh', gender: 'Herre' } as Player
+    ]
+    const result = sortPlayersByGenderAlphabetically(players)
+    expect(result[0].gender).toBe('Dame')
+    expect(result[0].name).toBe('Andersen')
+    expect(result[1].gender).toBe('Herre')
+    expect(result[1].name).toBe('Bøgh')
+    expect(result[2].gender).toBe('Herre')
+    expect(result[2].name).toBe('Zimmermann')
+  })
+
+  it('should sort alphabetically within each gender group', () => {
+    const players: Player[] = [
+      { id: '1', name: 'Zimmermann', gender: 'Dame' } as Player,
+      { id: '2', name: 'Andersen', gender: 'Dame' } as Player,
+      { id: '3', name: 'Bøgh', gender: 'Dame' } as Player,
+      { id: '4', name: 'Østergaard', gender: 'Herre' } as Player,
+      { id: '5', name: 'Åberg', gender: 'Herre' } as Player
+    ]
+    const result = sortPlayersByGenderAlphabetically(players)
+    // Dame group should be alphabetical
+    expect(result[0].gender).toBe('Dame')
+    expect(result[0].name).toBe('Andersen')
+    expect(result[1].gender).toBe('Dame')
+    expect(result[1].name).toBe('Bøgh')
+    expect(result[2].gender).toBe('Dame')
+    expect(result[2].name).toBe('Zimmermann')
+    // Herre group should be alphabetical
+    expect(result[3].gender).toBe('Herre')
+    expect(result[3].name).toBe('Østergaard')
+    expect(result[4].gender).toBe('Herre')
+    expect(result[4].name).toBe('Åberg')
+  })
+
+  it('should handle Danish characters correctly within gender groups', () => {
+    const players: Player[] = [
+      { id: '1', name: 'Åberg', gender: 'Dame' } as Player,
+      { id: '2', name: 'Østergaard', gender: 'Dame' } as Player,
+      { id: '3', name: 'Ærø', gender: 'Dame' } as Player,
+      { id: '4', name: 'Andersen', gender: 'Dame' } as Player
+    ]
+    const result = sortPlayersByGenderAlphabetically(players)
+    expect(result[0].name).toBe('Andersen')
+    expect(result[1].name).toBe('Ærø')
+    expect(result[2].name).toBe('Østergaard')
+    expect(result[3].name).toBe('Åberg')
+  })
+
+  it('should handle players without gender (sorted last)', () => {
+    const players: Player[] = [
+      { id: '1', name: 'Andersen', gender: 'Dame' } as Player,
+      { id: '2', name: 'Bøgh', gender: null } as Player,
+      { id: '3', name: 'Zimmermann', gender: 'Herre' } as Player,
+      { id: '4', name: 'Åberg', gender: undefined } as Player
+    ]
+    const result = sortPlayersByGenderAlphabetically(players)
+    expect(result[0].gender).toBe('Dame')
+    expect(result[1].gender).toBe('Herre')
+    // Players without gender should be last
+    expect(result[2].gender).toBeNull()
+    expect(result[3].gender).toBeUndefined()
+  })
+
+  it('should handle empty array', () => {
+    const result = sortPlayersByGenderAlphabetically([])
+    expect(result).toEqual([])
+  })
+
+  it('should preserve input type', () => {
+    const players: Player[] = [
+      { id: '1', name: 'Player 1', gender: 'Dame' } as Player
+    ]
+    const result = sortPlayersByGenderAlphabetically(players)
+    expect(result).toBeInstanceOf(Array)
+    expect(result.length).toBe(1)
+  })
+
+  it('should not mutate original array', () => {
+    const players: Player[] = [
+      { id: '1', name: 'Zimmermann', gender: 'Herre' } as Player,
+      { id: '2', name: 'Andersen', gender: 'Dame' } as Player
+    ]
+    const originalOrder = players.map(p => p.id)
+    sortPlayersByGenderAlphabetically(players)
+    expect(players.map(p => p.id)).toEqual(originalOrder)
+  })
+})
+
+describe('sortPlayers', () => {
+  it('should use gender-category sorting by default', () => {
+    const players: Player[] = [
+      { id: '1', name: 'Player 1', gender: 'Herre' } as Player,
+      { id: '2', name: 'Player 2', gender: 'Dame' } as Player
+    ]
+    const result = sortPlayers(players)
+    expect(result[0].gender).toBe('Dame')
+    expect(result[1].gender).toBe('Herre')
+  })
+
+  it('should use gender-category sorting when specified', () => {
+    const players: Player[] = [
+      { id: '1', name: 'Player 1', gender: 'Herre' } as Player,
+      { id: '2', name: 'Player 2', gender: 'Dame' } as Player
+    ]
+    const result = sortPlayers(players, 'gender-category')
+    expect(result[0].gender).toBe('Dame')
+    expect(result[1].gender).toBe('Herre')
+  })
+
+  it('should use gender-alphabetical sorting when specified', () => {
+    const players: Player[] = [
+      { id: '1', name: 'Zimmermann', gender: 'Herre' } as Player,
+      { id: '2', name: 'Andersen', gender: 'Dame' } as Player,
+      { id: '3', name: 'Bøgh', gender: 'Herre' } as Player
+    ]
+    const result = sortPlayers(players, 'gender-alphabetical')
+    expect(result[0].gender).toBe('Dame')
+    expect(result[0].name).toBe('Andersen')
+    expect(result[1].gender).toBe('Herre')
+    expect(result[1].name).toBe('Bøgh')
+    expect(result[2].gender).toBe('Herre')
+    expect(result[2].name).toBe('Zimmermann')
+  })
+
+  it('should use alphabetical sorting when specified', () => {
+    const players: Player[] = [
+      { id: '1', name: 'Zimmermann' } as Player,
+      { id: '2', name: 'Andersen' } as Player
+    ]
+    const result = sortPlayers(players, 'alphabetical')
+    expect(result[0].name).toBe('Andersen')
+    expect(result[1].name).toBe('Zimmermann')
+  })
+
+  it('should preserve input type', () => {
+    const players: Player[] = [
+      { id: '1', name: 'Player 1' } as Player
+    ]
+    const result = sortPlayers(players, 'alphabetical')
+    expect(result).toBeInstanceOf(Array)
+    expect(result.length).toBe(1)
+  })
+
+  it('should not mutate original array', () => {
+    const players: Player[] = [
+      { id: '1', name: 'Zimmermann' } as Player,
+      { id: '2', name: 'Andersen' } as Player
+    ]
+    const originalOrder = players.map(p => p.id)
+    sortPlayers(players, 'alphabetical')
     expect(players.map(p => p.id)).toEqual(originalOrder)
   })
 })

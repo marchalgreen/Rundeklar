@@ -78,6 +78,72 @@ export const getAssignedPlayerIds = (matches: CourtWithPlayers[]): Set<string> =
 }
 
 /**
+ * Sorts players alphabetically by name (case-insensitive, Danish locale-aware).
+ * Handles null/undefined names by treating them as empty strings (sorted last).
+ * 
+ * @param players - Array of players to sort
+ * @returns Sorted array of players (preserves input type)
+ * 
+ * @example
+ * ```ts
+ * const sorted = sortPlayersAlphabetically(players)
+ * // Players sorted: "Andersen", "Bøgh", "Østergaard", "Zimmermann"
+ * ```
+ */
+export const sortPlayersAlphabetically = <T extends Player>(players: T[]): T[] => {
+  return [...players].sort((a, b) => {
+    const nameA = (a.name ?? '').trim()
+    const nameB = (b.name ?? '').trim()
+    
+    // Handle empty names - sort them last
+    if (!nameA && !nameB) return 0
+    if (!nameA) return 1
+    if (!nameB) return -1
+    
+    // Use Danish locale-aware comparison for proper sorting of æ, ø, å
+    return nameA.localeCompare(nameB, 'da', { sensitivity: 'base', caseFirst: 'upper' })
+  })
+}
+
+/**
+ * Sorts players by gender first (Dame first, Herre second, then null/undefined),
+ * then alphabetically by name within each gender group.
+ * 
+ * @param players - Array of players to sort
+ * @returns Sorted array of players (preserves input type)
+ * 
+ * @example
+ * ```ts
+ * const sorted = sortPlayersByGenderAlphabetically(players)
+ * // Players sorted: Dame (A-Z), Herre (A-Z), then players without gender (A-Z)
+ * ```
+ */
+export const sortPlayersByGenderAlphabetically = <T extends Player>(players: T[]): T[] => {
+  return [...players].sort((a, b) => {
+    // Primary sort: Gender (Dame first, Herre second, then null/undefined)
+    const genderOrder: Record<string, number> = { Dame: 1, Herre: 2 }
+    const genderA = genderOrder[a.gender ?? ''] ?? 3
+    const genderB = genderOrder[b.gender ?? ''] ?? 3
+    
+    if (genderA !== genderB) {
+      return genderA - genderB
+    }
+    
+    // Secondary sort: Alphabetical by name within same gender group
+    const nameA = (a.name ?? '').trim()
+    const nameB = (b.name ?? '').trim()
+    
+    // Handle empty names - sort them last
+    if (!nameA && !nameB) return 0
+    if (!nameA) return 1
+    if (!nameB) return -1
+    
+    // Use Danish locale-aware comparison for proper sorting of æ, ø, å
+    return nameA.localeCompare(nameB, 'da', { sensitivity: 'base', caseFirst: 'upper' })
+  })
+}
+
+/**
  * Sorts players by gender and category for display.
  * Primary sort: Gender (Dame first, Herre second, then null/undefined)
  * Secondary sort: Category (Double first, Begge second, Single last, then null/undefined)
@@ -101,6 +167,35 @@ export const sortPlayersForDisplay = <T extends Player>(players: T[]): T[] => {
     const categoryB = categoryOrder[b.primaryCategory ?? ''] ?? 4
     return categoryA - categoryB
   })
+}
+
+/**
+ * Type for player sorting options.
+ */
+export type PlayerSortType = 'gender-category' | 'gender-alphabetical' | 'alphabetical'
+
+/**
+ * Sorts players using the specified sort type.
+ * 
+ * @param players - Array of players to sort
+ * @param sortType - Type of sorting to apply ('gender-category', 'gender-alphabetical', or 'alphabetical')
+ * @returns Sorted array of players (preserves input type)
+ * 
+ * @example
+ * ```ts
+ * const sorted = sortPlayers(players, 'alphabetical')
+ * const sortedByGender = sortPlayers(players, 'gender-category')
+ * const sortedByGenderAlphabetical = sortPlayers(players, 'gender-alphabetical')
+ * ```
+ */
+export const sortPlayers = <T extends Player>(players: T[], sortType: PlayerSortType = 'gender-category'): T[] => {
+  if (sortType === 'alphabetical') {
+    return sortPlayersAlphabetically(players)
+  }
+  if (sortType === 'gender-alphabetical') {
+    return sortPlayersByGenderAlphabetically(players)
+  }
+  return sortPlayersForDisplay(players)
 }
 
 /**
