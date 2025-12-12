@@ -5,9 +5,10 @@
  */
 
 import React from 'react'
-import type { CourtWithPlayers, Player } from '@rundeklar/common'
+import type { CourtWithPlayers, Player, MatchResult } from '@rundeklar/common'
 import { PlayerSlot } from './PlayerSlot'
 import { MATCH_CONSTANTS } from '../../constants'
+import { Trophy } from 'lucide-react'
 
 interface FullScreenMatchProgramProps {
   /** Courts to display */
@@ -42,6 +43,12 @@ interface FullScreenMatchProgramProps {
   onSlotDragLeave: () => void
   /** Handler for drop */
   onSlotDrop: (event: React.DragEvent<HTMLDivElement>, courtIdx: number, slotIndex: number) => void
+  /** Function to get match result for a court */
+  getMatchForCourt: (courtIdx: number) => { match: any; result: MatchResult | null; isFinished: boolean }
+  /** Handler to open result input */
+  onEnterResult: (courtIdx: number) => void
+  /** Sport type */
+  sport: 'badminton' | 'tennis' | 'padel'
 }
 
 const EMPTY_SLOTS = MATCH_CONSTANTS.DEFAULT_SLOTS_PER_COURT
@@ -83,7 +90,10 @@ export const FullScreenMatchProgram: React.FC<FullScreenMatchProgramProps> = ({
   onSlotDragEnd,
   onSlotDragOver,
   onSlotDragLeave,
-  onSlotDrop
+  onSlotDrop,
+  getMatchForCourt,
+  onEnterResult,
+  sport
 }) => {
   // Filter to only show courts with players
   const courtsWithPlayers = courts.filter(court => court.slots.length > 0)
@@ -274,6 +284,59 @@ export const FullScreenMatchProgram: React.FC<FullScreenMatchProgramProps> = ({
                 </div>
                 <span className="text-[10px] sm:text-xs md:text-sm text-[hsl(var(--muted))]">{court.slots.length}/{extendedCapacityCourts.get(court.courtIdx) || EMPTY_SLOTS}</span>
               </header>
+              
+              {/* Match result display and entry button */}
+              {(() => {
+                const { match, result, isFinished } = getMatchForCourt(court.courtIdx)
+                const hasPlayers = court.slots.some((slot) => slot.player)
+                
+                return (
+                  <>
+                    {/* Show existing result */}
+                    {result && result.sport === 'badminton' && (result.scoreData as any)?.sets && (
+                      <div className="mb-2 p-2 rounded-md bg-[hsl(var(--primary)/.1)] ring-1 ring-[hsl(var(--primary)/.2)]">
+                        <div className="flex items-center justify-between">
+                          <div className="flex items-center gap-2">
+                            <Trophy className="h-3.5 w-3.5 text-[hsl(var(--primary))]" />
+                            <span className="text-xs font-semibold text-[hsl(var(--foreground))]">
+                              {((result.scoreData as any).sets || []).map((set: { team1: number; team2: number }) => 
+                                `${set.team1}-${set.team2}`
+                              ).join(', ')}
+                            </span>
+                          </div>
+                          {onEnterResult && (
+                            <button
+                              type="button"
+                              onClick={(e) => {
+                                e.stopPropagation()
+                                onEnterResult(court.courtIdx)
+                              }}
+                              className="text-xs text-[hsl(var(--primary))] hover:underline"
+                            >
+                              Rediger
+                            </button>
+                          )}
+                        </div>
+                      </div>
+                    )}
+                    
+                    {/* Result entry button (when there are players but no result) */}
+                    {hasPlayers && !result && onEnterResult && (
+                      <button
+                        type="button"
+                        onClick={(e) => {
+                          e.stopPropagation()
+                          onEnterResult(court.courtIdx)
+                        }}
+                        className="mb-2 w-full py-2 px-3 rounded-md bg-[hsl(var(--surface-2))] ring-1 ring-[hsl(var(--line)/.12)] hover:bg-[hsl(var(--surface-glass)/.85)] transition-colors flex items-center justify-center gap-2 text-xs font-medium text-[hsl(var(--foreground))]"
+                      >
+                        <Trophy className="h-4 w-4 text-[hsl(var(--muted))]" />
+                        Indtast resultat
+                      </button>
+                    )}
+                  </>
+                )
+              })()}
               <div className="flex flex-col gap-2 flex-1 min-h-0">
                 {renderCourtSlots(court)}
               </div>
