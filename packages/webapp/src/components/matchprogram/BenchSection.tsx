@@ -4,11 +4,13 @@
  * Displays available players (bench) and inactive players with drag-and-drop support.
  */
 
-import React from 'react'
+import React, { useEffect, useState } from 'react'
 import type { CheckedInPlayer } from '@rundeklar/common'
 import { PageCard } from '../ui'
-import { getCategoryLetter, getCategoryBadge, getPlayerSlotBgColor, type PlayerSortType } from '../../lib/matchProgramUtils'
+import { getCategoryBadge, getPlayerSlotBgColor, type PlayerSortType } from '../../lib/matchProgramUtils'
 import { formatPlayerCardName } from '../../lib/formatting'
+import { getSeedHue } from '../ui/PlayerAvatar'
+import { getPlayerUiVariant, VARIANT_CHANGED_EVENT, type PlayerUiVariant } from '../../lib/uiVariants'
 
 interface BenchSectionProps {
   /** Bench players (available players) */
@@ -109,6 +111,23 @@ export const BenchSection: React.FC<BenchSectionProps> = ({
   onMarkAvailable,
   onActivateOneRoundPlayer
 }) => {
+  const [variant, setVariant] = useState<PlayerUiVariant>(() => getPlayerUiVariant())
+  useEffect(() => {
+    const onChange = (e: Event) => {
+      const ev = e as CustomEvent
+      setVariant(ev.detail?.variant ?? getPlayerUiVariant())
+    }
+    window.addEventListener(VARIANT_CHANGED_EVENT, onChange as EventListener)
+    return () => window.removeEventListener(VARIANT_CHANGED_EVENT, onChange as EventListener)
+  }, [])
+
+  // Helper function to get avatar rail color for a player (variant A only)
+  const getAvatarRailColor = (player: CheckedInPlayer): string | undefined => {
+    if (variant !== 'A') return undefined
+    const hue = getSeedHue(player.id || player.name, player.gender ?? null)
+    return `hsl(${hue} 70% 75% / .26)`
+  }
+
   // Split bench players by gender (when using gender-category or gender-alphabetical sort)
   // When sorting alphabetically only, show all players together
   const shouldGroupByGender = sortType === 'gender-category' || sortType === 'gender-alphabetical'
@@ -174,15 +193,15 @@ export const BenchSection: React.FC<BenchSectionProps> = ({
         {!shouldGroupByGender && allPlayersAlphabetical.length > 0 && (
           <div className="space-y-2">
             {allPlayersAlphabetical.map((player) => {
-              const catLetter = getCategoryLetter(player.primaryCategory)
+              const avatarRailColor = getAvatarRailColor(player)
               return (
                 <div
                   key={player.id}
-                  className={`flex items-center gap-2 rounded-md px-3 py-1.5 sm:px-4 sm:py-2 h-[52px] sm:h-[56px] w-full hover:shadow-sm cursor-grab active:cursor-grabbing transition-all ring-1 ring-[hsl(var(--line)/.12)] ${getPlayerSlotBgColor()} ${catLetter ? 'cat-rail' : ''}`}
-                  data-cat={catLetter || undefined}
+                  className={`flex items-center gap-2 rounded-md px-3 py-1.5 sm:px-4 sm:py-2 h-[52px] sm:h-[56px] w-full hover:shadow-sm cursor-grab active:cursor-grabbing transition-all ring-1 ring-[hsl(var(--line)/.12)] ${getPlayerSlotBgColor()} avatar-rail`}
                   draggable
                   onDragStart={(event) => onBenchDragStart(event, player.id)}
                   onDragEnd={onBenchDragEnd}
+                  style={variant === 'A' && avatarRailColor ? ({ ['--railColor' as any]: avatarRailColor } as React.CSSProperties) : undefined}
                 >
                   <div className="min-w-0 flex-1">
                     <div className="flex items-center gap-2.5">
@@ -208,15 +227,15 @@ export const BenchSection: React.FC<BenchSectionProps> = ({
               <div className="flex-1 h-px bg-[hsl(var(--line)/.2)]"></div>
             </div>
             {femalePlayers.map((player) => {
-              const catLetter = getCategoryLetter(player.primaryCategory)
+              const avatarRailColor = getAvatarRailColor(player)
               return (
                 <div
                   key={player.id}
-                  className={`flex items-center gap-2 rounded-md px-3 py-1.5 sm:px-4 sm:py-2 h-[52px] sm:h-[56px] w-full hover:shadow-sm cursor-grab active:cursor-grabbing transition-all ring-1 ring-[hsl(var(--line)/.12)] ${getPlayerSlotBgColor()} ${catLetter ? 'cat-rail' : ''}`}
-                  data-cat={catLetter || undefined}
+                  className={`flex items-center gap-2 rounded-md px-3 py-1.5 sm:px-4 sm:py-2 h-[52px] sm:h-[56px] w-full hover:shadow-sm cursor-grab active:cursor-grabbing transition-all ring-1 ring-[hsl(var(--line)/.12)] ${getPlayerSlotBgColor()} avatar-rail`}
                   draggable
                   onDragStart={(event) => onBenchDragStart(event, player.id)}
                   onDragEnd={onBenchDragEnd}
+                  style={variant === 'A' && avatarRailColor ? ({ ['--railColor' as any]: avatarRailColor } as React.CSSProperties) : undefined}
                 >
                   <div className="min-w-0 flex-1">
                     <div className="flex items-center gap-2.5">
@@ -241,15 +260,15 @@ export const BenchSection: React.FC<BenchSectionProps> = ({
               <div className="flex-1 h-px bg-[hsl(var(--line)/.2)]"></div>
             </div>
             {malePlayers.map((player) => {
-              const catLetter = getCategoryLetter(player.primaryCategory)
+              const avatarRailColor = getAvatarRailColor(player)
               return (
                 <div
                   key={player.id}
-                  className={`flex items-center gap-2 rounded-md px-3 py-1.5 sm:px-4 sm:py-2 h-[52px] sm:h-[56px] w-full hover:shadow-sm cursor-grab active:cursor-grabbing transition-all ring-1 ring-[hsl(var(--line)/.12)] ${getPlayerSlotBgColor()} ${catLetter ? 'cat-rail' : ''}`}
-                  data-cat={catLetter || undefined}
+                  className={`flex items-center gap-2 rounded-md px-3 py-1.5 sm:px-4 sm:py-2 h-[52px] sm:h-[56px] w-full hover:shadow-sm cursor-grab active:cursor-grabbing transition-all ring-1 ring-[hsl(var(--line)/.12)] ${getPlayerSlotBgColor()} avatar-rail`}
                   draggable
                   onDragStart={(event) => onBenchDragStart(event, player.id)}
                   onDragEnd={onBenchDragEnd}
+                  style={variant === 'A' && avatarRailColor ? ({ ['--railColor' as any]: avatarRailColor } as React.CSSProperties) : undefined}
                 >
                   <div className="min-w-0 flex-1">
                     <div className="flex items-center gap-2.5">
@@ -276,15 +295,15 @@ export const BenchSection: React.FC<BenchSectionProps> = ({
               </div>
             ) : null}
             {playersWithoutGender.map((player) => {
-              const catLetter = getCategoryLetter(player.primaryCategory)
+              const avatarRailColor = getAvatarRailColor(player)
               return (
                 <div
                   key={player.id}
-                  className={`flex items-center gap-2 rounded-md px-3 py-1.5 sm:px-4 sm:py-2 h-[52px] sm:h-[56px] w-full hover:shadow-sm cursor-grab active:cursor-grabbing transition-all ring-1 ring-[hsl(var(--line)/.12)] ${getPlayerSlotBgColor()} ${catLetter ? 'cat-rail' : ''}`}
-                  data-cat={catLetter || undefined}
+                  className={`flex items-center gap-2 rounded-md px-3 py-1.5 sm:px-4 sm:py-2 h-[52px] sm:h-[56px] w-full hover:shadow-sm cursor-grab active:cursor-grabbing transition-all ring-1 ring-[hsl(var(--line)/.12)] ${getPlayerSlotBgColor()} avatar-rail`}
                   draggable
                   onDragStart={(event) => onBenchDragStart(event, player.id)}
                   onDragEnd={onBenchDragEnd}
+                  style={variant === 'A' && avatarRailColor ? ({ ['--railColor' as any]: avatarRailColor } as React.CSSProperties) : undefined}
                 >
                   <div className="min-w-0 flex-1">
                     <div className="flex items-center gap-2.5">
@@ -341,15 +360,15 @@ export const BenchSection: React.FC<BenchSectionProps> = ({
                     {inactivePlayers.map((player) => {
                       const isOneRoundOnly = selectedRound > 1 && player.maxRounds === 1
                       const isUnavailable = unavailablePlayers.has(player.id)
-                      const catLetter = getCategoryLetter(player.primaryCategory)
+                      const avatarRailColor = getAvatarRailColor(player)
                       return (
                         <div
                           key={player.id}
-                          className={`flex items-center gap-2 rounded-md px-2.5 py-1.5 sm:px-3 sm:py-2 h-[52px] sm:h-[56px] w-full max-w-full box-border opacity-60 hover:opacity-100 hover:shadow-sm cursor-grab active:cursor-grabbing transition-all ring-1 ring-[hsl(var(--line)/.12)] overflow-hidden ${getPlayerSlotBgColor()} ${catLetter ? 'cat-rail' : ''}`}
-                          data-cat={catLetter || undefined}
+                          className={`flex items-center gap-2 rounded-md px-2.5 py-1.5 sm:px-3 sm:py-2 h-[52px] sm:h-[56px] w-full max-w-full box-border opacity-60 hover:opacity-100 hover:shadow-sm cursor-grab active:cursor-grabbing transition-all ring-1 ring-[hsl(var(--line)/.12)] overflow-hidden ${getPlayerSlotBgColor()} avatar-rail`}
                           draggable
                           onDragStart={(event) => onInactiveDragStart(event, player.id)}
                           onDragEnd={onInactiveDragEnd}
+                          style={variant === 'A' && avatarRailColor ? ({ ['--railColor' as any]: avatarRailColor } as React.CSSProperties) : undefined}
                         >
                           <div className="min-w-0 flex-1 overflow-hidden">
                             <p className="text-sm sm:text-base font-semibold text-[hsl(var(--foreground))] truncate w-full">{formatPlayerCardName(player.name, player.alias)}</p>
