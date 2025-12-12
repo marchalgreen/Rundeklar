@@ -97,6 +97,12 @@ export const MatchResultInput: React.FC<MatchResultInputProps> = ({
   }, [isOpen, existingResult])
 
   const handleSetChange = (setIndex: number, team: 'team1' | 'team2', e: React.ChangeEvent<HTMLInputElement>) => {
+    // Prevent changes to set 3 if match is already decided
+    if (setIndex === 2 && isMatchDecided()) {
+      e.target.value = sets[setIndex][team]?.toString() ?? ''
+      return
+    }
+    
     const inputValue = e.target.value
     
     // If input is empty or just whitespace, set to null (blank field)
@@ -163,6 +169,49 @@ export const MatchResultInput: React.FC<MatchResultInputProps> = ({
     if (team1Wins >= 2) return 'team1'
     if (team2Wins >= 2) return 'team2'
     return null
+  }
+
+  /**
+   * Checks if the match is already decided (a team has won 2 sets).
+   * Only checks the first 2 sets to determine if set 3 should be disabled.
+   */
+  const isMatchDecided = (): boolean => {
+    let team1Wins = 0
+    let team2Wins = 0
+    
+    // Only check first 2 sets
+    for (let i = 0; i < 2; i++) {
+      const set = sets[i]
+      if (set.team1 !== null && set.team2 !== null && set.team1 !== set.team2) {
+        // Validate that it's a valid set (winner has at least 21 points and 2 point difference, or 30-29)
+        const team1Score = set.team1
+        const team2Score = set.team2
+        
+        if (team1Score > team2Score) {
+          // Check if team1 won this set
+          if (team1Score >= 21) {
+            const diff = team1Score - team2Score
+            if (team1Score === 30 && team2Score === 29) {
+              team1Wins++
+            } else if (diff >= 2) {
+              team1Wins++
+            }
+          }
+        } else {
+          // Check if team2 won this set
+          if (team2Score >= 21) {
+            const diff = team2Score - team1Score
+            if (team2Score === 30 && team1Score === 29) {
+              team2Wins++
+            } else if (diff >= 2) {
+              team2Wins++
+            }
+          }
+        }
+      }
+    }
+    
+    return team1Wins >= 2 || team2Wins >= 2
   }
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -325,7 +374,9 @@ export const MatchResultInput: React.FC<MatchResultInputProps> = ({
                     <th className="text-center p-1.5 sm:p-2 text-xs font-semibold text-[hsl(var(--muted))] border-b border-[hsl(var(--line)/.12)] min-w-[70px]">
                       2. sæt
                     </th>
-                    <th className="text-center p-1.5 sm:p-2 text-xs font-semibold text-[hsl(var(--muted))] border-b border-[hsl(var(--line)/.12)] min-w-[70px]">
+                    <th className={`text-center p-1.5 sm:p-2 text-xs font-semibold border-b border-[hsl(var(--line)/.12)] min-w-[70px] ${
+                      isMatchDecided() ? 'text-[hsl(var(--muted))] opacity-50' : 'text-[hsl(var(--muted))]'
+                    }`}>
                       3. sæt
                     </th>
                   </tr>
@@ -340,15 +391,19 @@ export const MatchResultInput: React.FC<MatchResultInputProps> = ({
                       const setWinner = set.team1 !== null && set.team2 !== null && set.team1 > set.team2 ? 'team1' : set.team1 !== null && set.team2 !== null && set.team2 > set.team1 ? 'team2' : null
                       const isValid = set.team1 !== null && set.team2 !== null && set.team1 !== set.team2 && (set.team1 >= 21 || set.team2 >= 21)
                       const isWinner = setWinner === 'team1' && isValid
+                      // Disable set 3 if match is already decided (a team won 2 sets)
+                      const isSet3 = index === 2
+                      const matchDecided = isMatchDecided()
+                      const isDisabled = isSet3 && matchDecided
                       // Tab order: Set 1 Team 1 = 1, Set 1 Team 2 = 2, Set 2 Team 1 = 3, Set 2 Team 2 = 4, Set 3 Team 1 = 5, Set 3 Team 2 = 6
-                      const tabIndex = index * 2 + 1
+                      const tabIndex = isDisabled ? -1 : index * 2 + 1
                       
                       return (
                         <td
                           key={`team1-set${index}`}
                           className={`p-1.5 sm:p-2 text-center border-b border-[hsl(var(--line)/.12)] ${
                             isWinner ? 'bg-[hsl(var(--primary)/.1)]' : ''
-                          }`}
+                          } ${isDisabled ? 'opacity-50' : ''}`}
                         >
                           <input
                             ref={(el) => {
@@ -359,12 +414,29 @@ export const MatchResultInput: React.FC<MatchResultInputProps> = ({
                             max="30"
                             value={set.team1 ?? ''}
                             tabIndex={tabIndex}
-                            aria-label={`${team1Name} ${index + 1}. sæt`}
+                            disabled={isDisabled}
+                            aria-label={`${team1Name} ${index + 1}. sæt${isDisabled ? ' (ikke nødvendigt - kampen er afgjort)' : ''}`}
                             onChange={(e) => handleSetChange(index, 'team1', e)}
-                            onFocus={(e) => handleInputFocus(index, 'team1', e)}
-                            onClick={(e) => handleInputClick(index, 'team1', e)}
-                            onKeyDown={(e) => handleInputKeyDownForEnter(e)}
-                            className="w-full h-9 sm:h-10 text-center text-base sm:text-lg font-semibold rounded-md bg-[hsl(var(--surface))] ring-1 ring-[hsl(var(--line)/.12)] focus:ring-2 focus:ring-[hsl(var(--primary))] outline-none [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none [-moz-appearance:textfield]"
+                            onFocus={(e) => {
+                              if (!isDisabled) {
+                                handleInputFocus(index, 'team1', e)
+                              } else {
+                                e.currentTarget.blur()
+                              }
+                            }}
+                            onClick={(e) => {
+                              if (!isDisabled) {
+                                handleInputClick(index, 'team1', e)
+                              } else {
+                                e.currentTarget.blur()
+                              }
+                            }}
+                            onKeyDown={(e) => {
+                              if (!isDisabled) {
+                                handleInputKeyDownForEnter(e)
+                              }
+                            }}
+                            className="w-full h-9 sm:h-10 text-center text-base sm:text-lg font-semibold rounded-md bg-[hsl(var(--surface))] ring-1 ring-[hsl(var(--line)/.12)] focus:ring-2 focus:ring-[hsl(var(--primary))] outline-none [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none [-moz-appearance:textfield] disabled:cursor-not-allowed disabled:opacity-50"
                           />
                         </td>
                       )
@@ -380,15 +452,19 @@ export const MatchResultInput: React.FC<MatchResultInputProps> = ({
                       const setWinner = set.team1 !== null && set.team2 !== null && set.team1 > set.team2 ? 'team1' : set.team1 !== null && set.team2 !== null && set.team2 > set.team1 ? 'team2' : null
                       const isValid = set.team1 !== null && set.team2 !== null && set.team1 !== set.team2 && (set.team1 >= 21 || set.team2 >= 21)
                       const isWinner = setWinner === 'team2' && isValid
+                      // Disable set 3 if match is already decided (a team won 2 sets)
+                      const isSet3 = index === 2
+                      const matchDecided = isMatchDecided()
+                      const isDisabled = isSet3 && matchDecided
                       // Tab order: Set 1 Team 1 = 1, Set 1 Team 2 = 2, Set 2 Team 1 = 3, Set 2 Team 2 = 4, Set 3 Team 1 = 5, Set 3 Team 2 = 6
-                      const tabIndex = index * 2 + 2
+                      const tabIndex = isDisabled ? -1 : index * 2 + 2
                       
                       return (
                         <td
                           key={`team2-set${index}`}
                           className={`p-1.5 sm:p-2 text-center ${
                             isWinner ? 'bg-[hsl(var(--primary)/.1)]' : ''
-                          }`}
+                          } ${isDisabled ? 'opacity-50' : ''}`}
                         >
                           <input
                             type="number"
@@ -396,12 +472,29 @@ export const MatchResultInput: React.FC<MatchResultInputProps> = ({
                             max="30"
                             value={set.team2 ?? ''}
                             tabIndex={tabIndex}
-                            aria-label={`${team2Name} ${index + 1}. sæt`}
+                            disabled={isDisabled}
+                            aria-label={`${team2Name} ${index + 1}. sæt${isDisabled ? ' (ikke nødvendigt - kampen er afgjort)' : ''}`}
                             onChange={(e) => handleSetChange(index, 'team2', e)}
-                            onFocus={(e) => handleInputFocus(index, 'team2', e)}
-                            onClick={(e) => handleInputClick(index, 'team2', e)}
-                            onKeyDown={(e) => handleInputKeyDownForEnter(e)}
-                            className="w-full h-9 sm:h-10 text-center text-base sm:text-lg font-semibold rounded-md bg-[hsl(var(--surface))] ring-1 ring-[hsl(var(--line)/.12)] focus:ring-2 focus:ring-[hsl(var(--primary))] outline-none [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none [-moz-appearance:textfield]"
+                            onFocus={(e) => {
+                              if (!isDisabled) {
+                                handleInputFocus(index, 'team2', e)
+                              } else {
+                                e.currentTarget.blur()
+                              }
+                            }}
+                            onClick={(e) => {
+                              if (!isDisabled) {
+                                handleInputClick(index, 'team2', e)
+                              } else {
+                                e.currentTarget.blur()
+                              }
+                            }}
+                            onKeyDown={(e) => {
+                              if (!isDisabled) {
+                                handleInputKeyDownForEnter(e)
+                              }
+                            }}
+                            className="w-full h-9 sm:h-10 text-center text-base sm:text-lg font-semibold rounded-md bg-[hsl(var(--surface))] ring-1 ring-[hsl(var(--line)/.12)] focus:ring-2 focus:ring-[hsl(var(--primary))] outline-none [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none [-moz-appearance:textfield] disabled:cursor-not-allowed disabled:opacity-50"
                           />
                         </td>
                       )
