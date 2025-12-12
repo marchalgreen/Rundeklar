@@ -8,6 +8,7 @@ import React from 'react'
 import type { CourtWithPlayers, Player, MatchResult } from '@rundeklar/common'
 import { PageCard } from '../ui'
 import { PlayerSlot } from './PlayerSlot'
+import { MatchResultDisplay } from './MatchResultDisplay'
 import { Trophy } from 'lucide-react'
 
 interface CourtCardProps {
@@ -342,31 +343,11 @@ export const CourtCard: React.FC<CourtCardProps> = ({
       </header>
       
       {/* Match result display */}
-      {matchResult && matchResult.sport === 'badminton' && (matchResult.scoreData as any)?.sets && (
-        <div className="mb-2 p-2 rounded-md bg-[hsl(var(--primary)/.1)] ring-1 ring-[hsl(var(--primary)/.2)]">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-2">
-              <Trophy className="h-3.5 w-3.5 text-[hsl(var(--primary))]" />
-              <span className="text-xs font-semibold text-[hsl(var(--foreground))]">
-                {((matchResult.scoreData as any).sets || []).map((set: { team1: number; team2: number }) => 
-                  `${set.team1}-${set.team2}`
-                ).join(', ')}
-              </span>
-            </div>
-            {onEnterResult && (
-              <button
-                type="button"
-                onClick={(e) => {
-                  e.stopPropagation()
-                  onEnterResult()
-                }}
-                className="text-xs text-[hsl(var(--primary))] hover:underline"
-              >
-                Rediger
-              </button>
-            )}
-          </div>
-        </div>
+      {matchResult && (
+        <MatchResultDisplay
+          result={matchResult}
+          onEdit={onEnterResult ? () => onEnterResult() : undefined}
+        />
       )}
       
       {/* Result entry button (when there are players on court but no result yet) */}

@@ -8,6 +8,7 @@ import React from 'react'
 import type { CourtWithPlayers, Player, MatchResult } from '@rundeklar/common'
 import { PlayerSlot } from './PlayerSlot'
 import { MATCH_CONSTANTS } from '../../constants'
+import { MatchResultDisplay } from './MatchResultDisplay'
 import { Trophy } from 'lucide-react'
 
 interface FullScreenMatchProgramProps {
@@ -287,37 +288,17 @@ export const FullScreenMatchProgram: React.FC<FullScreenMatchProgramProps> = ({
               
               {/* Match result display and entry button */}
               {(() => {
-                const { match, result, isFinished } = getMatchForCourt(court.courtIdx)
+                const { result } = getMatchForCourt(court.courtIdx)
                 const hasPlayers = court.slots.some((slot) => slot.player)
                 
                 return (
                   <>
                     {/* Show existing result */}
-                    {result && result.sport === 'badminton' && (result.scoreData as any)?.sets && (
-                      <div className="mb-2 p-2 rounded-md bg-[hsl(var(--primary)/.1)] ring-1 ring-[hsl(var(--primary)/.2)]">
-                        <div className="flex items-center justify-between">
-                          <div className="flex items-center gap-2">
-                            <Trophy className="h-3.5 w-3.5 text-[hsl(var(--primary))]" />
-                            <span className="text-xs font-semibold text-[hsl(var(--foreground))]">
-                              {((result.scoreData as any).sets || []).map((set: { team1: number; team2: number }) => 
-                                `${set.team1}-${set.team2}`
-                              ).join(', ')}
-                            </span>
-                          </div>
-                          {onEnterResult && (
-                            <button
-                              type="button"
-                              onClick={(e) => {
-                                e.stopPropagation()
-                                onEnterResult(court.courtIdx)
-                              }}
-                              className="text-xs text-[hsl(var(--primary))] hover:underline"
-                            >
-                              Rediger
-                            </button>
-                          )}
-                        </div>
-                      </div>
+                    {result && (
+                      <MatchResultDisplay
+                        result={result}
+                        onEdit={onEnterResult ? () => onEnterResult(court.courtIdx) : undefined}
+                      />
                     )}
                     
                     {/* Result entry button (when there are players but no result) */}
