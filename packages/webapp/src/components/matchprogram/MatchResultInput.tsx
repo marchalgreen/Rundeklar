@@ -5,9 +5,13 @@
  */
 
 import React, { useState, useEffect, useRef } from 'react'
-import type { MatchResult, BadmintonScoreData, Player, CourtWithPlayers } from '@rundeklar/common'
+import type { MatchResult, BadmintonScoreData, CourtWithPlayers } from '@rundeklar/common'
 import { Button } from '../ui'
 import { Trophy, X, Trash2 } from 'lucide-react'
+import { validateBadmintonScore } from '../../lib/matchResultValidation'
+import { getTeamPlayers } from '../../lib/matchProgramUtils'
+import { normalizeError } from '../../lib/errors'
+import { useToast } from '../ui/Toast'
 
 interface MatchResultInputProps {
   isOpen: boolean
@@ -20,133 +24,6 @@ interface MatchResultInputProps {
   onDelete?: () => Promise<void>
 }
 
-/**
- * Gets team players from court slots.
- */
-const getTeamPlayers = (court: CourtWithPlayers): { team1: Player[]; team2: Player[] } => {
-  const team1: Player[] = []
-  const team2: Player[] = []
-  
-  // Team 1: slots 0-1 (or slot 0 for singles)
-  // Team 2: slots 2-3 (or slot 1 for singles)
-  court.slots.forEach((slot) => {
-    if (slot.player) {
-      if (slot.slot === 0 || slot.slot === 1) {
-        team1.push(slot.player)
-      } else if (slot.slot === 2 || slot.slot === 3) {
-        team2.push(slot.player)
-      }
-    }
-  })
-  
-  return { team1, team2 }
-}
-
-/**
- * Validates badminton score data.
- * Rules:
- * - Maximum score is 30
- * - A set must be won by at least 2 points, unless the final score is 30-29
- * - Valid scores: 21-19, 22-20, 29-27, 30-29, but not 21-20, 31-29, 40-38
- */
-const validateBadmintonScore = (sets: Array<{ team1: number | null; team2: number | null }>): { valid: boolean; error?: string } => {
-  if (sets.length === 0) {
-    return { valid: false, error: 'Mindst ét sæt skal indtastes' }
-  }
-  
-  if (sets.length > 3) {
-    return { valid: false, error: 'Maksimum 3 sæt tilladt' }
-  }
-  
-  let team1Wins = 0
-  let team2Wins = 0
-  
-  for (const set of sets) {
-    // Skip empty sets (both teams are null/empty)
-    if ((set.team1 === null || set.team1 === 0) && (set.team2 === null || set.team2 === 0)) {
-      continue
-    }
-    
-    // Check if scores are valid (at least 0, maximum 30)
-    if (set.team1 !== null && set.team1 < 0) {
-      return { valid: false, error: 'Score kan ikke være negativ' }
-    }
-    if (set.team2 !== null && set.team2 < 0) {
-      return { valid: false, error: 'Score kan ikke være negativ' }
-    }
-    
-    if (set.team1 !== null && set.team1 > 30) {
-      return { valid: false, error: 'Maksimum score er 30 point' }
-    }
-    if (set.team2 !== null && set.team2 > 30) {
-      return { valid: false, error: 'Maksimum score er 30 point' }
-    }
-    
-    // Check if there's a winner (both teams must have scores)
-    // Note: playerLabel will be determined by the calling component
-    if (set.team1 === null || set.team2 === null) {
-      // This will be replaced with dynamic label in the component
-      return { valid: false, error: 'BOTH_PLAYERS_MUST_HAVE_SCORE' }
-    }
-    
-    if (set.team1 === set.team2) {
-      return { valid: false, error: 'Sæt skal have en vinder' }
-    }
-    
-    // Determine set winner and validate score difference (we know both are not null from check above)
-    const team1Score = set.team1!
-    const team2Score = set.team2!
-    
-    if (team1Score > team2Score) {
-      // Team 1 wins
-      if (team1Score < 21) {
-        return { valid: false, error: 'Vinder skal have mindst 21 point' }
-      }
-      
-      // Check if score difference is valid
-      const diff = team1Score - team2Score
-      if (team1Score === 30 && team2Score === 29) {
-        // Special case: 30-29 is valid
-        team1Wins++
-      } else if (diff < 2) {
-        return { valid: false, error: 'Vinder skal have mindst 2 point mere end modstanderen (undtagen 30-29)' }
-      } else {
-        team1Wins++
-      }
-    } else {
-      // Team 2 wins
-      if (team2Score < 21) {
-        return { valid: false, error: 'Vinder skal have mindst 21 point' }
-      }
-      
-      // Check if score difference is valid
-      const diff = team2Score - team1Score
-      if (team2Score === 30 && team1Score === 29) {
-        // Special case: 30-29 is valid
-        team2Wins++
-      } else if (diff < 2) {
-        return { valid: false, error: 'Vinder skal have mindst 2 point mere end modstanderen (undtagen 30-29)' }
-      } else {
-        team2Wins++
-      }
-    }
-  }
-  
-  // Check if a team has won 2 sets
-  // Note: playerLabel will be determined by the calling component
-  if (team1Wins < 2 && team2Wins < 2) {
-    // This will be replaced with dynamic label in the component
-    return { valid: false, error: 'PLAYER_MUST_WIN_2_SETS' }
-  }
-  
-  // Check if match is complete (winner has 2 sets)
-  if (team1Wins === 2 || team2Wins === 2) {
-    return { valid: true }
-  }
-  
-  return { valid: false, error: 'Ugyldigt resultat' }
-}
-
 export const MatchResultInput: React.FC<MatchResultInputProps> = ({
   isOpen,
   onClose,
@@ -157,12 +34,12 @@ export const MatchResultInput: React.FC<MatchResultInputProps> = ({
   onSave,
   onDelete
 }) => {
+  const { notify } = useToast()
   const { team1, team2 } = getTeamPlayers(court)
   
   // Determine if it's singles (1v1) or doubles (2v2)
   const isSingles = team1.length === 1 && team2.length === 1
   const columnHeader = isSingles ? 'Spiller' : 'Spillere'
-  const playerLabel = isSingles ? 'spiller' : 'par'
   const playerLabelDefinite = isSingles ? 'En spiller' : 'Et par'
   const playerLabelPlural = isSingles ? 'Begge spillere' : 'Begge par'
   // Always initialize with 3 sets (with null for empty fields)
@@ -184,14 +61,6 @@ export const MatchResultInput: React.FC<MatchResultInputProps> = ({
   const [isSaving, setIsSaving] = useState(false)
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false)
   const firstInputRef = useRef<HTMLInputElement>(null)
-  
-  // Create refs for all inputs to handle tab order
-  const inputRefs = useRef<Array<Array<HTMLInputElement | null>>>([])
-  
-  // Initialize refs array (not needed anymore but keeping for potential future use)
-  useEffect(() => {
-    inputRefs.current = sets.map(() => [null, null])
-  }, [sets.length])
 
   // Filter out empty sets (sets where both teams are null) before saving and convert to numbers
   const getFilteredSets = React.useCallback((): Array<{ team1: number; team2: number }> => {
@@ -203,14 +72,10 @@ export const MatchResultInput: React.FC<MatchResultInputProps> = ({
   // Validate on sets change (using filtered sets)
   useEffect(() => {
     const filteredSets = getFilteredSets()
-    const result = validateBadmintonScore(filteredSets)
-    
-    // Replace dynamic error messages with proper labels
-    if (result.error === 'BOTH_PLAYERS_MUST_HAVE_SCORE') {
-      result.error = `${playerLabelPlural} skal have en score`
-    } else if (result.error === 'PLAYER_MUST_WIN_2_SETS') {
-      result.error = `${playerLabelDefinite} skal have vundet mindst 2 sæt`
-    }
+    const result = validateBadmintonScore(filteredSets, {
+      playerLabelPlural,
+      playerLabelDefinite
+    })
     
     setValidation(result)
   }, [sets, getFilteredSets, playerLabelPlural, playerLabelDefinite])
@@ -228,6 +93,7 @@ export const MatchResultInput: React.FC<MatchResultInputProps> = ({
       setSets(initializeSets())
       setShowDeleteConfirm(false)
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isOpen, existingResult])
 
   const handleSetChange = (setIndex: number, team: 'team1' | 'team2', e: React.ChangeEvent<HTMLInputElement>) => {
@@ -306,14 +172,10 @@ export const MatchResultInput: React.FC<MatchResultInputProps> = ({
     const filteredSets = getFilteredSets()
     
     // Validate filtered sets
-    const validationResult = validateBadmintonScore(filteredSets)
-    
-    // Replace dynamic error messages with proper labels
-    if (validationResult.error === 'BOTH_PLAYERS_MUST_HAVE_SCORE') {
-      validationResult.error = `${playerLabelPlural} skal have en score`
-    } else if (validationResult.error === 'PLAYER_MUST_WIN_2_SETS') {
-      validationResult.error = `${playerLabelDefinite} skal have vundet mindst 2 sæt`
-    }
+    const validationResult = validateBadmintonScore(filteredSets, {
+      playerLabelPlural,
+      playerLabelDefinite
+    })
     
     if (!validationResult.valid) {
       setValidation(validationResult)
@@ -321,6 +183,7 @@ export const MatchResultInput: React.FC<MatchResultInputProps> = ({
     }
     
     const winner = getWinner()
+    
     if (!winner) {
       return
     }
@@ -331,10 +194,16 @@ export const MatchResultInput: React.FC<MatchResultInputProps> = ({
         sets: filteredSets,
         winner
       }
+      
       await onSave({ scoreData, winnerTeam: winner })
       onClose()
     } catch (error) {
-      console.error('Failed to save match result:', error)
+      const normalizedError = normalizeError(error)
+      notify({
+        variant: 'danger',
+        title: 'Kunne ikke gemme resultat',
+        description: normalizedError.message
+      })
     } finally {
       setIsSaving(false)
     }
@@ -348,7 +217,12 @@ export const MatchResultInput: React.FC<MatchResultInputProps> = ({
       await onDelete()
       onClose()
     } catch (error) {
-      console.error('Failed to delete match result:', error)
+      const normalizedError = normalizeError(error)
+      notify({
+        variant: 'danger',
+        title: 'Kunne ikke slette resultat',
+        description: normalizedError.message
+      })
     } finally {
       setIsSaving(false)
       setShowDeleteConfirm(false)
@@ -421,7 +295,13 @@ export const MatchResultInput: React.FC<MatchResultInputProps> = ({
               Bane {court.courtIdx}
             </p>
           </div>
-          <Button variant="ghost" size="sm" onClick={onClose} className="flex-shrink-0">
+          <Button 
+            variant="ghost" 
+            size="sm" 
+            onClick={onClose} 
+            className="flex-shrink-0"
+            aria-label="Luk dialog"
+          >
             <X className="h-4 w-4" />
           </Button>
         </div>
@@ -473,13 +353,13 @@ export const MatchResultInput: React.FC<MatchResultInputProps> = ({
                           <input
                             ref={(el) => {
                               if (index === 0) firstInputRef.current = el
-                              inputRefs.current[index] = [el, inputRefs.current[index]?.[1] || null]
                             }}
                             type="number"
                             min="0"
                             max="30"
                             value={set.team1 ?? ''}
                             tabIndex={tabIndex}
+                            aria-label={`${team1Name} ${index + 1}. sæt`}
                             onChange={(e) => handleSetChange(index, 'team1', e)}
                             onFocus={(e) => handleInputFocus(index, 'team1', e)}
                             onClick={(e) => handleInputClick(index, 'team1', e)}
@@ -511,14 +391,12 @@ export const MatchResultInput: React.FC<MatchResultInputProps> = ({
                           }`}
                         >
                           <input
-                            ref={(el) => {
-                              inputRefs.current[index] = [inputRefs.current[index]?.[0] || null, el]
-                            }}
                             type="number"
                             min="0"
                             max="30"
                             value={set.team2 ?? ''}
                             tabIndex={tabIndex}
+                            aria-label={`${team2Name} ${index + 1}. sæt`}
                             onChange={(e) => handleSetChange(index, 'team2', e)}
                             onFocus={(e) => handleInputFocus(index, 'team2', e)}
                             onClick={(e) => handleInputClick(index, 'team2', e)}
@@ -543,7 +421,11 @@ export const MatchResultInput: React.FC<MatchResultInputProps> = ({
 
           {/* Winner display */}
           {winner && validation.valid && (
-            <div className="p-3 rounded-lg bg-[hsl(var(--primary)/.1)] ring-1 ring-[hsl(var(--primary)/.2)]">
+            <div 
+              className="p-3 rounded-lg bg-[hsl(var(--primary)/.1)] ring-1 ring-[hsl(var(--primary)/.2)]"
+              role="status"
+              aria-live="polite"
+            >
               <p className="text-sm font-semibold text-[hsl(var(--primary))]">
                 Vinder: {winner === 'team1' ? team1Name : team2Name}
               </p>
@@ -600,6 +482,7 @@ export const MatchResultInput: React.FC<MatchResultInputProps> = ({
               size="sm"
               onClick={onClose}
               disabled={isSaving}
+              aria-label="Annuller og luk"
             >
               Annuller
             </Button>
@@ -609,6 +492,7 @@ export const MatchResultInput: React.FC<MatchResultInputProps> = ({
               onClick={handleSubmit}
               disabled={!validation.valid || isSaving}
               loading={isSaving}
+              aria-label="Gem resultat"
             >
               Gem
             </Button>

@@ -5,7 +5,7 @@
  */
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
-import type { CheckedInPlayer, CourtWithPlayers, Player, TrainingSession, MatchResult, BadmintonScoreData, Match } from '@rundeklar/common'
+import type { CheckedInPlayer, CourtWithPlayers, Player, TrainingSession, MatchResult, BadmintonScoreData } from '@rundeklar/common'
 import api from '../api'
 import { normalizeError } from '../lib/errors'
 import { getMatches } from '../api/postgres'
@@ -1156,7 +1156,7 @@ export const useMatchProgram = ({
             if (matchResult) {
               results.set(match.id, matchResult)
             }
-          } catch (err) {
+          } catch {
             // Match might not have a result yet, continue
           }
         }
@@ -1188,7 +1188,18 @@ export const useMatchProgram = ({
     }
   }, [notify])
   
-  // Handler to save match result
+  /**
+   * Handler to save match result.
+   * 
+   * Creates a new match result or updates an existing one.
+   * Shows success/error toast notifications.
+   * 
+   * @param matchId - Match ID to save result for
+   * @param scoreData - Badminton score data
+   * @param winnerTeam - Winning team ('team1' or 'team2')
+   * @param sport - Sport type (defaults to 'badminton')
+   * @throws Error if save operation fails
+   */
   const handleSaveMatchResult = useCallback(async (
     matchId: string,
     scoreData: BadmintonScoreData,
@@ -1204,7 +1215,11 @@ export const useMatchProgram = ({
           scoreData,
           winnerTeam
         })
-        setMatchResults(prev => new Map(prev).set(matchId, updated))
+        
+        setMatchResults(prev => {
+          const newMap = new Map(prev).set(matchId, updated)
+          return newMap
+        })
         notify({
           variant: 'success',
           title: 'Resultat opdateret'
@@ -1212,7 +1227,11 @@ export const useMatchProgram = ({
       } else {
         // Create new result
         const created = await api.matchResults.create(matchId, scoreData, sport, winnerTeam)
-        setMatchResults(prev => new Map(prev).set(matchId, created))
+        
+        setMatchResults(prev => {
+          const newMap = new Map(prev).set(matchId, created)
+          return newMap
+        })
         notify({
           variant: 'success',
           title: 'Resultat gemt'

@@ -21,6 +21,8 @@ import { MatchProgramHeader } from '../components/matchprogram/MatchProgramHeade
 import { MatchResultInput } from '../components/matchprogram/MatchResultInput'
 import { getMatches, getCourts } from '../api/postgres'
 import type { Match } from '@rundeklar/common'
+import { normalizeError } from '../lib/errors'
+import { useToast } from '../components/ui/Toast'
 
 /**
  * Match program page component.
@@ -32,6 +34,7 @@ import type { Match } from '@rundeklar/common'
  */
 const MatchProgramPage = () => {
   const { config, tenantId } = useTenant()
+  const { notify } = useToast()
   const [maxCourts, setMaxCourts] = React.useState(() => courtsSettings.getEffectiveCourtsInUse(tenantId, config.maxCourts))
   React.useEffect(() => {
     const recompute = () => setMaxCourts(courtsSettings.getEffectiveCourtsInUse(tenantId, config.maxCourts))
@@ -170,12 +173,17 @@ const MatchProgramPage = () => {
         
         setMatchByCourtIdx(courtMap)
       } catch (err) {
-        console.error('Failed to load matches:', err)
+        const normalizedError = normalizeError(err)
+        notify({
+          variant: 'danger',
+          title: 'Kunne ikke hente kampe',
+          description: normalizedError.message
+        })
       }
     }
     
     loadMatches()
-  }, [session, selectedRound])
+  }, [session, selectedRound, notify])
   
   // Handler to ensure match exists and open result input
   const handleEnterResult = React.useCallback(async (courtIdx: number) => {
@@ -188,8 +196,14 @@ const MatchProgramPage = () => {
       try {
         const [courts] = await Promise.all([getCourts()])
         const court = courts.find(c => c.idx === courtIdx)
+        
         if (!court) {
-          console.error('Court not found for courtIdx:', courtIdx)
+          const normalizedError = normalizeError(new Error(`Court not found for courtIdx: ${courtIdx}`))
+          notify({
+            variant: 'danger',
+            title: 'Kunne ikke finde bane',
+            description: normalizedError.message
+          })
           return
         }
         
@@ -222,7 +236,12 @@ const MatchProgramPage = () => {
         setMatchObjects(prev => [...prev, match!])
         setMatchByCourtIdx(prev => new Map(prev).set(courtIdx, match!))
       } catch (err) {
-        console.error('Failed to create match:', err)
+        const normalizedError = normalizeError(err)
+        notify({
+          variant: 'danger',
+          title: 'Kunne ikke oprette kamp',
+          description: normalizedError.message
+        })
         return
       }
     }
@@ -231,7 +250,7 @@ const MatchProgramPage = () => {
     if (match) {
       setOpenResultInputMatchId(match.id)
     }
-  }, [session, selectedRound, matches, matchByCourtIdx, setOpenResultInputMatchId])
+  }, [session, selectedRound, matches, matchByCourtIdx, setOpenResultInputMatchId, notify])
   
   // Get the match and result for a court
   const getMatchForCourt = useMemo(() => {
@@ -240,9 +259,8 @@ const MatchProgramPage = () => {
       if (!match) return { match: null, result: null, isFinished: false }
       
       const result = matchResults.get(match.id) || null
-      const isFinished = Boolean(match.endedAt)
       
-      return { match, result, isFinished }
+      return { match, result, isFinished: Boolean(match.endedAt) }
     }
   }, [matchByCourtIdx, matchResults])
 
@@ -402,7 +420,7 @@ const MatchProgramPage = () => {
         {/* Courts */}
         <section className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3 xl:gap-2.5 pb-2">
           {Array.isArray(matches) ? matches.map((court) => {
-            const { match, result, isFinished } = getMatchForCourt(court.courtIdx)
+            const { result, isFinished } = getMatchForCourt(court.courtIdx)
             
             return (
               <CourtCard

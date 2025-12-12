@@ -256,7 +256,7 @@ const rowToMatchResult = (row: any): MatchResult => {
     }
   }
   
-  return {
+  const result = {
     id: row.id,
     matchId: row.match_id,
     sport: row.sport,
@@ -265,6 +265,8 @@ const rowToMatchResult = (row: any): MatchResult => {
     createdAt: row.created_at,
     updatedAt: row.updated_at
   }
+  
+  return result
 }
 
 /**
@@ -1630,6 +1632,15 @@ export const getMatchResultsBySession = async (sessionId: string): Promise<Match
 
 /**
  * Creates a match result in Postgres.
+ * 
+ * If a match result already exists for the match, it will be updated.
+ * 
+ * @param matchId - Match ID to create result for
+ * @param scoreData - Sport-specific score data
+ * @param sport - Sport type ('badminton', 'tennis', 'padel')
+ * @param winnerTeam - Winning team ('team1' or 'team2')
+ * @returns Created or updated match result
+ * @throws Error if match not found or database operation fails
  */
 export const createMatchResult = async (
   matchId: string,
@@ -1685,6 +1696,11 @@ export const createMatchResult = async (
 
 /**
  * Updates a match result in Postgres.
+ * 
+ * @param id - Match result ID to update
+ * @param updates - Partial match result data to update (scoreData and/or winnerTeam)
+ * @returns Updated match result
+ * @throws Error if match result not found or database operation fails
  */
 export const updateMatchResult = async (
   id: string,
@@ -1741,6 +1757,9 @@ export const updateMatchResult = async (
 
 /**
  * Deletes a match result from Postgres.
+ * 
+ * @param id - Match result ID to delete
+ * @throws Error if database operation fails
  */
 export const deleteMatchResult = async (id: string): Promise<void> => {
   const sql = getPostgres()
