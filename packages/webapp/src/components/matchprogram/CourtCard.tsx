@@ -5,9 +5,10 @@
  */
 
 import React from 'react'
-import type { CourtWithPlayers, Player } from '@rundeklar/common'
+import type { CourtWithPlayers, Player, MatchResult } from '@rundeklar/common'
 import { PageCard } from '../ui'
 import { PlayerSlot } from './PlayerSlot'
+import { Trophy } from 'lucide-react'
 
 interface CourtCardProps {
   /** Court data */
@@ -46,6 +47,14 @@ interface CourtCardProps {
   onSlotDragLeave: () => void
   /** Handler for drop on slot */
   onSlotDrop: (event: React.DragEvent<HTMLDivElement>, courtIdx: number, slotIndex: number) => void
+  /** Match result if available */
+  matchResult?: MatchResult | null
+  /** Whether match is finished (has endedAt) */
+  isMatchFinished?: boolean
+  /** Handler to open result input */
+  onEnterResult?: () => void
+  /** Sport type */
+  sport?: 'badminton' | 'tennis' | 'padel'
 }
 
 /**
@@ -93,7 +102,11 @@ export const CourtCard: React.FC<CourtCardProps> = ({
   onSlotDragEnd,
   onSlotDragOver,
   onSlotDragLeave,
-  onSlotDrop
+  onSlotDrop,
+  matchResult,
+  isMatchFinished,
+  onEnterResult,
+  sport: _sport = 'badminton'
 }) => {
   const maxCapacity = extendedCapacityCourts.get(court.courtIdx) || 4
   const courtCapacity = extendedCapacityCourts.get(court.courtIdx)
@@ -327,6 +340,49 @@ export const CourtCard: React.FC<CourtCardProps> = ({
           <span className="text-[10px] sm:text-xs text-[hsl(var(--muted))]">{court.slots.length}/{maxCapacity}</span>
         </div>
       </header>
+      
+      {/* Match result display */}
+      {matchResult && matchResult.sport === 'badminton' && (matchResult.scoreData as any)?.sets && (
+        <div className="mb-2 p-2 rounded-md bg-[hsl(var(--primary)/.1)] ring-1 ring-[hsl(var(--primary)/.2)]">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <Trophy className="h-3.5 w-3.5 text-[hsl(var(--primary))]" />
+              <span className="text-xs font-semibold text-[hsl(var(--foreground))]">
+                {((matchResult.scoreData as any).sets || []).map((set: { team1: number; team2: number }) => 
+                  `${set.team1}-${set.team2}`
+                ).join(', ')}
+              </span>
+            </div>
+            {onEnterResult && (
+              <button
+                type="button"
+                onClick={(e) => {
+                  e.stopPropagation()
+                  onEnterResult()
+                }}
+                className="text-xs text-[hsl(var(--primary))] hover:underline"
+              >
+                Rediger
+              </button>
+            )}
+          </div>
+        </div>
+      )}
+      
+      {/* Result entry button (when there are players on court but no result yet) */}
+      {hasPlayers && !matchResult && onEnterResult && (
+        <button
+          type="button"
+          onClick={(e) => {
+            e.stopPropagation()
+            onEnterResult()
+          }}
+          className="mb-2 w-full py-2 px-3 rounded-md bg-[hsl(var(--surface-2))] ring-1 ring-[hsl(var(--line)/.12)] hover:bg-[hsl(var(--surface-glass)/.85)] transition-colors flex items-center justify-center gap-2 text-xs font-medium text-[hsl(var(--foreground))]"
+        >
+          <Trophy className="h-4 w-4 text-[hsl(var(--muted))]" />
+          {isMatchFinished ? 'Indtast resultat' : 'Indtast resultat'}
+        </button>
+      )}
       
       {/* Court visualization: two halves with net divider */}
       <div className="flex flex-col gap-2 xl:gap-1.5">
