@@ -153,3 +153,31 @@ export const getCategoryBadge = (
   )
 }
 
+/**
+ * Gets team players from court slots.
+ * 
+ * Team 1 consists of players in slots 0-1 (or slot 0 for singles).
+ * Team 2 consists of players in slots 2-3 (or slot 1 for singles).
+ * 
+ * @param court - Court data with slots and players
+ * @returns Object with team1 and team2 arrays of players
+ */
+export const getTeamPlayers = (court: CourtWithPlayers): { team1: Player[]; team2: Player[] } => {
+  const team1: Player[] = []
+  const team2: Player[] = []
+  
+  // Team 1: slots 0-1 (or slot 0 for singles)
+  // Team 2: slots 2-3 (or slot 1 for singles)
+  court.slots.forEach((slot) => {
+    if (slot.player) {
+      if (slot.slot === 0 || slot.slot === 1) {
+        team1.push(slot.player)
+      } else if (slot.slot === 2 || slot.slot === 3) {
+        team2.push(slot.player)
+      }
+    }
+  })
+  
+  return { team1, team2 }
+}
+
