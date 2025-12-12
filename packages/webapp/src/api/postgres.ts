@@ -6,6 +6,8 @@ import type {
   Court,
   Match,
   MatchPlayer,
+  MatchResult,
+  BadmintonScoreData,
   StatisticsSnapshot
 } from '@rundeklar/common'
 // Browser-compatible Postgres client using Vercel API proxy
@@ -153,6 +155,7 @@ const tableCaches = {
   courts: null as Court[] | null,
   matches: null as Match[] | null,
   matchPlayers: null as MatchPlayer[] | null,
+  matchResults: null as MatchResult[] | null,
   statistics: null as StatisticsSnapshot[] | null
 }
 
@@ -237,6 +240,32 @@ const rowToMatchPlayer = (row: any): MatchPlayer => ({
   playerId: row.player_id,
   slot: row.slot
 })
+
+/**
+ * Converts a Postgres row to a MatchResult.
+ */
+const rowToMatchResult = (row: any): MatchResult => {
+  // Parse score_data if it's a string (JSONB from Postgres)
+  let scoreData = row.score_data
+  if (typeof scoreData === 'string') {
+    try {
+      scoreData = JSON.parse(scoreData)
+    } catch (e) {
+      console.error('Failed to parse score_data:', e)
+      scoreData = {}
+    }
+  }
+  
+  return {
+    id: row.id,
+    matchId: row.match_id,
+    sport: row.sport,
+    scoreData: scoreData || {},
+    winnerTeam: row.winner_team,
+    createdAt: row.created_at,
+    updatedAt: row.updated_at
+  }
+}
 
 /**
  * Converts a Postgres row to a StatisticsSnapshot.
@@ -501,6 +530,7 @@ export const invalidateCache = (table?: 'players' | 'sessions' | 'checkIns' | 'c
     tableCaches.courts = null
     tableCaches.matches = null
     tableCaches.matchPlayers = null
+    tableCaches.matchResults = null
     tableCaches.statistics = null
   }
 }
@@ -1516,6 +1546,210 @@ export const deleteStatisticsSnapshot = async (id: string): Promise<void> => {
   }
   if (cachedState && cachedState.statistics) {
     cachedState.statistics = cachedState.statistics.filter(s => s.id !== id)
+  }
+}
+
+/**
+ * Gets all match results from Postgres (uses cache if available).
+ */
+export const getMatchResults = async (): Promise<MatchResult[]> => {
+  // Check cache first
+  if (tableCaches.matchResults) {
+    return tableCaches.matchResults
+  }
+
+  const sql = getPostgres()
+  const tenantId = getTenantId()
+  const isolationId = await getIsolationIdForCurrentTenant()
+  
+  let matchResults
+  if (isolationId) {
+    // Demo tenant: filter by isolation_id from training_sessions via matches
+    matchResults = await sql`
+      SELECT mr.* FROM match_results mr
+      INNER JOIN matches m ON mr.match_id = m.id
+      INNER JOIN training_sessions ts ON m.session_id = ts.id
+      WHERE mr.tenant_id = ${tenantId} 
+        AND ts.isolation_id = ${isolationId}
+    `
+  } else {
+    // Production tenants: filter by NULL isolation_id
+    matchResults = await sql`
+      SELECT mr.* FROM match_results mr
+      INNER JOIN matches m ON mr.match_id = m.id
+      INNER JOIN training_sessions ts ON m.session_id = ts.id
+      WHERE mr.tenant_id = ${tenantId} 
+        AND (ts.isolation_id IS NULL OR ts.isolation_id = '')
+    `
+  }
+  
+  const converted = matchResults.map(rowToMatchResult)
+  
+  // Cache the results
+  tableCaches.matchResults = converted
+  
+  return converted
+}
+
+/**
+ * Gets a match result by match ID from Postgres.
+ */
+export const getMatchResult = async (matchId: string): Promise<MatchResult | null> => {
+  const sql = getPostgres()
+  const tenantId = getTenantId()
+  
+  const [result] = await sql`
+    SELECT mr.* FROM match_results mr
+    INNER JOIN matches m ON mr.match_id = m.id
+    WHERE mr.match_id = ${matchId} AND mr.tenant_id = ${tenantId}
+    LIMIT 1
+  `
+  
+  if (!result) {
+    return null
+  }
+  
+  return rowToMatchResult(result)
+}
+
+/**
+ * Gets match results by session ID from Postgres.
+ */
+export const getMatchResultsBySession = async (sessionId: string): Promise<MatchResult[]> => {
+  const sql = getPostgres()
+  const tenantId = getTenantId()
+  
+  const results = await sql`
+    SELECT mr.* FROM match_results mr
+    INNER JOIN matches m ON mr.match_id = m.id
+    WHERE m.session_id = ${sessionId} AND mr.tenant_id = ${tenantId}
+  `
+  
+  return results.map(rowToMatchResult)
+}
+
+/**
+ * Creates a match result in Postgres.
+ */
+export const createMatchResult = async (
+  matchId: string,
+  scoreData: BadmintonScoreData | Record<string, any>,
+  sport: 'badminton' | 'tennis' | 'padel',
+  winnerTeam: 'team1' | 'team2'
+): Promise<MatchResult> => {
+  const sql = getPostgres()
+  const tenantId = getTenantId()
+  
+  // Get match to verify it exists and get isolation_id
+  const [match] = await sql`
+    SELECT m.*, ts.isolation_id FROM matches m
+    INNER JOIN training_sessions ts ON m.session_id = ts.id
+    WHERE m.id = ${matchId} AND m.tenant_id = ${tenantId}
+  `
+  
+  if (!match) {
+    throw new Error('Match not found')
+  }
+  
+  const [created] = await sql`
+    INSERT INTO match_results (match_id, sport, score_data, winner_team, tenant_id)
+    VALUES (
+      ${matchId},
+      ${sport},
+      ${JSON.stringify(scoreData)},
+      ${winnerTeam},
+      ${tenantId}
+    )
+    ON CONFLICT (match_id, tenant_id) DO UPDATE SET
+      sport = EXCLUDED.sport,
+      score_data = EXCLUDED.score_data,
+      winner_team = EXCLUDED.winner_team,
+      updated_at = NOW()
+    RETURNING *
+  `
+  
+  const converted = rowToMatchResult(created)
+  
+  // Optimistic cache update
+  if (tableCaches.matchResults) {
+    const existingIndex = tableCaches.matchResults.findIndex(mr => mr.id === converted.id)
+    if (existingIndex >= 0) {
+      tableCaches.matchResults[existingIndex] = converted
+    } else {
+      tableCaches.matchResults = [...tableCaches.matchResults, converted]
+    }
+  }
+  
+  return converted
+}
+
+/**
+ * Updates a match result in Postgres.
+ */
+export const updateMatchResult = async (
+  id: string,
+  updates: Partial<Pick<MatchResult, 'scoreData' | 'winnerTeam'>>
+): Promise<MatchResult> => {
+  const sql = getPostgres()
+  const tenantId = getTenantId()
+  
+  const updateData: any = {}
+  if (updates.scoreData !== undefined) updateData.score_data = JSON.stringify(updates.scoreData)
+  if (updates.winnerTeam !== undefined) updateData.winner_team = updates.winnerTeam
+  
+  if (Object.keys(updateData).length === 0) {
+    const [result] = await sql`SELECT * FROM match_results WHERE id = ${id} AND tenant_id = ${tenantId}`
+    if (!result) {
+      throw new Error('Match result not found')
+    }
+    return rowToMatchResult(result)
+  }
+  
+  const setClauses: string[] = []
+  const values: any[] = []
+  let paramIndex = 1
+  
+  for (const [key, value] of Object.entries(updateData)) {
+    setClauses.push(`${key} = $${paramIndex}`)
+    values.push(value)
+    paramIndex++
+  }
+  
+  // Always update updated_at
+  setClauses.push(`updated_at = NOW()`)
+  
+  values.push(tenantId, id)
+  
+  const [updated] = await sql.unsafe(
+    `UPDATE match_results SET ${setClauses.join(', ')} WHERE tenant_id = $${paramIndex} AND id = $${paramIndex + 1} RETURNING *`,
+    values
+  )
+  
+  if (!updated) {
+    throw new Error('Match result not found')
+  }
+  
+  const converted = rowToMatchResult(updated)
+  
+  // Optimistic cache update
+  if (tableCaches.matchResults) {
+    tableCaches.matchResults = tableCaches.matchResults.map(mr => mr.id === id ? converted : mr)
+  }
+  
+  return converted
+}
+
+/**
+ * Deletes a match result from Postgres.
+ */
+export const deleteMatchResult = async (id: string): Promise<void> => {
+  const sql = getPostgres()
+  const tenantId = getTenantId()
+  await sql`DELETE FROM match_results WHERE id = ${id} AND tenant_id = ${tenantId}`
+  
+  // Optimistic cache update
+  if (tableCaches.matchResults) {
+    tableCaches.matchResults = tableCaches.matchResults.filter(mr => mr.id !== id)
   }
 }
 
