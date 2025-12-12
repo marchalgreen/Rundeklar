@@ -5,6 +5,8 @@ import type { Group, PlayerLite } from '../routes/landing/types'
 import { useToast } from '../components/ui/Toast'
 import { loadPersistedState } from '../lib/matchProgramPersistence'
 import type { CourtWithPlayers } from '@rundeklar/common'
+import { toggleGroupId, normalizeGroupIds } from '../lib/groupSelection'
+import { normalizeError } from '../lib/errors'
 
 export type UseLandingStateOptions = {
   coach?: { id: string; displayName?: string } | null
@@ -14,10 +16,10 @@ export type UseLandingStateOptions = {
 export type UseLandingState = {
   loading: boolean
   statusMessage: string | null
-  activeSession: { sessionId: string; startedAt: string; groupId: string | null } | null
+  activeSession: { sessionId: string; startedAt: string; groupIds: string[] } | null
   groups: Group[]
-  selectedGroupId: string | null
-  setSelectedGroupId: (id: string | null) => void
+  selectedGroupIds: string[]
+  toggleGroupId: (id: string) => void
   crossGroupPlayers: PlayerLite[]
   addCrossGroupPlayer: (p: PlayerLite) => void
   removeCrossGroupPlayer: (id: string) => void
@@ -51,7 +53,7 @@ export const useLandingState = (opts?: UseLandingStateOptions): UseLandingState 
   const [statusMessage, setStatusMessage] = useState<string | null>(null)
   const [activeSession, setActiveSession] = useState<UseLandingState['activeSession']>(null)
   const [groups, setGroups] = useState<Group[]>([])
-  const [selectedGroupId, setSelectedGroupId] = useState<string | null>(null)
+  const [selectedGroupIds, setSelectedGroupIds] = useState<string[]>([])
   const [crossGroupPlayers, setCrossGroupPlayers] = useState<PlayerLite[]>([])
   const [searchOpen, setSearchOpen] = useState(false)
   const [searchTerm, setSearchTerm] = useState('')
@@ -76,11 +78,11 @@ export const useLandingState = (opts?: UseLandingStateOptions): UseLandingState 
       try {
         const active = await api.getActiveForCoach(coachId)
         if (active) {
-          // If backend doesn't carry groupId, fall back to last remembered group
-          const remembered = api.readLastGroupId?.() ?? null
+          // Backward compatibility: ensure groupIds is always an array
+          const groupIds = normalizeGroupIds(active.groupIds)
           setActiveSession({
             ...active,
-            groupId: active.groupId ?? remembered
+            groupIds
           })
           setStatusMessage(null)
         }
@@ -89,10 +91,11 @@ export const useLandingState = (opts?: UseLandingStateOptions): UseLandingState 
         // analytics: landing_groups_loaded
         console.debug('analytics:event', 'landing_groups_loaded')
       } catch (error) {
+        const normalizedError = normalizeError(error)
         notify({
           variant: 'danger',
           title: 'Kunne ikke hente data',
-          description: (error as Error)?.message ?? 'Ukendt fejl'
+          description: normalizedError.message
         })
       } finally {
         setLoading(false)
@@ -130,8 +133,29 @@ export const useLandingState = (opts?: UseLandingStateOptions): UseLandingState 
     setCrossGroupPlayers((prev) => prev.filter((p) => p.id !== id))
   }, [])
 
+  /**
+   * Toggles a group ID in the selected groups array.
+   * Adds the group if not selected, removes it if already selected.
+   * 
+   * @param id - Group ID to toggle
+   */
+  const handleToggleGroupId = useCallback((id: string) => {
+    setSelectedGroupIds((prev) => toggleGroupId(prev, id))
+  }, [])
+
   const start = useCallback(async () => {
     if (starting) return
+    
+    // Validate that at least one group is selected or cross-group players exist
+    if (selectedGroupIds.length === 0 && crossGroupPlayers.length === 0) {
+      notify({
+        variant: 'danger',
+        title: 'Kunne ikke starte træning',
+        description: 'Vælg mindst én gruppe eller tilføj spillere'
+      })
+      return
+    }
+    
     setStarting(true)
     try {
       // analytics: session_start_attempt
@@ -139,7 +163,7 @@ export const useLandingState = (opts?: UseLandingStateOptions): UseLandingState 
 
       const payload = {
         coachId,
-        groupId: selectedGroupId ?? null,
+        groupIds: selectedGroupIds,
         date: new Date().toISOString(),
         allowedCrossGroupPlayerIds: crossGroupPlayers.map((p) => p.id)
       }
@@ -151,15 +175,16 @@ export const useLandingState = (opts?: UseLandingStateOptions): UseLandingState 
     } catch (error) {
       // analytics: session_start_failed
       console.debug('analytics:event', 'session_start_failed')
+      const normalizedError = normalizeError(error)
       notify({
         variant: 'danger',
         title: 'Kunne ikke starte træning',
-        description: (error as Error)?.message ?? 'Ukendt fejl'
+        description: normalizedError.message
       })
     } finally {
       setStarting(false)
     }
-  }, [coachId, crossGroupPlayers, notify, opts, selectedGroupId, starting])
+  }, [coachId, crossGroupPlayers, notify, opts, selectedGroupIds, starting])
 
   const goToCheckIn = useCallback(() => {
     if (activeSession) {
@@ -196,7 +221,8 @@ export const useLandingState = (opts?: UseLandingStateOptions): UseLandingState 
       setGroups(fetchedGroups)
       notify({ variant: 'success', title: 'Træning afsluttet', description: 'Sessionen er afsluttet' })
     } catch (error) {
-      notify({ variant: 'danger', title: 'Kunne ikke afslutte træning', description: (error as Error)?.message ?? 'Ukendt fejl' })
+      const normalizedError = normalizeError(error)
+      notify({ variant: 'danger', title: 'Kunne ikke afslutte træning', description: normalizedError.message })
     } finally {
       setEnding(false)
     }
@@ -207,8 +233,8 @@ export const useLandingState = (opts?: UseLandingStateOptions): UseLandingState 
     statusMessage,
     activeSession,
     groups,
-    selectedGroupId,
-    setSelectedGroupId,
+    selectedGroupIds,
+    toggleGroupId: handleToggleGroupId,
     crossGroupPlayers,
     addCrossGroupPlayer,
     removeCrossGroupPlayer,

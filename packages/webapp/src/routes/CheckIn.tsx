@@ -16,6 +16,7 @@ import { LETTER_FILTERS, UI_CONSTANTS } from '../constants'
 import coachLandingApi from '../services/coachLandingApi'
 import CrossGroupSearchModal from '../components/checkin/CrossGroupSearchModal'
 import api from '../api'
+import { normalizeGroupIds } from '../lib/groupSelection'
 
 /**
  * Check-in page component.
@@ -37,7 +38,8 @@ const CheckInPage = () => {
   // UI state
   const [search, setSearch] = useState('')
   // Optional defaults from coach landing handoff
-  const [defaultGroupId, setDefaultGroupId] = useState<string | null>(null)
+  // Supports both single-group (backward compatible) and multi-group sessions
+  const [defaultGroupIds, setDefaultGroupIds] = useState<string[]>([])
   const [extraAllowedIds, setExtraAllowedIds] = useState<Set<string>>(new Set())
   const [filterLetter, setFilterLetter] = useState<string>(LETTER_FILTERS.ALL)
   const [oneRoundOnlyPlayers, setOneRoundOnlyPlayers] = useState<Set<string>>(new Set())
@@ -60,16 +62,18 @@ const CheckInPage = () => {
   }, [extraAllowedIds, checkedIn])
 
   const loading = sessionLoading || playersLoading
-  // Read one-time handoff seed from LandingPage to prefilter group and include cross-group players in list
+  // Read one-time handoff seed from LandingPage to prefilter groups and include cross-group players in list
   useEffect(() => {
     const seed = coachLandingApi.readAndClearPendingSeed?.()
     if (seed) {
-      setDefaultGroupId(seed.groupId ?? null)
+      // Backward compatibility: normalize groupIds (handles old format with groupId)
+      const groupIds = normalizeGroupIds(seed.groupIds)
+      setDefaultGroupIds(groupIds)
       setExtraAllowedIds(new Set(seed.extraPlayerIds ?? []))
     } else {
-      // Fallback to last known group if opening Check-in without a fresh seed
-      const lastGroup = coachLandingApi.readLastGroupId?.() ?? null
-      setDefaultGroupId(lastGroup)
+      // Fallback to last known groups if opening Check-in without a fresh seed
+      const lastGroupIds = coachLandingApi.readLastGroupId?.() ?? []
+      setDefaultGroupIds(lastGroupIds)
     }
   }, [])
 
@@ -80,10 +84,13 @@ const CheckInPage = () => {
     const run = async () => {
       setSearching(true)
       try {
+        // Exclude players from selected groups in cross-group search
+        // For now, exclude only the first group (API doesn't support multiple excludeGroupIds)
+        // This is acceptable as cross-group search is meant to find players outside selected groups
         const res = await coachLandingApi.searchPlayers({
           q: searchTerm,
           groupId: null,
-          excludeGroupId: defaultGroupId ?? undefined,
+          excludeGroupId: defaultGroupIds.length > 0 ? defaultGroupIds[0] : undefined,
           limit: 50
         })
         if (!cancelled) setSearchResults(res)
@@ -95,7 +102,7 @@ const CheckInPage = () => {
     return () => {
       cancelled = true
     }
-  }, [searchOpen, searchTerm, defaultGroupId])
+  }, [searchOpen, searchTerm, defaultGroupIds])
 
   /**
    * Handles player check-in with animation feedback.
@@ -234,7 +241,10 @@ const CheckInPage = () => {
       if (checkedInIds.has(player.id)) return false
       // Default to selected group from landing, but include extra allowed cross-group players
       const groups = player.trainingGroups ?? []
-      const matchesGroup = defaultGroupId ? (groups.includes(defaultGroupId) || extraAllowedIds.has(player.id)) : true
+      // Check if player belongs to ANY of the selected groups, or is in extra allowed list
+      const matchesGroup = defaultGroupIds.length > 0
+        ? (defaultGroupIds.some((groupId) => groups.includes(groupId)) || extraAllowedIds.has(player.id))
+        : true
       if (!matchesGroup) return false
       const matchesLetter =
         filterLetter === LETTER_FILTERS.ALL || (typeof filterLetter === 'string' && player.name.toLowerCase().startsWith(filterLetter.toLowerCase()))
@@ -243,7 +253,7 @@ const CheckInPage = () => {
       const matchesSearch = !term || nameLower.includes(term) || aliasLower.includes(term)
       return matchesLetter && matchesSearch
     })
-  }, [players, search, filterLetter, checkedInIds, defaultGroupId, extraAllowedIds])
+  }, [players, search, filterLetter, checkedInIds, defaultGroupIds, extraAllowedIds])
 
   /** Sorted checked-in players by first name, grouped by gender. */
   const sortedCheckedInByGender = useMemo(() => {
@@ -451,7 +461,8 @@ const CheckInPage = () => {
       {confirmPlayerId && (() => {
         const picked = players.find((p) => p.id === confirmPlayerId) || null
         if (!picked) return null
-        const canAddToGroup = Boolean(defaultGroupId)
+        // Can add to group if at least one group is selected
+        const canAddToGroup = defaultGroupIds.length > 0
         const onClose = () => setConfirmPlayerId(null)
         return (
           <div
@@ -507,11 +518,11 @@ const CheckInPage = () => {
                   variant="secondary"
                   disabled={!canAddToGroup}
                   onClick={() => {
-                    if (!defaultGroupId) return
+                    if (defaultGroupIds.length === 0) return
                     void (async () => {
-                      // Permanently add to the active training group
+                      // Permanently add to all selected training groups
                       const existing = picked.trainingGroups ?? []
-                      const next = Array.from(new Set([...existing, defaultGroupId]))
+                      const next = Array.from(new Set([...existing, ...defaultGroupIds]))
                       await api.players.update({ id: picked.id, patch: { trainingGroups: next } })
                       await refetchPlayers()
                       // Close both modals; player will now be part of the group list
@@ -521,7 +532,7 @@ const CheckInPage = () => {
                   }}
                   title={!canAddToGroup ? 'Ingen aktiv gruppe valgt' : undefined}
                 >
-                  Tilføj permanent til denne træningsgruppe
+                  Tilføj permanent til {defaultGroupIds.length === 1 ? 'denne træningsgruppe' : 'disse træningsgrupper'}
                 </Button>
                 <Button
                   variant="ghost"

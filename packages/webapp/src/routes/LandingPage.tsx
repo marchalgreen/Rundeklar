@@ -52,6 +52,17 @@ export const WelcomeHeader: React.FC<{ coachName?: string }>
   </header>
 )
 
+/**
+ * Group card component that supports toggle selection for multi-group sessions.
+ * Clicking toggles the group selection state.
+ * 
+ * @param id - Group ID
+ * @param name - Group display name
+ * @param playersCount - Number of players in the group
+ * @param lastSessionAt - Optional timestamp of last session
+ * @param selected - Whether this group is currently selected
+ * @param onSelect - Callback when group is clicked (toggles selection)
+ */
 const GroupCard: React.FC<{
   id: string
   name: string
@@ -60,10 +71,19 @@ const GroupCard: React.FC<{
   selected?: boolean
   onSelect: (id: string) => void
 }> = ({ id, name, playersCount, lastSessionAt, selected, onSelect }) => {
+  const handleKeyDown = (e: React.KeyboardEvent) => {
+    if (e.key === 'Enter' || e.key === ' ') {
+      e.preventDefault()
+      onSelect(id)
+    }
+  }
+
   return (
     <button
       onClick={() => onSelect(id)}
-      aria-label={`Vælg ${name}`}
+      onKeyDown={handleKeyDown}
+      aria-label={selected ? `Fravælg ${name}` : `Vælg ${name}`}
+      aria-pressed={selected}
       className={`text-left w-full ${ringFocus}`}
     >
       <PageCard
@@ -71,8 +91,13 @@ const GroupCard: React.FC<{
         className={`transition-colors ${selected ? 'ring-2 ring-[hsl(var(--ring))]' : ''}`}
       >
         <div className="flex items-center justify-between gap-3">
-          <div>
-            <div className="text-base sm:text-lg font-medium text-[hsl(var(--foreground))]">{name}</div>
+          <div className="flex-1">
+            <div className="flex items-center gap-2">
+              <div className="text-base sm:text-lg font-medium text-[hsl(var(--foreground))]">{name}</div>
+              {selected && (
+                <div className="shrink-0 w-2 h-2 rounded-full bg-[hsl(var(--primary))]" aria-hidden="true" />
+              )}
+            </div>
             <div className="text-sm text-[hsl(var(--muted))] mt-1">
               {playersCount} spillere
               {lastSessionAt ? (
@@ -91,11 +116,18 @@ const GroupCard: React.FC<{
   )
 }
 
+/**
+ * Grid component for displaying training groups with multi-select support.
+ * 
+ * @param groups - Array of groups to display
+ * @param selectedIds - Array of currently selected group IDs
+ * @param onSelect - Callback when a group is clicked (toggles selection)
+ */
 const GroupGrid: React.FC<{
   groups: Array<{ id: string; name: string; playersCount: number; lastSessionAt?: string | null }>
-  selectedId: string | null
+  selectedIds: string[]
   onSelect: (id: string) => void
-}> = ({ groups, selectedId, onSelect }) => {
+}> = ({ groups, selectedIds, onSelect }) => {
   if (!groups.length) {
     return (
       <div className="text-[hsl(var(--muted))]">Ingen grupper fundet.</div>
@@ -111,7 +143,7 @@ const GroupGrid: React.FC<{
           name={g.name}
           playersCount={g.playersCount}
           lastSessionAt={g.lastSessionAt}
-          selected={g.id === selectedId}
+          selected={selectedIds.includes(g.id)}
           onSelect={onSelect}
         />
       ))}
@@ -205,20 +237,34 @@ const PlayerSearchModal: React.FC<{
   )
 }
 
+/**
+ * Controls for starting a training session.
+ * Shows start button and selected cross-group players.
+ * 
+ * @param disabled - Whether the start button should be disabled
+ * @param starting - Whether session is currently being started
+ * @param onStart - Callback when start button is clicked
+ * @param addedPlayers - Array of cross-group players added manually
+ * @param onRemovePlayer - Callback to remove a cross-group player
+ * @param selectedGroupCount - Number of selected groups (for display)
+ */
 const StartSessionControls: React.FC<{
   disabled: boolean
   starting: boolean
   onStart: () => void
   addedPlayers: Array<{ id: string; displayName: string }>
   onRemovePlayer: (id: string) => void
-}> = ({ disabled, starting, onStart, addedPlayers, onRemovePlayer }) => {
+  selectedGroupCount: number
+}> = ({ disabled, starting, onStart, addedPlayers, onRemovePlayer, selectedGroupCount }) => {
   return (
     <PageCard className="mt-3 sm:mt-4">
       <div className="flex flex-col gap-2 sm:gap-3">
         <div className="flex flex-wrap items-center gap-2">
           <Button onClick={onStart} disabled={disabled} loading={starting} className="w-full sm:w-auto">
             <Play className="w-4 h-4" aria-hidden />
-            <span className="text-xs sm:text-sm">Start træning</span>
+            <span className="text-xs sm:text-sm">
+              Start træning{selectedGroupCount > 1 ? ` (${selectedGroupCount} grupper)` : ''}
+            </span>
           </Button>
         </div>
         {addedPlayers.length > 0 && (
@@ -261,19 +307,26 @@ const LandingPage: React.FC<LandingPageProps> = ({ coach, onRedirectToCheckin })
   // Get checked-in players for active session
   const { checkedIn } = useCheckIns(state.activeSession?.sessionId ?? null)
 
-  const activeGroupName = useMemo(() => {
-    if (!state.activeSession?.groupId) return null
-    const g = state.groups.find((x) => x.id === state.activeSession?.groupId)
-    return g?.name ?? state.activeSession.groupId
-  }, [state.activeSession?.groupId, state.groups])
+  const activeGroupNames = useMemo(() => {
+    if (!state.activeSession?.groupIds || state.activeSession.groupIds.length === 0) return null
+    const names = state.activeSession.groupIds
+      .map((id) => {
+        const g = state.groups.find((x) => x.id === id)
+        return g?.name ?? id
+      })
+      .filter(Boolean)
+    return names.length > 0 ? names : null
+  }, [state.activeSession?.groupIds, state.groups])
   
-  // Calculate extra players: checked-in players NOT in the permanent training group
+  // Calculate extra players: checked-in players NOT in any of the selected training groups
   const extraPlayersCount = useMemo(() => {
-    if (!state.activeSession?.groupId || !checkedIn.length) return 0
+    if (!state.activeSession?.groupIds || state.activeSession.groupIds.length === 0 || !checkedIn.length) return 0
     
+    const selectedGroupIdsSet = new Set(state.activeSession.groupIds)
     return checkedIn.filter((player) => {
       const trainingGroups = player.trainingGroups ?? []
-      return !trainingGroups.includes(state.activeSession!.groupId!)
+      // Player is extra if they don't belong to any of the selected groups
+      return !trainingGroups.some((groupId) => selectedGroupIdsSet.has(groupId))
     }).length
   }, [checkedIn, state.activeSession])
 
@@ -302,12 +355,19 @@ const LandingPage: React.FC<LandingPageProps> = ({ coach, onRedirectToCheckin })
             <div>
               <div className="text-base sm:text-lg font-medium text-[hsl(var(--foreground))]">Aktiv træning</div>
               <div className="text-sm text-[hsl(var(--muted))] mt-1">Startet: {formatDate(state.activeSession.startedAt)}</div>
-              {activeGroupName && (
-                <div className="inline-flex items-center gap-2 mt-1">
-                  <span className="text-xs text-[hsl(var(--muted))]">Gruppe:</span>
-                  <span className="text-xs px-2 py-0.5 rounded bg-[hsl(var(--surface-2))] ring-1 ring-[hsl(var(--line)/.12)] text-[hsl(var(--foreground))]">
-                    {activeGroupName}
+              {activeGroupNames && activeGroupNames.length > 0 && (
+                <div className="flex flex-wrap items-center gap-2 mt-1">
+                  <span className="text-xs text-[hsl(var(--muted))]">
+                    {activeGroupNames.length === 1 ? 'Gruppe:' : 'Grupper:'}
                   </span>
+                  {activeGroupNames.map((name) => (
+                    <span
+                      key={name}
+                      className="text-xs px-2 py-0.5 rounded bg-[hsl(var(--surface-2))] ring-1 ring-[hsl(var(--line)/.12)] text-[hsl(var(--foreground))]"
+                    >
+                      {name}
+                    </span>
+                  ))}
                 </div>
               )}
             </div>
@@ -337,20 +397,21 @@ const LandingPage: React.FC<LandingPageProps> = ({ coach, onRedirectToCheckin })
         <>
           <GroupGrid
             groups={state.groups}
-            selectedId={state.selectedGroupId}
+            selectedIds={state.selectedGroupIds}
             onSelect={(id) => {
-              state.setSelectedGroupId(id)
+              state.toggleGroupId(id)
               // analytics: group_selected
               console.debug('analytics:event', 'group_selected', { groupId: id })
             }}
           />
 
           <StartSessionControls
-            disabled={!state.selectedGroupId && state.crossGroupPlayers.length === 0}
+            disabled={state.selectedGroupIds.length === 0 && state.crossGroupPlayers.length === 0}
             starting={state.starting}
             onStart={state.start}
             addedPlayers={state.crossGroupPlayers}
             onRemovePlayer={state.removeCrossGroupPlayer}
+            selectedGroupCount={state.selectedGroupIds.length}
           />
           <div className="mt-3 sm:mt-4">
             <PageCard>

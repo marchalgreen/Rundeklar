@@ -22,15 +22,26 @@ export type PlayerLite = {
   active: boolean
 }
 
+/**
+ * Active training session information.
+ * Supports both single-group (backward compatible) and multi-group sessions.
+ * @property groupIds - Array of selected training group IDs. Empty array means no specific groups selected.
+ */
 export type ActiveSession = {
   sessionId: string
   startedAt: string
-  groupId: string | null
+  groupIds: string[]
 }
 
+/**
+ * Payload for starting a new training session.
+ * Supports both single-group (backward compatible) and multi-group sessions.
+ * @property groupIds - Array of selected training group IDs. Empty array means no specific groups selected.
+ * @property allowedCrossGroupPlayerIds - Optional array of player IDs allowed to participate from other groups.
+ */
 export type StartSessionPayload = {
   coachId: string
-  groupId: string | null
+  groupIds: string[]
   date: string // ISO (UTC)
   allowedCrossGroupPlayerIds?: string[]
 }

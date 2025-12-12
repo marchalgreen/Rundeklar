@@ -1,6 +1,7 @@
 import api from '../api'
 import type { Group, PlayerLite, ActiveSession, StartSessionPayload } from '../routes/landing/types'
 import type { CourtWithPlayers } from '@rundeklar/common'
+import { normalizeGroupIds } from '../lib/groupSelection'
 
 /**
  * Thin adapter matching the landing page contract.
@@ -15,42 +16,113 @@ import type { CourtWithPlayers } from '@rundeklar/common'
 const PENDING_SEED_KEY = 'coach-landing:pending-session-seed'
 const LAST_GROUP_KEY = 'coach-landing:last-group-id'
 
-type PendingSeed = { groupId: string | null; extraPlayerIds: string[] }
+/**
+ * Seed data persisted for handoff to CheckIn page.
+ * Supports backward compatibility: old format with `groupId` will be converted to `groupIds` array.
+ * @property groupIds - Array of selected training group IDs. Empty array means no specific groups selected.
+ * @property extraPlayerIds - Array of player IDs allowed to participate from other groups.
+ */
+type PendingSeed = { groupIds: string[]; extraPlayerIds: string[] }
 
+/**
+ * Persists seed data for handoff to CheckIn page.
+ * Stores group IDs and extra player IDs in localStorage.
+ * 
+ * @param seed - Seed data containing groupIds and extraPlayerIds
+ * @throws Does not throw - silently handles localStorage errors (quota exceeded, etc.)
+ */
 export const persistPendingSeed = (seed: PendingSeed) => {
   try {
     localStorage.setItem(PENDING_SEED_KEY, JSON.stringify(seed))
-  } catch {}
+  } catch {
+    // Silently handle localStorage errors (quota exceeded, etc.)
+    // This is not critical - CheckIn page can work without seed
+  }
 }
 
+/**
+ * Reads and clears pending seed data from localStorage.
+ * Handles backward compatibility by converting old format (groupId) to new format (groupIds).
+ * 
+ * @returns Seed data with groupIds array, or null if not found or invalid
+ */
 export const readAndClearPendingSeed = (): PendingSeed | null => {
   try {
     const raw = localStorage.getItem(PENDING_SEED_KEY)
     if (!raw) return null
+    
     localStorage.removeItem(PENDING_SEED_KEY)
-    return JSON.parse(raw)
+    const parsed = JSON.parse(raw) as PendingSeed | { groupId?: string | null; groupIds?: string[]; extraPlayerIds?: string[] }
+    
+    // Backward compatibility: check for old format with groupId
+    if ('groupId' in parsed && !('groupIds' in parsed)) {
+      // Old format - convert to new format
+      return {
+        groupIds: normalizeGroupIds(parsed.groupId),
+        extraPlayerIds: parsed.extraPlayerIds ?? []
+      }
+    }
+    
+    // New format or mixed format
+    if ('groupIds' in parsed) {
+      return {
+        groupIds: normalizeGroupIds(parsed.groupIds),
+        extraPlayerIds: parsed.extraPlayerIds ?? []
+      }
+    }
+    
+    // Invalid format
+    return null
   } catch {
+    // Handle JSON parse errors or corrupted data
     return null
   }
 }
 
-/** Persist last selected group id (sticky across navigations). */
-export const persistLastGroupId = (groupId: string | null) => {
+/**
+ * Persists last selected group IDs (sticky across navigations).
+ * Stores as JSON array for multi-group support.
+ * 
+ * @param groupIds - Array of group IDs to persist, or empty array to clear
+ * @throws Does not throw - silently handles localStorage errors
+ */
+export const persistLastGroupId = (groupIds: string[]) => {
   try {
-    if (groupId) {
-      localStorage.setItem(LAST_GROUP_KEY, groupId)
+    if (groupIds.length > 0) {
+      localStorage.setItem(LAST_GROUP_KEY, JSON.stringify(groupIds))
     } else {
       localStorage.removeItem(LAST_GROUP_KEY)
     }
-  } catch {}
+  } catch {
+    // Silently handle localStorage errors
+  }
 }
 
-/** Read last selected group id (non-destructive). */
-export const readLastGroupId = (): string | null => {
+/**
+ * Reads last selected group IDs (non-destructive).
+ * Handles backward compatibility by converting old format (single string) to new format (array).
+ * 
+ * @returns Array of group IDs, or empty array if not found or invalid
+ */
+export const readLastGroupId = (): string[] => {
   try {
-    return localStorage.getItem(LAST_GROUP_KEY)
+    const raw = localStorage.getItem(LAST_GROUP_KEY)
+    if (!raw) return []
+    
+    // Try to parse as JSON array (new format)
+    try {
+      const parsed = JSON.parse(raw)
+      if (Array.isArray(parsed)) {
+        return normalizeGroupIds(parsed)
+      }
+    } catch {
+      // Not JSON - might be old format (single string)
+    }
+    
+    // Backward compatibility: treat as single string
+    return normalizeGroupIds(raw)
   } catch {
-    return null
+    return []
   }
 }
 
@@ -107,24 +179,38 @@ export const searchPlayers = async (opts: { q?: string; groupId?: string | null;
 
 /**
  * Returns current active session. Coach id is currently ignored by backend.
+ * 
+ * @param _coachId - Coach ID (currently ignored by backend)
+ * @returns Active session with groupIds array, or null if no active session
  */
 export const getActiveForCoach = async (_coachId: string): Promise<ActiveSession | null> => {
   const session = await api.session.getActive()
   if (!session) return null
-  return { sessionId: session.id, startedAt: session.date, groupId: null }
+  
+  // Backward compatibility: try to read groupIds from localStorage
+  const groupIds = readLastGroupId()
+  return { sessionId: session.id, startedAt: session.date, groupIds }
 }
 
 /**
  * Starts a session (or returns active) and persists a small seed handoff for the CheckIn page.
+ * 
+ * @param payload - Session start payload with groupIds and optional cross-group players
+ * @returns Active session with groupIds array
+ * @throws Propagates errors from API calls
  */
 export const startSession = async (payload: StartSessionPayload): Promise<ActiveSession> => {
-  // Persist seed for CheckIn to optionally read (group + extra players)
-  persistPendingSeed({ groupId: payload.groupId, extraPlayerIds: payload.allowedCrossGroupPlayerIds ?? [] })
-  // Also persist last selected group for future openings while session is active
-  persistLastGroupId(payload.groupId)
+  // Validate groupIds array
+  const groupIds = normalizeGroupIds(payload.groupIds)
+  
+  // Persist seed for CheckIn to optionally read (groups + extra players)
+  persistPendingSeed({ groupIds, extraPlayerIds: payload.allowedCrossGroupPlayerIds ?? [] })
+  
+  // Also persist last selected groups for future openings while session is active
+  persistLastGroupId(groupIds)
 
   const session = await api.session.startOrGetActive()
-  return { sessionId: session.id, startedAt: session.date, groupId: payload.groupId }
+  return { sessionId: session.id, startedAt: session.date, groupIds }
 }
 
 /** Ends the current active session. */
