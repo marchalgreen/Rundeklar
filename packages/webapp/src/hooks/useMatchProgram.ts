@@ -5,8 +5,10 @@
  */
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
-import type { CheckedInPlayer, CourtWithPlayers, Player, TrainingSession } from '@rundeklar/common'
+import type { CheckedInPlayer, CourtWithPlayers, Player, TrainingSession, MatchResult, BadmintonScoreData, Match } from '@rundeklar/common'
 import api from '../api'
+import { normalizeError } from '../lib/errors'
+import { getMatches } from '../api/postgres'
 import { useToast } from '../components/ui/Toast'
 import {
   loadPersistedState,
@@ -160,6 +162,14 @@ interface UseMatchProgramReturn {
   handleCourtDragOver: (event: React.DragEvent<HTMLDivElement>, courtIdx: number) => void
   handleCourtDragLeave: () => void
   handleCourtDrop: (event: React.DragEvent<HTMLDivElement>, courtIdx: number) => void
+  
+  // Match results
+  matchResults: Map<string, MatchResult>
+  openResultInputMatchId: string | null
+  setOpenResultInputMatchId: (matchId: string | null) => void
+  handleSaveMatchResult: (matchId: string, scoreData: BadmintonScoreData, winnerTeam: 'team1' | 'team2', sport?: 'badminton' | 'tennis' | 'padel') => Promise<void>
+  handleDeleteMatchResult: (matchId: string) => Promise<void>
+  handleMarkMatchFinished: (matchId: string) => Promise<void>
 }
 
 /**
@@ -193,6 +203,10 @@ export const useMatchProgram = ({
   const [dragOverCourt, setDragOverCourt] = useState<number | null>(null)
   const [dragOverSlot, setDragOverSlot] = useState<{ courtIdx: number; slot: number } | null>(null)
   const [recentlySwappedPlayers, setRecentlySwappedPlayers] = useState<Set<string>>(new Set())
+  
+  // Match results state
+  const [matchResults, setMatchResults] = useState<Map<string, MatchResult>>(new Map())
+  const [openResultInputMatchId, setOpenResultInputMatchId] = useState<string | null>(null)
   
   // Drag refs
   const dragOverSlotRef = useRef<{ courtIdx: number; slot: number } | null>(null)
@@ -1121,6 +1135,127 @@ export const useMatchProgram = ({
     }
   }, [session, inMemoryMatches, endSession, notify, setError, clearAllState])
   
+  // Load match results when session or matches change
+  useEffect(() => {
+    if (!session) {
+      setMatchResults(new Map())
+      return
+    }
+    
+    const loadMatchResults = async () => {
+      try {
+        // Get all Match objects for the current session
+        const allMatches = await getMatches()
+        const sessionMatches = allMatches.filter(m => m.sessionId === session.id)
+        const results = new Map<string, MatchResult>()
+        
+        // Load results for each match
+        for (const match of sessionMatches) {
+          try {
+            const matchResult = await api.matchResults.get(match.id)
+            if (matchResult) {
+              results.set(match.id, matchResult)
+            }
+          } catch (err) {
+            // Match might not have a result yet, continue
+          }
+        }
+        
+        setMatchResults(results)
+      } catch (err) {
+        console.error('Failed to load match results:', err)
+      }
+    }
+    
+    loadMatchResults()
+  }, [session])
+  
+  // Handler to mark match as finished
+  const handleMarkMatchFinished = useCallback(async (matchId: string) => {
+    try {
+      await api.matches.markFinished(matchId)
+      notify({
+        variant: 'success',
+        title: 'Kamp markeret som færdig'
+      })
+    } catch (err: unknown) {
+      const normalizedError = normalizeError(err)
+      notify({
+        variant: 'danger',
+        title: 'Kunne ikke markere kamp som færdig',
+        description: normalizedError.message
+      })
+    }
+  }, [notify])
+  
+  // Handler to save match result
+  const handleSaveMatchResult = useCallback(async (
+    matchId: string,
+    scoreData: BadmintonScoreData,
+    winnerTeam: 'team1' | 'team2',
+    sport: 'badminton' | 'tennis' | 'padel' = 'badminton'
+  ) => {
+    try {
+      const existingResult = matchResults.get(matchId)
+      
+      if (existingResult) {
+        // Update existing result
+        const updated = await api.matchResults.update(existingResult.id, {
+          scoreData,
+          winnerTeam
+        })
+        setMatchResults(prev => new Map(prev).set(matchId, updated))
+        notify({
+          variant: 'success',
+          title: 'Resultat opdateret'
+        })
+      } else {
+        // Create new result
+        const created = await api.matchResults.create(matchId, scoreData, sport, winnerTeam)
+        setMatchResults(prev => new Map(prev).set(matchId, created))
+        notify({
+          variant: 'success',
+          title: 'Resultat gemt'
+        })
+      }
+    } catch (err: unknown) {
+      const normalizedError = normalizeError(err)
+      notify({
+        variant: 'danger',
+        title: 'Kunne ikke gemme resultat',
+        description: normalizedError.message
+      })
+      throw err
+    }
+  }, [matchResults, notify])
+  
+  // Handler to delete match result
+  const handleDeleteMatchResult = useCallback(async (matchId: string) => {
+    try {
+      const existingResult = matchResults.get(matchId)
+      if (!existingResult) return
+      
+      await api.matchResults.delete(existingResult.id)
+      setMatchResults(prev => {
+        const newMap = new Map(prev)
+        newMap.delete(matchId)
+        return newMap
+      })
+      notify({
+        variant: 'success',
+        title: 'Resultat slettet'
+      })
+    } catch (err: unknown) {
+      const normalizedError = normalizeError(err)
+      notify({
+        variant: 'danger',
+        title: 'Kunne ikke slette resultat',
+        description: normalizedError.message
+      })
+      throw err
+    }
+  }, [matchResults, notify])
+  
   // UI handlers
   const handleMouseDown = useCallback((e: React.MouseEvent<HTMLDivElement>) => {
     if ((e.target as HTMLElement).closest('button')) return // Don't drag if clicking buttons
@@ -1503,7 +1638,15 @@ export const useMatchProgram = ({
     handleInactiveDrop,
     handleCourtDragOver,
     handleCourtDragLeave,
-    handleCourtDrop
+    handleCourtDrop,
+    
+    // Match results
+    matchResults,
+    openResultInputMatchId,
+    setOpenResultInputMatchId,
+    handleSaveMatchResult,
+    handleDeleteMatchResult,
+    handleMarkMatchFinished
   }
 }
 
