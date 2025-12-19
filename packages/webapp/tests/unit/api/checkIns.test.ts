@@ -3,38 +3,30 @@
  */
 
 import { describe, it, expect, beforeEach, vi } from 'vitest'
-import type { CheckIn } from '@rundeklar/common'
+import type { CheckIn, Player, TrainingSession } from '@rundeklar/common'
 
-// Mock the API module
-vi.mock('../../src/api/postgres', () => ({
-  getPostgres: vi.fn(),
-  getCheckIns: vi.fn(),
-  createCheckIn: vi.fn(),
-  updateCheckIn: vi.fn(),
-  deleteCheckIn: vi.fn(),
-  getPlayers: vi.fn(),
-  getSessions: vi.fn(),
-  createSession: vi.fn(),
-  updateSession: vi.fn(),
-  deleteSession: vi.fn(),
-  getTenantId: vi.fn(() => 'test-tenant'),
-  getIsolationIdForCurrentTenant: vi.fn(() => Promise.resolve(null))
-}))
+vi.mock('../../../src/api/postgres', async () => {
+  const actual = await vi.importActual<typeof import('../../../src/api/postgres')>('../../../src/api/postgres')
 
-vi.mock('../../src/lib/errors', () => ({
-  normalizeError: vi.fn((err) => ({
-    message: err instanceof Error ? err.message : String(err),
-    code: 'UNKNOWN_ERROR'
-  })),
-  ValidationError: class extends Error {
-    code = 'VALIDATION_ERROR'
-  },
-  createPlayerNotFoundError: vi.fn((id) => new Error(`Player not found: ${id}`)),
-  createPlayerInactiveError: vi.fn((name) => new Error(`Player inactive: ${name}`)),
-  createCheckInExistsError: vi.fn((name) => new Error(`Already checked in: ${name}`)),
-  createCheckInNotFoundError: vi.fn((name) => new Error(`Check-in not found: ${name}`)),
-  createSessionNotFoundError: vi.fn(() => new Error('Session not found'))
-}))
+  return {
+    ...actual,
+    getCheckIns: vi.fn(),
+    createCheckIn: vi.fn(),
+    updateCheckIn: vi.fn(),
+    deleteCheckIn: vi.fn(),
+    getPlayers: vi.fn(),
+    getSessions: vi.fn()
+  }
+})
+
+vi.mock('../../../src/api/stats', async () => {
+  const actual = await vi.importActual<typeof import('../../../src/api/stats')>('../../../src/api/stats')
+  return { ...actual, snapshotSession: vi.fn() }
+})
+
+import api from '../../../src/api'
+import { ValidationError } from '../../../src/lib/errors'
+import { createCheckIn, getCheckIns, getPlayers, getSessions, updateCheckIn } from '../../../src/api/postgres'
 
 describe('Check-in API with notes', () => {
   beforeEach(() => {
@@ -43,19 +35,18 @@ describe('Check-in API with notes', () => {
 
   describe('addCheckIn with notes', () => {
     it('should create check-in with notes', async () => {
-      const { default: api } = await import('../../src/api')
-      const { createCheckIn: createCheckInInDb, getCheckIns, getPlayers, getSessions } = await import('../../src/api/postgres')
-      
-      const mockPlayer = {
+      const mockPlayer: Player = {
         id: 'player-1',
         name: 'Test Player',
-        active: true
+        active: true,
+        createdAt: new Date().toISOString()
       }
       
-      const mockSession = {
+      const mockSession: TrainingSession = {
         id: 'session-1',
         date: new Date().toISOString(),
-        status: 'active' as const
+        status: 'active',
+        createdAt: new Date().toISOString()
       }
       
       const mockCheckIn: CheckIn = {
@@ -67,10 +58,10 @@ describe('Check-in API with notes', () => {
         notes: 'Gerne træne med Player 2'
       }
       
-      vi.mocked(getSessions).mockResolvedValue([mockSession] as any)
-      vi.mocked(getPlayers).mockResolvedValue([mockPlayer] as any)
+      vi.mocked(getSessions).mockResolvedValue([mockSession])
+      vi.mocked(getPlayers).mockResolvedValue([mockPlayer])
       vi.mocked(getCheckIns).mockResolvedValue([])
-      vi.mocked(createCheckInInDb).mockResolvedValue(mockCheckIn)
+      vi.mocked(createCheckIn).mockResolvedValue(mockCheckIn)
       
       const result = await api.checkIns.add({
         playerId: 'player-1',
@@ -78,7 +69,7 @@ describe('Check-in API with notes', () => {
       })
       
       expect(result).toEqual(mockCheckIn)
-      expect(createCheckInInDb).toHaveBeenCalledWith(
+      expect(createCheckIn).toHaveBeenCalledWith(
         expect.objectContaining({
           playerId: 'player-1',
           notes: 'Gerne træne med Player 2'
@@ -87,9 +78,6 @@ describe('Check-in API with notes', () => {
     })
 
     it('should validate notes max length', async () => {
-      const { default: api } = await import('../../src/api')
-      const { ValidationError } = await import('../../src/lib/errors')
-      
       const longNotes = 'a'.repeat(501) // 501 characters
       
       await expect(
@@ -101,19 +89,18 @@ describe('Check-in API with notes', () => {
     })
 
     it('should allow null notes', async () => {
-      const { default: api } = await import('../../src/api')
-      const { createCheckIn: createCheckInInDb, getCheckIns, getPlayers, getSessions } = await import('../../src/api/postgres')
-      
-      const mockPlayer = {
+      const mockPlayer: Player = {
         id: 'player-1',
         name: 'Test Player',
-        active: true
+        active: true,
+        createdAt: new Date().toISOString()
       }
       
-      const mockSession = {
+      const mockSession: TrainingSession = {
         id: 'session-1',
         date: new Date().toISOString(),
-        status: 'active' as const
+        status: 'active',
+        createdAt: new Date().toISOString()
       }
       
       const mockCheckIn: CheckIn = {
@@ -125,10 +112,10 @@ describe('Check-in API with notes', () => {
         notes: null
       }
       
-      vi.mocked(getSessions).mockResolvedValue([mockSession] as any)
-      vi.mocked(getPlayers).mockResolvedValue([mockPlayer] as any)
+      vi.mocked(getSessions).mockResolvedValue([mockSession])
+      vi.mocked(getPlayers).mockResolvedValue([mockPlayer])
       vi.mocked(getCheckIns).mockResolvedValue([])
-      vi.mocked(createCheckInInDb).mockResolvedValue(mockCheckIn)
+      vi.mocked(createCheckIn).mockResolvedValue(mockCheckIn)
       
       const result = await api.checkIns.add({
         playerId: 'player-1',
@@ -141,13 +128,11 @@ describe('Check-in API with notes', () => {
 
   describe('updateCheckIn with notes', () => {
     it('should update check-in notes', async () => {
-      const { default: api } = await import('../../src/api')
-      const { updateCheckIn: updateCheckInInDb, getCheckIns, getPlayers, getSessions } = await import('../../src/api/postgres')
-      
-      const mockSession = {
+      const mockSession: TrainingSession = {
         id: 'session-1',
         date: new Date().toISOString(),
-        status: 'active' as const
+        status: 'active',
+        createdAt: new Date().toISOString()
       }
       
       const existingCheckIn: CheckIn = {
@@ -164,10 +149,10 @@ describe('Check-in API with notes', () => {
         notes: 'Opdateret note'
       }
       
-      vi.mocked(getSessions).mockResolvedValue([mockSession] as any)
+      vi.mocked(getSessions).mockResolvedValue([mockSession])
       vi.mocked(getCheckIns).mockResolvedValue([existingCheckIn])
-      vi.mocked(getPlayers).mockResolvedValue([{ id: 'player-1', name: 'Test Player' }] as any)
-      vi.mocked(updateCheckInInDb).mockResolvedValue(updatedCheckIn)
+      vi.mocked(getPlayers).mockResolvedValue([{ id: 'player-1', name: 'Test Player', active: true, createdAt: new Date().toISOString() }] as any)
+      vi.mocked(updateCheckIn).mockResolvedValue(updatedCheckIn)
       
       const result = await api.checkIns.update({
         playerId: 'player-1',
@@ -175,7 +160,7 @@ describe('Check-in API with notes', () => {
       })
       
       expect(result.notes).toBe('Opdateret note')
-      expect(updateCheckInInDb).toHaveBeenCalledWith(
+      expect(updateCheckIn).toHaveBeenCalledWith(
         'checkin-1',
         expect.objectContaining({
           notes: 'Opdateret note'
@@ -184,9 +169,6 @@ describe('Check-in API with notes', () => {
     })
 
     it('should validate notes when updating', async () => {
-      const { default: api } = await import('../../src/api')
-      const { ValidationError } = await import('../../src/lib/errors')
-      
       const longNotes = 'a'.repeat(501)
       
       await expect(
@@ -200,13 +182,11 @@ describe('Check-in API with notes', () => {
 
   describe('listActiveCheckIns with notes', () => {
     it('should return checked-in players with notes', async () => {
-      const { default: api } = await import('../../src/api')
-      const { getCheckIns, getPlayers, getSessions } = await import('../../src/api/postgres')
-      
-      const mockSession = {
+      const mockSession: TrainingSession = {
         id: 'session-1',
         date: new Date().toISOString(),
-        status: 'active' as const
+        status: 'active',
+        createdAt: new Date().toISOString()
       }
       
       const mockCheckIn: CheckIn = {
@@ -218,15 +198,16 @@ describe('Check-in API with notes', () => {
         notes: 'Gerne træne med Player 2'
       }
       
-      const mockPlayer = {
+      const mockPlayer: Player = {
         id: 'player-1',
         name: 'Test Player',
-        active: true
+        active: true,
+        createdAt: new Date().toISOString()
       }
       
-      vi.mocked(getSessions).mockResolvedValue([mockSession] as any)
+      vi.mocked(getSessions).mockResolvedValue([mockSession])
       vi.mocked(getCheckIns).mockResolvedValue([mockCheckIn])
-      vi.mocked(getPlayers).mockResolvedValue([mockPlayer] as any)
+      vi.mocked(getPlayers).mockResolvedValue([mockPlayer])
       
       const result = await api.checkIns.listActive()
       
