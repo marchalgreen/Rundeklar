@@ -3,6 +3,9 @@ import path from 'path'
 
 export default defineConfig({
   test: {
+    // NOTE: On Node 22 + tinypool, the default threads pool can hit
+    // a worker teardown recursion bug in this repo. vmThreads avoids it.
+    pool: 'vmThreads',
     // Exclude E2E tests (Playwright) and integration tests that require setup
     exclude: [
       '**/node_modules/**',
