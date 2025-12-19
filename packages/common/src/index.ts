@@ -133,6 +133,37 @@ export type StatisticsSnapshot = {
   createdAt: string
 }
 
+export type PlayerMatchResult = {
+  matchId: string
+  date: string
+  sessionId: string
+  opponentNames: string[] // Modstandere eller makkere
+  wasPartner: boolean // True hvis makkere (samme team), false hvis modstandere
+  won: boolean
+  scoreData: BadmintonScoreData | TennisScoreData | PadelScoreData
+  sport: 'badminton' | 'tennis' | 'padel'
+}
+
+export type HeadToHeadResult = {
+  matchId: string
+  date: string
+  sessionId: string
+  player1Won: boolean // True hvis playerId1 vandt
+  player1Team: 'team1' | 'team2'
+  player2Team: 'team1' | 'team2'
+  scoreData: BadmintonScoreData | TennisScoreData | PadelScoreData
+  sport: 'badminton' | 'tennis' | 'padel'
+  wasPartner: boolean // True hvis de spillede sammen, false hvis mod hinanden
+}
+
+export type PlayerComparison = {
+  partnerCount: number
+  opponentCount: number
+  headToHeadMatches: HeadToHeadResult[] // Alle kampresultater mellem de to spillere
+  player1Wins: number // Antal gange playerId1 vandt mod playerId2
+  player2Wins: number // Antal gange playerId2 vandt mod playerId1
+}
+
 export type PlayerStatistics = {
   playerId: string
   totalCheckIns: number
@@ -145,6 +176,15 @@ export type PlayerStatistics = {
   averageLevelDifference: number | null
   mostPlayedCourt: number | null
   lastPlayedDate: string | null
+  // Match result statistics
+  totalWins: number
+  totalLosses: number
+  winRate: number // percentage (0-100)
+  matchesWithResults: number
+  averageScoreDifference: number | null
+  winsBySeason: Record<string, number>
+  lossesBySeason: Record<string, number>
+  recentMatches: PlayerMatchResult[] // Seneste 5 resultater med detaljer
 }
 
 export type StatisticsFilters = {
@@ -152,6 +192,61 @@ export type StatisticsFilters = {
   season?: string
   dateFrom?: string
   dateTo?: string
+}
+
+export type TrainingGroupAttendance = {
+  groupName: string
+  checkInCount: number
+  uniquePlayers: number
+  sessions: number
+  averageAttendance: number
+}
+
+export type WeekdayAttendance = {
+  weekday: number // 0 = Sunday, 1 = Monday, ..., 6 = Saturday
+  weekdayName: string // e.g., "Mandag", "Tirsdag"
+  checkInCount: number
+  uniquePlayers: number
+  sessions: number
+  averageAttendance: number
+}
+
+export type PlayerCheckInLongTail = {
+  playerId: string
+  playerName: string
+  checkInCount: number
+}
+
+export type WeekdayAttendanceOverTime = {
+  date: string // ISO date string
+  weekday: number // 0 = Sunday, 1 = Monday, ..., 6 = Saturday
+  weekdayName: string
+  checkInCount: number
+  averageAttendance: number
+}
+
+export type TrainingDayComparison = {
+  day1: {
+    weekday: number
+    weekdayName: string
+    checkInCount: number
+    uniquePlayers: number
+    sessions: number
+    averageAttendance: number
+  }
+  day2: {
+    weekday: number
+    weekdayName: string
+    checkInCount: number
+    uniquePlayers: number
+    sessions: number
+    averageAttendance: number
+  }
+  difference: {
+    checkInCount: number // day1 - day2
+    averageAttendance: number // day1 - day2
+    percentageDifference: number // ((day1 - day2) / day2) * 100
+  }
 }
 
 export type TenantConfig = {
