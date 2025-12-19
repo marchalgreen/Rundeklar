@@ -7,7 +7,7 @@
  */
 
 import React, { useCallback, useLayoutEffect, useMemo, useRef, useState } from 'react'
-import type { Player, PlayerCategory, PlayerGender } from '@rundeklar/common'
+import type { Player, PlayerCategory, PlayerGender, PlayerCreateInput, PlayerUpdateInput } from '@rundeklar/common'
 import { Pencil, Plus, Trash2, UsersRound } from 'lucide-react'
 import { Badge, Button, EmptyState, PageCard } from '../components/ui'
 import { DataTable, TableSearch, type Column } from '../components/ui/Table'
@@ -147,7 +147,7 @@ const PlayersPage = () => {
 
     try {
       if (dialogMode === 'create') {
-          const createInput: any = {
+          const createInput: PlayerCreateInput = {
           name: formName.trim(),
           alias: formAlias.trim() || undefined,
             levelSingle: formLevelSingle ? Number(formLevelSingle) : undefined,
@@ -162,7 +162,7 @@ const PlayersPage = () => {
           }
           await createPlayer(createInput)
       } else if (currentPlayer) {
-          const patch: any = {
+          const patch: PlayerUpdateInput['patch'] = {
             name: formName.trim(),
             alias: formAlias || null,
             levelSingle: formLevelSingle ? Number(formLevelSingle) : null,
