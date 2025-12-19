@@ -6,7 +6,7 @@
  * utilities for state persistence.
  */
 
-import React, { useMemo } from 'react'
+import React from 'react'
 import { PageCard } from '../components/ui'
 import { useTenant } from '../contexts/TenantContext'
 import { getTenantSport } from '../lib/tenant'
@@ -20,10 +20,7 @@ import { PreviousRoundsPopup } from '../components/matchprogram/PreviousRoundsPo
 import { MatchProgramHeader } from '../components/matchprogram/MatchProgramHeader'
 import { MatchResultInput } from '../components/matchprogram/MatchResultInput'
 import { NotesModal } from '../components/checkin/NotesModal'
-import { getMatches, getCourts } from '../api/postgres'
-import type { Match, CheckedInPlayer } from '@rundeklar/common'
-import { normalizeError } from '../lib/errors'
-import { useToast } from '../components/ui/Toast'
+import type { CheckedInPlayer } from '@rundeklar/common'
 import type { PlayerSortType } from '../lib/matchProgramUtils'
 
 /**
@@ -36,7 +33,6 @@ import type { PlayerSortType } from '../lib/matchProgramUtils'
  */
 const MatchProgramPage = () => {
   const { config, tenantId } = useTenant()
-  const { notify } = useToast()
   const [maxCourts, setMaxCourts] = React.useState(() => courtsSettings.getEffectiveCourtsInUse(tenantId, config.maxCourts))
   React.useEffect(() => {
     const recompute = () => setMaxCourts(courtsSettings.getEffectiveCourtsInUse(tenantId, config.maxCourts))
@@ -149,7 +145,11 @@ const MatchProgramPage = () => {
     openResultInputMatchId,
     setOpenResultInputMatchId,
     handleSaveMatchResult,
-    handleDeleteMatchResult
+    handleDeleteMatchResult,
+    matchObjects,
+    matchByCourtIdx,
+    getMatchForCourt,
+    handleEnterResult
   } = matchProgram
 
   /**
@@ -174,126 +174,6 @@ const MatchProgramPage = () => {
   
   // Get sport from tenant config
   const sport = getTenantSport(config)
-  
-  // Get Match objects and create maps for lookup
-  const [matchObjects, setMatchObjects] = React.useState<Match[]>([])
-  const [matchByCourtIdx, setMatchByCourtIdx] = React.useState<Map<number, Match>>(new Map())
-  
-  React.useEffect(() => {
-    if (!session) {
-      setMatchObjects([])
-      setMatchByCourtIdx(new Map())
-      return
-    }
-    
-    const loadMatches = async () => {
-      try {
-        const [allMatches, courts] = await Promise.all([getMatches(), getCourts()])
-        const sessionMatches = allMatches.filter(m => m.sessionId === session.id && m.round === selectedRound)
-        setMatchObjects(sessionMatches)
-        
-        // Create map of courtIdx -> Match
-        const courtMap = new Map<number, Match>()
-        
-        for (const match of sessionMatches) {
-          const court = courts.find(c => c.id === match.courtId)
-          if (court) {
-            courtMap.set(court.idx, match)
-          }
-        }
-        
-        setMatchByCourtIdx(courtMap)
-      } catch (err) {
-        const normalizedError = normalizeError(err)
-        notify({
-          variant: 'danger',
-          title: 'Kunne ikke hente kampe',
-          description: normalizedError.message
-        })
-      }
-    }
-    
-    loadMatches()
-  }, [session, selectedRound, notify])
-  
-  // Handler to ensure match exists and open result input
-  const handleEnterResult = React.useCallback(async (courtIdx: number) => {
-    if (!session) return
-    
-    let match = matchByCourtIdx.get(courtIdx)
-    
-    // If no match exists, create one
-    if (!match) {
-      try {
-        const [courts] = await Promise.all([getCourts()])
-        const court = courts.find(c => c.idx === courtIdx)
-        
-        if (!court) {
-          const normalizedError = normalizeError(new Error(`Court not found for courtIdx: ${courtIdx}`))
-          notify({
-            variant: 'danger',
-            title: 'Kunne ikke finde bane',
-            description: normalizedError.message
-          })
-          return
-        }
-        
-        // Create match
-        const { createMatch } = await import('../api/postgres')
-        match = await createMatch({
-          sessionId: session.id,
-          courtId: court.id,
-          startedAt: new Date().toISOString(),
-          endedAt: null,
-          round: selectedRound
-        })
-        
-        // Create match players for all slots with players
-        const courtData = matches.find(c => c.courtIdx === courtIdx)
-        if (courtData) {
-          const { createMatchPlayer } = await import('../api/postgres')
-          for (const slot of courtData.slots) {
-            if (slot.player) {
-              await createMatchPlayer({
-                matchId: match.id,
-                playerId: slot.player.id,
-                slot: slot.slot
-              })
-            }
-          }
-        }
-        
-        // Update local state
-        setMatchObjects(prev => [...prev, match!])
-        setMatchByCourtIdx(prev => new Map(prev).set(courtIdx, match!))
-      } catch (err) {
-        const normalizedError = normalizeError(err)
-        notify({
-          variant: 'danger',
-          title: 'Kunne ikke oprette kamp',
-          description: normalizedError.message
-        })
-        return
-      }
-    }
-    
-    // Open result input modal
-    if (match) {
-      setOpenResultInputMatchId(match.id)
-    }
-  }, [session, selectedRound, matches, matchByCourtIdx, setOpenResultInputMatchId, notify])
-  
-  // Get the match and result for a court
-  const getMatchForCourt = useMemo(() => {
-    return (courtIdx: number) => {
-      const match = matchByCourtIdx.get(courtIdx)
-      if (!match) return { match: null, result: null, isFinished: false }
-      
-      const result = matchResults.get(match.id) || null
-      
-      return { match, result, isFinished: Boolean(match.endedAt) }
-    }
-  }, [matchByCourtIdx, matchResults])
 
   // Calculate if there are matches (courts with players) - must be before any conditional returns
   const hasMatches = React.useMemo(() => {

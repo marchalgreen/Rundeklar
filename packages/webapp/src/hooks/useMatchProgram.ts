@@ -5,11 +5,12 @@
  */
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
-import type { CheckedInPlayer, CourtWithPlayers, Player, TrainingSession, MatchResult, BadmintonScoreData } from '@rundeklar/common'
+import type { CheckedInPlayer, CourtWithPlayers, Player, TrainingSession, Match, MatchResult, BadmintonScoreData } from '@rundeklar/common'
 import api from '../api'
 import { normalizeError } from '../lib/errors'
-import { getMatches } from '../api/postgres'
+import { createMatch, createMatchPlayer, getCourts, getMatches } from '../api/postgres'
 import { useToast } from '../components/ui/Toast'
+import { logger } from '../lib/utils/logger'
 import {
   loadPersistedState,
   savePersistedState,
@@ -172,6 +173,12 @@ interface UseMatchProgramReturn {
   handleSaveMatchResult: (matchId: string, scoreData: BadmintonScoreData, winnerTeam: 'team1' | 'team2', sport?: 'badminton' | 'tennis' | 'padel', courtIdx?: number) => Promise<void>
   handleDeleteMatchResult: (matchId: string, courtIdx?: number) => Promise<void>
   handleMarkMatchFinished: (matchId: string) => Promise<void>
+
+  // Match objects (DB-level) for result entry
+  matchObjects: Match[]
+  matchByCourtIdx: Map<number, Match>
+  getMatchForCourt: (courtIdx: number) => { match: Match | null; result: MatchResult | null; isFinished: boolean }
+  handleEnterResult: (courtIdx: number) => Promise<void>
 }
 
 /**
@@ -210,6 +217,10 @@ export const useMatchProgram = ({
   // Match results state
   const [matchResults, setMatchResults] = useState<Map<string, MatchResult>>(new Map())
   const [openResultInputMatchId, setOpenResultInputMatchId] = useState<string | null>(null)
+
+  // DB-level match objects (needed to attach match results to match IDs)
+  const [matchObjects, setMatchObjects] = useState<Match[]>([])
+  const [matchByCourtIdx, setMatchByCourtIdx] = useState<Map<number, Match>>(new Map())
   
   // Drag refs
   const dragOverSlotRef = useRef<{ courtIdx: number; slot: number } | null>(null)
@@ -471,13 +482,72 @@ export const useMatchProgram = ({
       const completeData = ensureAllCourts(safeData, maxCourts)
       setInMemoryMatches((prev) => ({ ...prev, [selectedRound]: completeData }))
       setMatches(completeData)
-    } catch (err: any) {
-      console.error('[useMatchProgram] Error loading matches:', err)
-      setError(err.message ?? 'Kunne ikke hente baner')
+    } catch (err: unknown) {
+      logger.error('[useMatchProgram] Error loading matches', err)
+      const normalizedError = normalizeError(err)
+      setError(normalizedError.message)
+      notify({
+        variant: 'danger',
+        title: 'Kunne ikke hente baner',
+        description: normalizedError.message
+      })
       // Ensure matches is always an array even on error
-      setMatches([])
+      setMatches(
+        Array.from({ length: maxCourts }, (_, i) => ({
+          courtIdx: i + 1,
+          slots: []
+        }))
+      )
     }
-  }, [session, selectedRound, maxCourts])
+  }, [session, selectedRound, maxCourts, notify])
+
+  // Load DB-level match objects for the selected round (used by match result entry).
+  useEffect(() => {
+    if (!session) {
+      setMatchObjects([])
+      setMatchByCourtIdx(new Map())
+      return
+    }
+
+    let cancelled = false
+
+    const run = async () => {
+      try {
+        const [allMatches, courts] = await Promise.all([getMatches(), getCourts()])
+        const sessionMatches = allMatches.filter(
+          (m) => m.sessionId === session.id && (m.round ?? 1) === selectedRound
+        )
+
+        if (cancelled) return
+
+        setMatchObjects(sessionMatches)
+
+        const courtMap = new Map<number, Match>()
+        for (const match of sessionMatches) {
+          const court = courts.find((c) => c.id === match.courtId)
+          if (court) {
+            courtMap.set(court.idx, match)
+          }
+        }
+        setMatchByCourtIdx(courtMap)
+      } catch (err) {
+        if (cancelled) return
+
+        const normalizedError = normalizeError(err)
+        notify({
+          variant: 'danger',
+          title: 'Kunne ikke hente kampe',
+          description: normalizedError.message
+        })
+      }
+    }
+
+    void run()
+
+    return () => {
+      cancelled = true
+    }
+  }, [session, selectedRound, notify])
   
   // Load previous round
   const loadPreviousRound = useCallback(async (round: number) => {
@@ -503,10 +573,16 @@ export const useMatchProgram = ({
         })
       }
       setPreviousRoundsMatches((prev) => ({ ...prev, [round]: data }))
-    } catch (err: any) {
-      setError(err.message ?? 'Kunne ikke hente tidligere runde')
+    } catch (err: unknown) {
+      const normalizedError = normalizeError(err)
+      setError(normalizedError.message)
+      notify({
+        variant: 'danger',
+        title: 'Kunne ikke hente tidligere runde',
+        description: normalizedError.message
+      })
     }
-  }, [session, selectedRound, previousRoundsMatches, inMemoryMatches, maxCourts])
+  }, [session, selectedRound, previousRoundsMatches, inMemoryMatches, maxCourts, notify])
   
   // Restore persisted state on mount
   useEffect(() => {
@@ -830,10 +906,16 @@ export const useMatchProgram = ({
       })
 
       updateInMemoryMatches(selectedRound, completeMatches)
-    } catch (err: any) {
-      setError(err.message ?? 'Kunne ikke flytte spiller')
+    } catch (err: unknown) {
+      const normalizedError = normalizeError(err)
+      setError(normalizedError.message)
+      notify({
+        variant: 'danger',
+        title: 'Kunne ikke flytte spiller',
+        description: normalizedError.message
+      })
     }
-  }, [session, selectedRound, checkedIn, maxCourts, matches, updateInMemoryMatches])
+  }, [session, selectedRound, checkedIn, maxCourts, matches, updateInMemoryMatches, notify])
   
   const handleAutoMatch = useCallback(async () => {
     if (!session) return
@@ -917,10 +999,16 @@ export const useMatchProgram = ({
         extendedCapacityCourts
       ).catch((err) => {
         // Log error but don't block UI - matches will be saved on session end
-        console.warn('[handleAutoMatch] Background sync failed (non-critical):', err)
+        logger.warn('[handleAutoMatch] Background sync failed (non-critical)', err)
       })
-    } catch (err: any) {
-      setError(err.message ?? 'Kunne ikke matche spillere')
+    } catch (err: unknown) {
+      const normalizedError = normalizeError(err)
+      setError(normalizedError.message)
+      notify({
+        variant: 'danger',
+        title: 'Kunne ikke matche spillere',
+        description: normalizedError.message
+      })
     }
   }, [session, selectedRound, checkedIn, unavailablePlayers, activatedOneRoundPlayers, inMemoryMatches, currentRoundLockedCourts, extendedCapacityCourts, hasRunAutoMatch, maxCourts, updateInMemoryMatches, notify])
   
@@ -945,8 +1033,14 @@ export const useMatchProgram = ({
         variant: 'success',
         title: 'Kampe nulstillet (låste baner bevares)'
       })
-    } catch (err: any) {
-      setError(err.message ?? 'Kunne ikke nulstille kampe')
+    } catch (err: unknown) {
+      const normalizedError = normalizeError(err)
+      setError(normalizedError.message)
+      notify({
+        variant: 'danger',
+        title: 'Kunne ikke nulstille kampe',
+        description: normalizedError.message
+      })
     }
   }, [session, selectedRound, inMemoryMatches, currentRoundLockedCourts, maxCourts, updateInMemoryMatches, notify])
   
@@ -962,10 +1056,16 @@ export const useMatchProgram = ({
       }
       // Add to activated one-round players set so they appear in bench
       setActivatedOneRoundPlayers((prev) => new Set(prev).add(playerId))
-    } catch (err: any) {
-      setError(err.message ?? 'Kunne ikke aktivere spiller')
+    } catch (err: unknown) {
+      const normalizedError = normalizeError(err)
+      setError(normalizedError.message)
+      notify({
+        variant: 'danger',
+        title: 'Kunne ikke aktivere spiller',
+        description: normalizedError.message
+      })
     }
-  }, [session, unavailablePlayers, handleMarkAvailable, handleMove])
+  }, [session, unavailablePlayers, handleMarkAvailable, handleMove, notify])
   
   const onDropToBench = useCallback(async (event: React.DragEvent<HTMLDivElement>) => {
     const playerId = event.dataTransfer.getData('application/x-player-id')
@@ -1166,7 +1266,7 @@ export const useMatchProgram = ({
         
         setMatchResults(results)
       } catch (err) {
-        console.error('Failed to load match results:', err)
+        logger.error('Failed to load match results', err)
       }
     }
     
@@ -1317,6 +1417,84 @@ export const useMatchProgram = ({
       throw err
     }
   }, [matchResults, notify, selectedRound])
+
+  /**
+   * Returns the DB-level match + result for a given court index (for result entry UI).
+   */
+  const getMatchForCourt = useCallback(
+    (courtIdx: number) => {
+      const match = matchByCourtIdx.get(courtIdx) ?? null
+      if (!match) return { match: null, result: null, isFinished: false }
+
+      const result = matchResults.get(match.id) ?? null
+      return { match, result, isFinished: Boolean(match.endedAt) }
+    },
+    [matchByCourtIdx, matchResults]
+  )
+
+  /**
+   * Ensures a Match row exists for the selected round's court, then opens result entry.
+   * This keeps MatchProgram routes free of direct Postgres access.
+   */
+  const handleEnterResult = useCallback(
+    async (courtIdx: number) => {
+      if (!session) return
+
+      let match = matchByCourtIdx.get(courtIdx)
+
+      // If no match exists, create one and create match_players for current court slots.
+      if (!match) {
+        try {
+          const courts = await getCourts()
+          const court = courts.find((c) => c.idx === courtIdx)
+          if (!court) {
+            notify({
+              variant: 'danger',
+              title: 'Kunne ikke finde bane',
+              description: `Bane ${courtIdx} blev ikke fundet`
+            })
+            return
+          }
+
+          match = await createMatch({
+            sessionId: session.id,
+            courtId: court.id,
+            startedAt: new Date().toISOString(),
+            endedAt: null,
+            round: selectedRound
+          })
+
+          const courtData = matches.find((c) => c.courtIdx === courtIdx)
+          if (courtData) {
+            for (const slot of courtData.slots) {
+              if (slot.player) {
+                await createMatchPlayer({
+                  matchId: match.id,
+                  playerId: slot.player.id,
+                  slot: slot.slot
+                })
+              }
+            }
+          }
+
+          // Update local state caches for this round.
+          setMatchObjects((prev) => [...prev, match!])
+          setMatchByCourtIdx((prev) => new Map(prev).set(courtIdx, match!))
+        } catch (err) {
+          const normalizedError = normalizeError(err)
+          notify({
+            variant: 'danger',
+            title: 'Kunne ikke oprette kamp',
+            description: normalizedError.message
+          })
+          return
+        }
+      }
+
+      setOpenResultInputMatchId(match.id)
+    },
+    [session, matchByCourtIdx, selectedRound, matches, notify]
+  )
   
   // UI handlers
   const handleMouseDown = useCallback((e: React.MouseEvent<HTMLDivElement>) => {
@@ -1572,10 +1750,16 @@ export const useMatchProgram = ({
         handleMarkAvailable(playerId)
       }
       setActivatedOneRoundPlayers((prev) => new Set(prev).add(playerId))
-    } catch (err: any) {
-      setError(err.message ?? 'Kunne ikke aktivere spiller')
+    } catch (err: unknown) {
+      const normalizedError = normalizeError(err)
+      setError(normalizedError.message)
+      notify({
+        variant: 'danger',
+        title: 'Kunne ikke aktivere spiller',
+        description: normalizedError.message
+      })
     }
-  }, [session, handleMove, unavailablePlayers, handleMarkAvailable])
+  }, [session, handleMove, unavailablePlayers, handleMarkAvailable, notify])
   
   return {
     // State
@@ -1708,7 +1892,11 @@ export const useMatchProgram = ({
     setOpenResultInputMatchId,
     handleSaveMatchResult,
     handleDeleteMatchResult,
-    handleMarkMatchFinished
+    handleMarkMatchFinished,
+    matchObjects,
+    matchByCourtIdx,
+    getMatchForCourt,
+    handleEnterResult
   }
 }
 
