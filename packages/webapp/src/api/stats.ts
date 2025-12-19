@@ -1081,6 +1081,10 @@ const getTrainingGroupAttendance = async (
   dateTo?: string,
   groupNames?: string[]
 ): Promise<TrainingGroupAttendance[]> => {
+  // Invalidate cache to ensure we get fresh data (especially after seeding)
+  invalidateCache('statistics')
+  invalidateCache('players')
+  
   const [statistics, state] = await Promise.all([
     getStatisticsSnapshots(),
     getStateCopy()
@@ -1112,10 +1116,18 @@ const getTrainingGroupAttendance = async (
 
       const trainingGroups = player.trainingGroups || []
       
+      // If filtering by group names, check if player belongs to any of the selected groups
+      if (groupNames && groupNames.length > 0) {
+        const hasMatchingGroup = trainingGroups.some(groupName => groupNames.includes(groupName))
+        if (!hasMatchingGroup) {
+          return // Skip this check-in if player doesn't belong to any selected group
+        }
+      }
+      
       trainingGroups.forEach((groupName) => {
         if (!groupName) return
         
-        // Filter by group names if provided
+        // Filter by group names if provided - only count groups that match the filter
         if (groupNames && groupNames.length > 0 && !groupNames.includes(groupName)) {
           return
         }
