@@ -69,7 +69,13 @@ export function nameToSubdomain(name: string): string {
   const stopWords = ['badmintonklub', 'badminton', 'klub', 'forening', 'sport', 'club']
   const meaningfulWords = normalized
     .toLowerCase()
-    .replace(/[^a-z0-9\s]/g, '') // Remove special characters (after normalization)
+    // Treat common separators as whitespace so we can re-join with hyphens.
+    // Examples:
+    // - "Herlev/Hjorten" -> ["herlev", "hjorten"] -> "herlev-hjorten"
+    // - "Test---Tenant"  -> ["test", "tenant"]   -> "test-tenant"
+    // - "herlev-hjorten" -> ["herlev", "hjorten"] -> "herlev-hjorten"
+    .replace(/[-/_]+/g, ' ')
+    .replace(/[^a-z0-9\s]/g, '') // Remove remaining special characters (after normalization)
     .split(/\s+/)
     .filter(word => word.length > 0 && !stopWords.includes(word))
   
