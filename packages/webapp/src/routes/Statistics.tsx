@@ -6,18 +6,8 @@ import statsApi from '../api/stats'
 import { PageCard } from '../components/ui'
 import { TableSearch } from '../components/ui/Table'
 import { useToast } from '../components/ui/Toast'
-
-/**
- * Formats a date string to Danish locale format.
- * @param dateStr - ISO date string
- * @returns Formatted date string
- */
-const formatDate = (dateStr: string | null): string => {
-  if (!dateStr) return 'Aldrig'
-  return new Intl.DateTimeFormat('da-DK', {
-    dateStyle: 'medium'
-  }).format(new Date(dateStr))
-}
+import { formatDate } from '../lib/formatting'
+import { normalizeError } from '../lib/errors'
 
 /**
  * Statistics dashboard page — displays player statistics and analytics.
@@ -49,12 +39,18 @@ const StatisticsPage = () => {
     try {
       const result = await api.players.list()
       setPlayers(result)
-    } catch (err: any) {
-      setError(err.message ?? 'Kunne ikke hente spillere')
+    } catch (err: unknown) {
+      const normalizedError = normalizeError(err)
+      setError(normalizedError.message)
+      notify({
+        variant: 'danger',
+        title: 'Kunne ikke hente spillere',
+        description: normalizedError.message
+      })
     } finally {
       setLoading(false)
     }
-  }, [])
+  }, [notify])
 
   /** Loads player statistics from API. */
   const loadStatistics = useCallback(
@@ -64,9 +60,14 @@ const StatisticsPage = () => {
       try {
         const stats = await statsApi.getPlayerStatistics(playerId)
         setStatistics(stats)
-      } catch (err: any) {
-        setError(err.message ?? 'Kunne ikke hente statistik')
-        notify({ variant: 'danger', title: err.message ?? 'Kunne ikke hente statistik' })
+      } catch (err: unknown) {
+        const normalizedError = normalizeError(err)
+        setError(normalizedError.message)
+        notify({
+          variant: 'danger',
+          title: 'Kunne ikke hente statistik',
+          description: normalizedError.message
+        })
       } finally {
         setLoadingStats(false)
       }
@@ -129,9 +130,14 @@ const StatisticsPage = () => {
       try {
         const stats = await statsApi.getPlayerComparison(playerId1, playerId2)
         setComparisonStats(stats)
-      } catch (err: any) {
-        setError(err.message ?? 'Kunne ikke hente sammenligning')
-        notify({ variant: 'danger', title: err.message ?? 'Kunne ikke hente sammenligning' })
+      } catch (err: unknown) {
+        const normalizedError = normalizeError(err)
+        setError(normalizedError.message)
+        notify({
+          variant: 'danger',
+          title: 'Kunne ikke hente sammenligning',
+          description: normalizedError.message
+        })
       } finally {
         setLoadingComparison(false)
       }
@@ -445,7 +451,7 @@ const StatisticsPage = () => {
               <div className="flex flex-col justify-between gap-1">
                 <span className="text-xs sm:text-sm text-[hsl(var(--muted))]">Sidst spillet</span>
                 <span className="text-lg sm:text-xl md:text-2xl font-semibold text-[hsl(var(--foreground))]">
-                  {formatDate(statistics.lastPlayedDate)}
+                  {formatDate(statistics.lastPlayedDate, false)}
                 </span>
               </div>
             </div>
