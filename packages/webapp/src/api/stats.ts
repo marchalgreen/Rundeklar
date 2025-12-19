@@ -5,7 +5,15 @@ import type {
   Match,
   MatchPlayer,
   CheckIn,
-  MatchResult
+  MatchResult,
+  PlayerMatchResult,
+  HeadToHeadResult,
+  PlayerComparison,
+  TrainingGroupAttendance,
+  WeekdayAttendance,
+  PlayerCheckInLongTail,
+  WeekdayAttendanceOverTime,
+  TrainingDayComparison
 } from '@rundeklar/common'
 import { createId, getStateCopy, getStatisticsSnapshots, createStatisticsSnapshot, createSession, createCheckIn, getMatches, getMatchPlayers, getMatchResults, getMatchResultsBySession, invalidateCache } from './postgres'
 import { logger } from '../lib/utils/logger'
@@ -352,18 +360,39 @@ const getTopOpponents = async (
 }
 
 /**
- * Gets comparison statistics between two players.
+ * Gets comparison statistics between two players including head-to-head results.
  * @param playerId1 - First player ID
  * @param playerId2 - Second player ID
- * @returns Object with partner count and opponent count
+ * @returns Object with partner count, opponent count, and head-to-head matches
  */
 const getPlayerComparison = async (
   playerId1: string,
   playerId2: string
-): Promise<{ partnerCount: number; opponentCount: number }> => {
-  const statistics = await getStatisticsSnapshots()
+): Promise<PlayerComparison> => {
+  const [statistics, allMatchResults, allMatches, state] = await Promise.all([
+    getStatisticsSnapshots(),
+    getMatchResults(),
+    getMatches(),
+    getStateCopy()
+  ])
+  
   let partnerCount = 0
   let opponentCount = 0
+  const headToHeadMatches: HeadToHeadResult[] = []
+  let player1Wins = 0
+  let player2Wins = 0
+
+  // Create a map of match results by matchId
+  const matchResultsMap = new Map<string, MatchResult>()
+  allMatchResults.forEach((mr) => {
+    matchResultsMap.set(mr.matchId, mr)
+  })
+
+  // Create a map of sessions by sessionId for dates
+  const sessionsMap = new Map<string, { date: string }>()
+  state.sessions.forEach((s) => {
+    sessionsMap.set(s.id, { date: s.date })
+  })
 
   statistics.forEach((stat) => {
     // Group matchPlayers by matchId
@@ -375,7 +404,7 @@ const getPlayerComparison = async (
       matchGroups.get(mp.matchId)!.push(mp)
     })
 
-    matchGroups.forEach((matchPlayers) => {
+    matchGroups.forEach((matchPlayers, matchId) => {
       const { team1, team2 } = getTeamStructure(matchPlayers)
       const player1InTeam1 = team1.includes(playerId1)
       const player1InTeam2 = team2.includes(playerId1)
@@ -384,18 +413,167 @@ const getPlayerComparison = async (
 
       // Check if both players are in the same match
       if ((player1InTeam1 || player1InTeam2) && (player2InTeam1 || player2InTeam2)) {
-        // Both players are in the same match
         const sameTeam = (player1InTeam1 && player2InTeam1) || (player1InTeam2 && player2InTeam2)
+        
         if (sameTeam) {
           partnerCount++
         } else {
           opponentCount++
         }
+
+        // If there's a match result, add to head-to-head
+        const matchResult = matchResultsMap.get(matchId)
+        if (matchResult) {
+          const match = allMatches.find((m) => m.id === matchId)
+          const session = match ? sessionsMap.get(match.sessionId) : null
+          
+          if (session) {
+            const player1Team: 'team1' | 'team2' = player1InTeam1 ? 'team1' : 'team2'
+            const player2Team: 'team1' | 'team2' = player2InTeam1 ? 'team1' : 'team2'
+            
+            // Determine who won
+            let player1WonThisMatch = false
+            if (sameTeam) {
+              // They played together - both win or both lose
+              player1WonThisMatch = matchResult.winnerTeam === player1Team
+            } else {
+              // They played against each other
+              player1WonThisMatch = matchResult.winnerTeam === player1Team
+            }
+
+            headToHeadMatches.push({
+              matchId,
+              date: session.date,
+              sessionId: match!.sessionId,
+              player1Won: player1WonThisMatch,
+              player1Team,
+              player2Team,
+              scoreData: matchResult.scoreData,
+              sport: matchResult.sport,
+              wasPartner: sameTeam
+            })
+
+            // Count wins for head-to-head (only when playing against each other)
+            if (!sameTeam) {
+              if (player1WonThisMatch) {
+                player1Wins++
+              } else {
+                player2Wins++
+              }
+            }
+          }
+        }
       }
     })
   })
 
-  return { partnerCount, opponentCount }
+  // Sort head-to-head matches by date (newest first)
+  headToHeadMatches.sort((a, b) => b.date.localeCompare(a.date))
+
+  return {
+    partnerCount,
+    opponentCount,
+    headToHeadMatches,
+    player1Wins,
+    player2Wins
+  }
+}
+
+/**
+ * Gets recent match results for a player.
+ * @param playerId - Player ID
+ * @param limit - Maximum number of results to return (default: 5)
+ * @returns Array of recent match results with details
+ */
+const getPlayerRecentMatches = async (
+  playerId: string,
+  limit: number = 5
+): Promise<PlayerMatchResult[]> => {
+  const [allMatchResults, allMatches, allMatchPlayers, state] = await Promise.all([
+    getMatchResults(),
+    getMatches(),
+    getMatchPlayers(),
+    getStateCopy()
+  ])
+
+  // Create maps for quick lookup
+  const matchResultsMap = new Map<string, MatchResult>()
+  allMatchResults.forEach((mr) => {
+    matchResultsMap.set(mr.matchId, mr)
+  })
+
+  const sessionsMap = new Map<string, { date: string }>()
+  state.sessions.forEach((s) => {
+    sessionsMap.set(s.id, { date: s.date })
+  })
+
+  const matchPlayersByMatch = new Map<string, MatchPlayer[]>()
+  allMatchPlayers.forEach((mp) => {
+    if (!matchPlayersByMatch.has(mp.matchId)) {
+      matchPlayersByMatch.set(mp.matchId, [])
+    }
+    matchPlayersByMatch.get(mp.matchId)!.push(mp)
+  })
+
+  // Find all matches where player participated and has a result
+  const playerMatches: PlayerMatchResult[] = []
+
+  for (const matchResult of allMatchResults) {
+    const matchPlayers = matchPlayersByMatch.get(matchResult.matchId) || []
+    const playerInMatch = matchPlayers.some((mp) => mp.playerId === playerId)
+    
+    if (!playerInMatch) continue
+
+    const match = allMatches.find((m) => m.id === matchResult.matchId)
+    if (!match) continue
+
+    const session = sessionsMap.get(match.sessionId)
+    if (!session) continue
+
+    const { team1, team2 } = getTeamStructure(matchPlayers)
+    const playerInTeam1 = team1.includes(playerId)
+    const playerInTeam2 = team2.includes(playerId)
+    const playerTeam: 'team1' | 'team2' = playerInTeam1 ? 'team1' : 'team2'
+    
+    // Get opponent/partner names
+    // Partners are on the same team, opponents are on the opposite team
+    const partnerIds = playerInTeam1 
+      ? team1.filter(id => id !== playerId)
+      : team2.filter(id => id !== playerId)
+    
+    const opponentIds = playerInTeam1 
+      ? team2
+      : team1
+    
+    // Combine partners and opponents for display (partners first, then opponents)
+    const otherPlayerIds = [...partnerIds, ...opponentIds]
+    
+    const opponentNames = otherPlayerIds.map((pid) => {
+      const player = state.players.find((p) => p.id === pid)
+      return player?.name || 'Ukendt spiller'
+    })
+
+    // wasPartner is true if there are partners (same team), false if only opponents
+    const wasPartner = partnerIds.length > 0
+
+    const won = matchResult.winnerTeam === playerTeam
+
+    playerMatches.push({
+      matchId: matchResult.matchId,
+      date: session.date,
+      sessionId: match.sessionId,
+      opponentNames,
+      wasPartner,
+      won,
+      scoreData: matchResult.scoreData,
+      sport: matchResult.sport
+    })
+  }
+
+  // Sort by date (newest first) and return top N
+  return playerMatches
+    .sort((a, b) => b.date.localeCompare(a.date))
+    .slice(0, limit)
 }
 
 /**
@@ -554,6 +732,111 @@ const getPlayerStatistics = async (
     preferredCategory = 'Double'
   }
 
+  // Calculate match result statistics
+  const [allMatchResults, allMatches, allMatchPlayers] = await Promise.all([
+    getMatchResults(),
+    getMatches(),
+    getMatchPlayers()
+  ])
+
+  // Create maps for quick lookup
+  const matchResultsMap = new Map<string, MatchResult>()
+  allMatchResults.forEach((mr) => {
+    matchResultsMap.set(mr.matchId, mr)
+  })
+
+  const matchPlayersByMatch = new Map<string, MatchPlayer[]>()
+  allMatchPlayers.forEach((mp) => {
+    if (!matchPlayersByMatch.has(mp.matchId)) {
+      matchPlayersByMatch.set(mp.matchId, [])
+    }
+    matchPlayersByMatch.get(mp.matchId)!.push(mp)
+  })
+
+  // Filter match results by relevant stats (same filters as above)
+  let relevantMatchResults = allMatchResults.filter((mr) => {
+    const match = allMatches.find((m) => m.id === mr.matchId)
+    if (!match) return false
+    
+    const session = state.sessions.find((s) => s.id === match.sessionId)
+    if (!session) return false
+
+    // Check if player was in this match
+    const matchPlayers = matchPlayersByMatch.get(mr.matchId) || []
+    if (!matchPlayers.some((mp) => mp.playerId === playerId)) return false
+
+    // Apply filters
+    if (filters?.season) {
+      const season = getSeasonFromDate(session.date)
+      if (season !== filters.season) return false
+    }
+    if (filters?.dateFrom && session.date < filters.dateFrom) return false
+    if (filters?.dateTo && session.date > filters.dateTo) return false
+
+    return true
+  })
+
+  // Calculate wins/losses
+  let totalWins = 0
+  let totalLosses = 0
+  const winsBySeason: Record<string, number> = {}
+  const lossesBySeason: Record<string, number> = {}
+  let totalScoreDifference = 0
+  let scoreDifferenceCount = 0
+
+  relevantMatchResults.forEach((matchResult) => {
+    const match = allMatches.find((m) => m.id === matchResult.matchId)
+    if (!match) return
+
+    const session = state.sessions.find((s) => s.id === match.sessionId)
+    if (!session) return
+
+    const matchPlayers = matchPlayersByMatch.get(matchResult.matchId) || []
+    const { team1, team2 } = getTeamStructure(matchPlayers)
+    const playerInTeam1 = team1.includes(playerId)
+    const playerInTeam2 = team2.includes(playerId)
+    const playerTeam: 'team1' | 'team2' = playerInTeam1 ? 'team1' : 'team2'
+    
+    const won = matchResult.winnerTeam === playerTeam
+    const season = getSeasonFromDate(session.date)
+
+    if (won) {
+      totalWins++
+      winsBySeason[season] = (winsBySeason[season] || 0) + 1
+    } else {
+      totalLosses++
+      lossesBySeason[season] = (lossesBySeason[season] || 0) + 1
+    }
+
+    // Calculate score difference for badminton
+    if (matchResult.sport === 'badminton' && 'sets' in matchResult.scoreData) {
+      const scoreData = matchResult.scoreData as { sets: Array<{ team1: number; team2: number }> }
+      let playerScore = 0
+      let opponentScore = 0
+      
+      scoreData.sets.forEach((set) => {
+        if (playerTeam === 'team1') {
+          playerScore += set.team1
+          opponentScore += set.team2
+        } else {
+          playerScore += set.team2
+          opponentScore += set.team1
+        }
+      })
+
+      const diff = playerScore - opponentScore
+      totalScoreDifference += diff
+      scoreDifferenceCount++
+    }
+  })
+
+  const matchesWithResults = relevantMatchResults.length
+  const winRate = matchesWithResults > 0 ? (totalWins / matchesWithResults) * 100 : 0
+  const averageScoreDifference = scoreDifferenceCount > 0 ? totalScoreDifference / scoreDifferenceCount : null
+
+  // Get recent matches
+  const recentMatches = await getPlayerRecentMatches(playerId, 5)
+
   return {
     playerId,
     totalCheckIns,
@@ -565,7 +848,16 @@ const getPlayerStatistics = async (
     preferredCategory,
     averageLevelDifference,
     mostPlayedCourt,
-    lastPlayedDate
+    lastPlayedDate,
+    // Match result statistics
+    totalWins,
+    totalLosses,
+    winRate,
+    matchesWithResults,
+    averageScoreDifference,
+    winsBySeason,
+    lossesBySeason,
+    recentMatches
   }
 }
 
@@ -778,6 +1070,390 @@ const generateDummyHistoricalData = async (): Promise<void> => {
 }
 
 /**
+ * Gets training group attendance statistics.
+ * @param dateFrom - Optional start date filter (ISO string)
+ * @param dateTo - Optional end date filter (ISO string)
+ * @param groupNames - Optional array of training group names to filter by
+ * @returns Array of training group attendance data
+ */
+const getTrainingGroupAttendance = async (
+  dateFrom?: string,
+  dateTo?: string,
+  groupNames?: string[]
+): Promise<TrainingGroupAttendance[]> => {
+  const [statistics, state] = await Promise.all([
+    getStatisticsSnapshots(),
+    getStateCopy()
+  ])
+
+  // Filter statistics by date range if provided
+  let relevantStats = statistics
+  if (dateFrom || dateTo) {
+    relevantStats = statistics.filter((stat) => {
+      if (dateFrom && stat.sessionDate < dateFrom) return false
+      if (dateTo && stat.sessionDate > dateTo) return false
+      return true
+    })
+  }
+
+  // Group check-ins by training group
+  const groupStats = new Map<string, {
+    checkInCount: number
+    uniquePlayers: Set<string>
+    sessions: Set<string>
+  }>()
+
+  relevantStats.forEach((stat) => {
+    const checkIns = Array.isArray(stat.checkIns) ? stat.checkIns : []
+    
+    checkIns.forEach((checkIn) => {
+      const player = state.players.find((p) => p.id === checkIn.playerId)
+      if (!player) return
+
+      const trainingGroups = player.trainingGroups || []
+      
+      trainingGroups.forEach((groupName) => {
+        if (!groupName) return
+        
+        // Filter by group names if provided
+        if (groupNames && groupNames.length > 0 && !groupNames.includes(groupName)) {
+          return
+        }
+
+        if (!groupStats.has(groupName)) {
+          groupStats.set(groupName, {
+            checkInCount: 0,
+            uniquePlayers: new Set(),
+            sessions: new Set()
+          })
+        }
+
+        const stats = groupStats.get(groupName)!
+        stats.checkInCount++
+        stats.uniquePlayers.add(checkIn.playerId)
+        stats.sessions.add(stat.sessionId)
+      })
+    })
+  })
+
+  // Convert to array and calculate averages
+  const result: TrainingGroupAttendance[] = Array.from(groupStats.entries()).map(([groupName, stats]) => {
+    const uniqueSessions = stats.sessions.size
+    const averageAttendance = uniqueSessions > 0 ? stats.checkInCount / uniqueSessions : 0
+
+    return {
+      groupName,
+      checkInCount: stats.checkInCount,
+      uniquePlayers: stats.uniquePlayers.size,
+      sessions: uniqueSessions,
+      averageAttendance: Math.round(averageAttendance * 10) / 10 // Round to 1 decimal
+    }
+  })
+
+  // Sort by group name
+  return result.sort((a, b) => a.groupName.localeCompare(b.groupName))
+}
+
+/**
+ * Gets weekday attendance statistics for comparing training attendance across weekdays.
+ * @param dateFrom - Optional start date filter (ISO string)
+ * @param dateTo - Optional end date filter (ISO string)
+ * @param groupNames - Optional array of training group names to filter by
+ * @returns Array of weekday attendance data
+ */
+const getWeekdayAttendance = async (
+  dateFrom?: string,
+  dateTo?: string,
+  groupNames?: string[]
+): Promise<WeekdayAttendance[]> => {
+  const [statistics, state] = await Promise.all([
+    getStatisticsSnapshots(),
+    getStateCopy()
+  ])
+
+  // Filter statistics by date range if provided
+  let relevantStats = statistics
+  if (dateFrom || dateTo) {
+    relevantStats = statistics.filter((stat) => {
+      if (dateFrom && stat.sessionDate < dateFrom) return false
+      if (dateTo && stat.sessionDate > dateTo) return false
+      return true
+    })
+  }
+
+  // Danish weekday names
+  const weekdayNames = ['Søndag', 'Mandag', 'Tirsdag', 'Onsdag', 'Torsdag', 'Fredag', 'Lørdag']
+
+  // Group check-ins by weekday
+  const weekdayStats = new Map<number, {
+    checkInCount: number
+    uniquePlayers: Set<string>
+    sessions: Set<string>
+  }>()
+
+  relevantStats.forEach((stat) => {
+    // Get weekday from session date
+    const sessionDate = new Date(stat.sessionDate)
+    const weekday = sessionDate.getDay() // 0 = Sunday, 1 = Monday, ..., 6 = Saturday
+
+    const checkIns = Array.isArray(stat.checkIns) ? stat.checkIns : []
+    
+    checkIns.forEach((checkIn) => {
+      const player = state.players.find((p) => p.id === checkIn.playerId)
+      if (!player) return
+
+      // Filter by training groups if provided
+      if (groupNames && groupNames.length > 0) {
+        const playerGroups = player.trainingGroups || []
+        const hasMatchingGroup = groupNames.some(groupName => playerGroups.includes(groupName))
+        if (!hasMatchingGroup) return
+      }
+
+      if (!weekdayStats.has(weekday)) {
+        weekdayStats.set(weekday, {
+          checkInCount: 0,
+          uniquePlayers: new Set(),
+          sessions: new Set()
+        })
+      }
+
+      const stats = weekdayStats.get(weekday)!
+      stats.checkInCount++
+      stats.uniquePlayers.add(checkIn.playerId)
+      stats.sessions.add(stat.sessionId)
+    })
+  })
+
+  // Convert to array and calculate averages
+  const result: WeekdayAttendance[] = Array.from(weekdayStats.entries()).map(([weekday, stats]) => {
+    const uniqueSessions = stats.sessions.size
+    const averageAttendance = uniqueSessions > 0 ? stats.checkInCount / uniqueSessions : 0
+
+    return {
+      weekday,
+      weekdayName: weekdayNames[weekday],
+      checkInCount: stats.checkInCount,
+      uniquePlayers: stats.uniquePlayers.size,
+      sessions: uniqueSessions,
+      averageAttendance: Math.round(averageAttendance * 10) / 10 // Round to 1 decimal
+    }
+  })
+
+  // Sort by weekday (Monday = 1 first, then Tuesday = 2, etc., Sunday = 0 last)
+  return result.sort((a, b) => {
+    // Convert Sunday (0) to 7 for sorting purposes
+    const aWeekday = a.weekday === 0 ? 7 : a.weekday
+    const bWeekday = b.weekday === 0 ? 7 : b.weekday
+    return aWeekday - bWeekday
+  })
+}
+
+/**
+ * Gets player check-in long-tail statistics (check-ins per player).
+ * @param dateFrom - Optional start date filter (ISO string)
+ * @param dateTo - Optional end date filter (ISO string)
+ * @param groupNames - Optional array of training group names to filter by
+ * @returns Array of player check-in data sorted by check-in count (descending)
+ */
+const getPlayerCheckInLongTail = async (
+  dateFrom?: string,
+  dateTo?: string,
+  groupNames?: string[]
+): Promise<PlayerCheckInLongTail[]> => {
+  const [statistics, state] = await Promise.all([
+    getStatisticsSnapshots(),
+    getStateCopy()
+  ])
+
+  // Filter statistics by date range if provided
+  let relevantStats = statistics
+  if (dateFrom || dateTo) {
+    relevantStats = statistics.filter((stat) => {
+      if (dateFrom && stat.sessionDate < dateFrom) return false
+      if (dateTo && stat.sessionDate > dateTo) return false
+      return true
+    })
+  }
+
+  // Count check-ins per player
+  const playerCheckIns = new Map<string, number>()
+
+  relevantStats.forEach((stat) => {
+    const checkIns = Array.isArray(stat.checkIns) ? stat.checkIns : []
+    
+    checkIns.forEach((checkIn) => {
+      const player = state.players.find((p) => p.id === checkIn.playerId)
+      if (!player) return
+
+      // Filter by training groups if provided
+      if (groupNames && groupNames.length > 0) {
+        const playerGroups = player.trainingGroups || []
+        const hasMatchingGroup = groupNames.some(groupName => playerGroups.includes(groupName))
+        if (!hasMatchingGroup) return
+      }
+
+      playerCheckIns.set(checkIn.playerId, (playerCheckIns.get(checkIn.playerId) || 0) + 1)
+    })
+  })
+
+  // Convert to array
+  const result: PlayerCheckInLongTail[] = Array.from(playerCheckIns.entries()).map(([playerId, checkInCount]) => {
+    const player = state.players.find((p) => p.id === playerId)
+    return {
+      playerId,
+      playerName: player?.name || 'Ukendt spiller',
+      checkInCount
+    }
+  })
+
+  // Sort by check-in count (descending)
+  return result.sort((a, b) => b.checkInCount - a.checkInCount)
+}
+
+/**
+ * Gets weekday attendance over time (time series data).
+ * @param dateFrom - Optional start date filter (ISO string)
+ * @param dateTo - Optional end date filter (ISO string)
+ * @param groupNames - Optional array of training group names to filter by
+ * @returns Array of weekday attendance data over time
+ */
+const getWeekdayAttendanceOverTime = async (
+  dateFrom?: string,
+  dateTo?: string,
+  groupNames?: string[]
+): Promise<WeekdayAttendanceOverTime[]> => {
+  const [statistics, state] = await Promise.all([
+    getStatisticsSnapshots(),
+    getStateCopy()
+  ])
+
+  // Filter statistics by date range if provided
+  let relevantStats = statistics
+  if (dateFrom || dateTo) {
+    relevantStats = statistics.filter((stat) => {
+      if (dateFrom && stat.sessionDate < dateFrom) return false
+      if (dateTo && stat.sessionDate > dateTo) return false
+      return true
+    })
+  }
+
+  // Danish weekday names
+  const weekdayNames = ['Søndag', 'Mandag', 'Tirsdag', 'Onsdag', 'Torsdag', 'Fredag', 'Lørdag']
+
+  // Group by date and weekday
+  const dateWeekdayStats = new Map<string, {
+    checkInCount: number
+    sessions: Set<string>
+  }>()
+
+  relevantStats.forEach((stat) => {
+    const sessionDate = new Date(stat.sessionDate)
+    const weekday = sessionDate.getDay()
+    const dateKey = `${stat.sessionDate}_${weekday}`
+
+    const checkIns = Array.isArray(stat.checkIns) ? stat.checkIns : []
+    
+    let sessionCheckInCount = 0
+    checkIns.forEach((checkIn) => {
+      const player = state.players.find((p) => p.id === checkIn.playerId)
+      if (!player) return
+
+      // Filter by training groups if provided
+      if (groupNames && groupNames.length > 0) {
+        const playerGroups = player.trainingGroups || []
+        const hasMatchingGroup = groupNames.some(groupName => playerGroups.includes(groupName))
+        if (!hasMatchingGroup) return
+      }
+
+      sessionCheckInCount++
+    })
+
+    if (!dateWeekdayStats.has(dateKey)) {
+      dateWeekdayStats.set(dateKey, {
+        checkInCount: 0,
+        sessions: new Set()
+      })
+    }
+
+    const stats = dateWeekdayStats.get(dateKey)!
+    stats.checkInCount += sessionCheckInCount
+    stats.sessions.add(stat.sessionId)
+  })
+
+  // Convert to array
+  const result: WeekdayAttendanceOverTime[] = Array.from(dateWeekdayStats.entries()).map(([dateKey, stats]) => {
+    const [date, weekdayStr] = dateKey.split('_')
+    const weekday = parseInt(weekdayStr, 10)
+    const averageAttendance = stats.sessions.size > 0 ? stats.checkInCount / stats.sessions.size : 0
+
+    return {
+      date,
+      weekday,
+      weekdayName: weekdayNames[weekday],
+      checkInCount: stats.checkInCount,
+      averageAttendance: Math.round(averageAttendance * 10) / 10
+    }
+  })
+
+  // Sort by date (ascending)
+  return result.sort((a, b) => a.date.localeCompare(b.date))
+}
+
+/**
+ * Gets comparison between the two most active training days.
+ * @param dateFrom - Optional start date filter (ISO string)
+ * @param dateTo - Optional end date filter (ISO string)
+ * @param groupNames - Optional array of training group names to filter by
+ * @returns Comparison data between the two most active training days
+ */
+const getTrainingDayComparison = async (
+  dateFrom?: string,
+  dateTo?: string,
+  groupNames?: string[]
+): Promise<TrainingDayComparison | null> => {
+  const weekdayData = await getWeekdayAttendance(dateFrom, dateTo, groupNames)
+  
+  if (weekdayData.length < 2) {
+    return null
+  }
+
+  // Sort by check-in count (descending) and take top 2
+  const sortedDays = [...weekdayData].sort((a, b) => b.checkInCount - a.checkInCount)
+  const day1 = sortedDays[0]
+  const day2 = sortedDays[1]
+
+  const checkInDiff = day1.checkInCount - day2.checkInCount
+  const avgDiff = day1.averageAttendance - day2.averageAttendance
+  const percentageDiff = day2.checkInCount > 0 
+    ? ((checkInDiff / day2.checkInCount) * 100) 
+    : 0
+
+  return {
+    day1: {
+      weekday: day1.weekday,
+      weekdayName: day1.weekdayName,
+      checkInCount: day1.checkInCount,
+      uniquePlayers: day1.uniquePlayers,
+      sessions: day1.sessions,
+      averageAttendance: day1.averageAttendance
+    },
+    day2: {
+      weekday: day2.weekday,
+      weekdayName: day2.weekdayName,
+      checkInCount: day2.checkInCount,
+      uniquePlayers: day2.uniquePlayers,
+      sessions: day2.sessions,
+      averageAttendance: day2.averageAttendance
+    },
+    difference: {
+      checkInCount: checkInDiff,
+      averageAttendance: avgDiff,
+      percentageDifference: Math.round(percentageDiff * 10) / 10
+    }
+  }
+}
+
+/**
  * Searches match results based on filters.
  */
 const searchMatchResults = async (filters: {
@@ -870,7 +1546,13 @@ const statsApi = {
   getSessionHistory,
   generateDummyHistoricalData,
   getPlayerComparison,
-  searchMatchResults
+  searchMatchResults,
+  getPlayerRecentMatches,
+  getTrainingGroupAttendance,
+  getWeekdayAttendance,
+  getPlayerCheckInLongTail,
+  getWeekdayAttendanceOverTime,
+  getTrainingDayComparison
 }
 
 export default statsApi
