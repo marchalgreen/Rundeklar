@@ -4,6 +4,8 @@
  * This ensures demo users don't see each other's data.
  */
 
+import { logger } from './utils/logger'
+
 const ISOLATION_ID_KEY = 'rundeklar_isolation_id'
 
 /**
@@ -30,12 +32,12 @@ export const getIsolationId = (tenantId: string): string | null => {
       // Generate new UUID for this browser session
       isolationId = crypto.randomUUID()
       localStorage.setItem(ISOLATION_ID_KEY, isolationId)
-      console.log('[isolation] Generated new isolation_id:', isolationId)
+      logger.debug('[isolation] Generated new isolation_id', isolationId)
     }
     
     return isolationId
   } catch (error) {
-    console.error('[isolation] Failed to get isolation_id:', error)
+    logger.error('[isolation] Failed to get isolation_id', error)
     return null
   }
 }
@@ -48,9 +50,9 @@ export const clearIsolationId = (): void => {
   if (typeof window === 'undefined') return
   try {
     localStorage.removeItem(ISOLATION_ID_KEY)
-    console.log('[isolation] Cleared isolation_id')
+    logger.debug('[isolation] Cleared isolation_id')
   } catch (error) {
-    console.error('[isolation] Failed to clear isolation_id:', error)
+    logger.error('[isolation] Failed to clear isolation_id', error)
   }
 }
 

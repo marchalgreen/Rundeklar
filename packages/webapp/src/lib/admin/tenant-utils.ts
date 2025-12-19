@@ -2,6 +2,7 @@ import { readdir, readFile, writeFile, mkdir } from 'fs/promises'
 import { join, dirname } from 'path'
 import { fileURLToPath } from 'url'
 import type { TenantConfig } from '@rundeklar/common'
+import { logger } from '../utils/logger'
 
 const __filename = fileURLToPath(import.meta.url)
 const __dirname = dirname(__filename)
@@ -272,7 +273,7 @@ export async function getAllTenantConfigs(): Promise<TenantConfig[]> {
     }
     
     if (!tenantsDir) {
-      console.warn('Tenant configs directory not found. Tried:', possiblePaths)
+      logger.warn('Tenant configs directory not found. Tried:', possiblePaths)
       return []
     }
     
@@ -287,7 +288,7 @@ export async function getAllTenantConfigs(): Promise<TenantConfig[]> {
           const config = JSON.parse(configContent) as TenantConfig
           configs.push(config)
         } catch (error) {
-          console.warn(`Failed to read tenant config ${file}:`, error)
+          logger.warn(`Failed to read tenant config ${file}`, error)
           // Ignore errors reading config
         }
       }
@@ -295,7 +296,7 @@ export async function getAllTenantConfigs(): Promise<TenantConfig[]> {
     
     return configs
   } catch (error) {
-    console.error('Failed to get tenant configs:', error)
+    logger.error('Failed to get tenant configs', error)
     return []
   }
 }
@@ -328,7 +329,7 @@ export async function getTenantConfig(tenantId: string): Promise<TenantConfig | 
     
     return null
   } catch (error) {
-    console.error(`Failed to get tenant config for ${tenantId}:`, error)
+    logger.error(`Failed to get tenant config for ${tenantId}`, error)
     return null
   }
 }

@@ -2,6 +2,7 @@
 // We use an API proxy approach: browser calls Vercel API routes, which use postgres.js
 // This type is just for compatibility - actual queries go through API routes
 import type { TenantConfig } from '@rundeklar/common'
+import { logger } from './utils/logger'
 
 export type PostgresClient = {
   // Placeholder type - actual implementation is in api/postgres.ts
@@ -32,8 +33,8 @@ export const createTenantPostgresClient = (config: TenantConfig): PostgresClient
 
   // Log connection info in development
   if (import.meta.env.DEV) {
-    console.log(`Postgres client proxy initialized for tenant "${config.id}"`)
-    console.log('Note: Actual queries are proxied through Vercel API routes to Neon database')
+    logger.debug(`Postgres client proxy initialized for tenant "${config.id}"`)
+    logger.debug('Note: Actual queries are proxied through Vercel API routes to Neon database')
   }
 
   // Return a placeholder client object

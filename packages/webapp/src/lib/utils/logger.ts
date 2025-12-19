@@ -3,19 +3,30 @@
  * In production, these should be sent to a proper logging service
  */
 
-const isDevelopment = process.env.NODE_ENV === 'development'
+const isTest =
+  typeof process !== 'undefined' && Boolean(process.env?.VITEST || process.env?.NODE_ENV === 'test')
+
+const isDevelopment =
+  !isTest &&
+  // Vite (browser + tests)
+  (typeof import.meta !== 'undefined' && Boolean((import.meta as any).env?.DEV)) ||
+  // Node (scripts / server)
+  (typeof process !== 'undefined' && process.env?.NODE_ENV === 'development')
 
 export const logger = {
   error: (message: string, error?: unknown) => {
-    // Always log errors
+    // Guardrail: avoid console.* in production runtime.
+    if (!isDevelopment) return
+
     if (error instanceof Error) {
       console.error(`[ERROR] ${message}`, {
         message: error.message,
-        stack: isDevelopment ? error.stack : undefined
+        stack: error.stack
       })
-    } else {
-      console.error(`[ERROR] ${message}`, error)
+      return
     }
+
+    console.error(`[ERROR] ${message}`, error)
   },
   
   warn: (message: string, ...args: unknown[]) => {

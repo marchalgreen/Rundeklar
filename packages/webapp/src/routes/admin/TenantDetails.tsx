@@ -2,6 +2,7 @@ import React, { useState, useEffect, useCallback } from 'react'
 import { PageCard } from '../../components/ui'
 import { Button } from '../../components/ui'
 import { formatCoachUsername } from '../../lib/formatting'
+import { logger } from '../../lib/utils/logger'
 
 interface TenantDetails {
   id: string
@@ -90,7 +91,7 @@ export default function TenantDetailsPage({ tenantId, onClose }: TenantDetailsPa
         setAdmins(data.admins || [])
       }
     } catch (err) {
-      console.error('Failed to fetch admins:', err)
+      logger.error('Failed to fetch admins', err)
     }
   }, [tenantId])
 
@@ -112,7 +113,7 @@ export default function TenantDetailsPage({ tenantId, onClose }: TenantDetailsPa
         setCoaches(data.coaches || [])
       }
     } catch (err) {
-      console.error('Failed to fetch coaches:', err)
+      logger.error('Failed to fetch coaches', err)
     }
   }, [tenantId])
 

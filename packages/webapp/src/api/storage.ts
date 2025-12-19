@@ -7,6 +7,7 @@ import type {
   MatchPlayer,
   StatisticsSnapshot
 } from '@rundeklar/common'
+import { logger } from '../lib/utils/logger'
 
 /** LocalStorage key for database state. */
 const STORAGE_KEY = 'herlev-hjorten-db-v2'
@@ -336,7 +337,7 @@ export const createBackup = (): void => {
     try {
       storage.setItem(BACKUP_STORAGE_KEY, JSON.stringify(state))
     } catch (err) {
-      console.error('Failed to create backup:', err)
+      logger.error('Failed to create backup', err)
     }
   }
 }
@@ -357,7 +358,7 @@ export const restoreFromBackup = (): boolean => {
         persistState()
         return true
       } catch (err) {
-        console.error('Failed to restore from backup:', err)
+        logger.error('Failed to restore from backup', err)
         return false
       }
     }

@@ -5,6 +5,7 @@ import { loadTenantConfig, buildTenantPath } from '../lib/tenant'
 import { createTenantPostgresClient, setCurrentTenantPostgresClient, setCurrentTenantConfig } from '../lib/postgres'
 import { invalidateCache } from '../api/postgres'
 import { peekIsolationId } from '../lib/isolation'
+import { logger } from '../lib/utils/logger'
 
 interface TenantContextValue {
   tenantId: string
@@ -43,7 +44,7 @@ export const TenantProvider: React.FC<TenantProviderProps> = ({ tenantId, childr
         }
       } catch (err) {
         if (!cancelled) {
-          console.error(`Failed to load tenant config for "${tenantId}":`, err)
+          logger.error(`Failed to load tenant config for "${tenantId}"`, err)
           setError(err instanceof Error ? err.message : 'Unknown error')
         }
       } finally {

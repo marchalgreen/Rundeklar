@@ -4,6 +4,8 @@
  * Uses sessionStorage to maintain session_id across page navigations
  */
 
+import { logger } from '../utils/logger'
+
 const SESSION_STORAGE_KEY = 'analytics_session_id'
 const TRACKED_PAGES_KEY = 'analytics_tracked_pages'
 const API_ENDPOINT = '/api/analytics/track'
@@ -174,7 +176,7 @@ export async function trackPageView(tenantId: string): Promise<void> {
     
     // Check if we've already tracked this page view in this session
     if (hasTrackedPageView(tenantId, path)) {
-      console.debug(`[Analytics] Skipping duplicate page view: ${tenantId}:${path}`)
+      logger.debug(`[Analytics] Skipping duplicate page view: ${tenantId}:${path}`)
       return
     }
 
@@ -210,11 +212,11 @@ export async function trackPageView(tenantId: string): Promise<void> {
       keepalive: true // Ensures request completes even if page unloads
     }).catch((error) => {
       // Silently fail - tracking should not break the app
-      console.debug('Analytics tracking failed:', error)
+      logger.debug('Analytics tracking failed', error)
     })
   } catch (error) {
     // Silently fail - tracking should not break the app
-    console.debug('Analytics tracking error:', error)
+    logger.debug('Analytics tracking error', error)
   }
 }
 
@@ -261,10 +263,10 @@ export async function trackConversion(
       body: JSON.stringify(payload),
       keepalive: true
     }).catch((error) => {
-      console.debug('Conversion tracking failed:', error)
+      logger.debug('Conversion tracking failed', error)
     })
   } catch (error) {
-    console.debug('Conversion tracking error:', error)
+    logger.debug('Conversion tracking error', error)
   }
 }
 

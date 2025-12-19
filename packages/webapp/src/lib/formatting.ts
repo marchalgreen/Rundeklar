@@ -6,6 +6,7 @@
  */
 
 import { DATE_CONSTANTS } from '../constants/index.js'
+import { logger } from './utils/logger'
 
 /**
  * Formats a date string to Danish locale format.
@@ -41,7 +42,7 @@ export const formatDate = (
       ...(includeTime && { timeStyle: DATE_CONSTANTS.TIME_STYLE }),
     }).format(date)
   } catch (error) {
-    console.error('Error formatting date:', error)
+    logger.error('Error formatting date', error)
     return 'Ugyldig dato'
   }
 }
@@ -123,7 +124,7 @@ export const formatNumber = (value: number | null | undefined, decimals = 0): st
       maximumFractionDigits: decimals,
     }).format(value)
   } catch (error) {
-    console.error('Error formatting number:', error)
+    logger.error('Error formatting number', error)
     return String(value)
   }
 }

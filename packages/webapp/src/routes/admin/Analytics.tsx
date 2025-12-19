@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useCallback } from 'react'
 import { PageCard } from '../../components/ui'
 import { BarChart3, Users, Eye, TrendingUp, Calendar } from 'lucide-react'
+import { logger } from '../../lib/utils/logger'
 
 interface AnalyticsData {
   summary: {
@@ -114,9 +115,9 @@ export default function AnalyticsPage() {
       }
       
       if (import.meta.env.DEV) {
-        console.log('Parsed data:', {
+        logger.debug('Parsed data', {
           total_views: parsedData.summary.total_views,
-          tenant_views: parsedData.views_by_tenant.map(t => ({ tenant: t.tenant_id, views: t.total_views }))
+          tenant_views: parsedData.views_by_tenant.map((t) => ({ tenant: t.tenant_id, views: t.total_views }))
         })
       }
       

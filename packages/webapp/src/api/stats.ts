@@ -8,6 +8,7 @@ import type {
   MatchResult
 } from '@rundeklar/common'
 import { createId, getStateCopy, getStatisticsSnapshots, createStatisticsSnapshot, createSession, createCheckIn, getMatches, getMatchPlayers, getMatchResults, getMatchResultsBySession, invalidateCache } from './postgres'
+import { logger } from '../lib/utils/logger'
 
 /**
  * Determines season from a date string (August to July).
@@ -64,45 +65,45 @@ const getTeamStructure = (matchPlayers: MatchPlayer[]): { team1: string[]; team2
  */
 const snapshotSession = async (sessionId: string): Promise<StatisticsSnapshot> => {
   try {
-    console.log('[snapshotSession] Starting snapshot creation for session', sessionId)
+    logger.info('[snapshotSession] Starting snapshot creation for session', sessionId)
     
     // Invalidate cache to ensure we get fresh data from Postgres
     invalidateCache()
     
     const state = await getStateCopy()
-    console.log('[snapshotSession] State loaded, sessions:', state.sessions.length)
+    logger.debug('[snapshotSession] State loaded, sessions:', state.sessions.length)
     
     const session = state.sessions.find((s) => s.id === sessionId)
     if (!session) {
-      console.error('[snapshotSession] Session not found:', sessionId)
+      logger.error('[snapshotSession] Session not found', sessionId)
       throw new Error('Session ikke fundet')
     }
-    console.log('[snapshotSession] Session found:', { id: session.id, status: session.status, date: session.date })
+    logger.debug('[snapshotSession] Session found', { id: session.id, status: session.status, date: session.date })
     
     if (session.status !== 'ended') {
-      console.error('[snapshotSession] Session not ended:', session.status)
+      logger.error('[snapshotSession] Session not ended', session.status)
       throw new Error('Session er ikke afsluttet')
     }
 
     // Check if snapshot already exists
     const existingSnapshot = state.statistics?.find((s) => s.sessionId === sessionId)
     if (existingSnapshot) {
-      console.log('[snapshotSession] Snapshot already exists for session', sessionId)
+      logger.info('[snapshotSession] Snapshot already exists for session', sessionId)
       return existingSnapshot
     }
 
     const season = getSeasonFromDate(session.date)
-    console.log('[snapshotSession] Season calculated:', season)
+    logger.debug('[snapshotSession] Season calculated', season)
 
     // Directly query Postgres for fresh matches and matchPlayers to avoid stale cache
     // Also get checkIns from fresh state
-    console.log('[snapshotSession] Querying Postgres for matches and matchPlayers...')
+    logger.debug('[snapshotSession] Querying Postgres for matches and matchPlayers...')
     const [allMatches, allMatchPlayers] = await Promise.all([
       getMatches(),
       getMatchPlayers()
     ])
     
-    console.log('[snapshotSession] Retrieved from Postgres:', {
+    logger.debug('[snapshotSession] Retrieved from Postgres', {
       totalMatches: allMatches.length,
       totalMatchPlayers: allMatchPlayers.length
     })
@@ -116,25 +117,31 @@ const snapshotSession = async (sessionId: string): Promise<StatisticsSnapshot> =
     )
     const sessionCheckIns = allCheckIns.filter((c) => c.sessionId === sessionId)
 
-    console.log('[snapshotSession] Filtered session data:', {
+    logger.debug('[snapshotSession] Filtered session data', {
       sessionId,
       matches: sessionMatches.length,
       matchPlayers: sessionMatchPlayers.length,
       checkIns: sessionCheckIns.length,
-      matchIds: sessionMatches.map(m => m.id),
-      matchPlayerDetails: sessionMatchPlayers.map(mp => ({ matchId: mp.matchId, playerId: mp.playerId, slot: mp.slot }))
+      matchIds: sessionMatches.map((m) => m.id),
+      matchPlayerDetails: sessionMatchPlayers.map((mp) => ({ matchId: mp.matchId, playerId: mp.playerId, slot: mp.slot }))
     })
 
     if (sessionMatches.length === 0) {
-      console.warn('[snapshotSession] WARNING: No matches found for session', sessionId)
-      console.warn('[snapshotSession] All matches in database:', allMatches.map(m => ({ id: m.id, sessionId: m.sessionId })))
+      logger.warn('[snapshotSession] WARNING: No matches found for session', sessionId)
+      logger.warn(
+        '[snapshotSession] All matches in database',
+        allMatches.map((m) => ({ id: m.id, sessionId: m.sessionId }))
+      )
     }
     if (sessionMatchPlayers.length === 0) {
-      console.warn('[snapshotSession] WARNING: No matchPlayers found for session', sessionId)
-      console.warn('[snapshotSession] All matchPlayers in database:', allMatchPlayers.map(mp => ({ matchId: mp.matchId, playerId: mp.playerId })))
+      logger.warn('[snapshotSession] WARNING: No matchPlayers found for session', sessionId)
+      logger.warn(
+        '[snapshotSession] All matchPlayers in database',
+        allMatchPlayers.map((mp) => ({ matchId: mp.matchId, playerId: mp.playerId }))
+      )
     }
 
-    console.log('[snapshotSession] Creating snapshot with data:', {
+    logger.debug('[snapshotSession] Creating snapshot with data', {
       sessionId: session.id,
       sessionDate: session.date,
       season,
@@ -152,8 +159,8 @@ const snapshotSession = async (sessionId: string): Promise<StatisticsSnapshot> =
       checkIns: sessionCheckIns.map((c) => ({ ...c }))
     })
 
-    console.log('[snapshotSession] Snapshot created successfully', snapshot.id)
-    console.log('[snapshotSession] Snapshot data:', {
+    logger.info('[snapshotSession] Snapshot created successfully', snapshot.id)
+    logger.debug('[snapshotSession] Snapshot data', {
       id: snapshot.id,
       matches: snapshot.matches.length,
       matchPlayers: snapshot.matchPlayers.length,
@@ -162,7 +169,7 @@ const snapshotSession = async (sessionId: string): Promise<StatisticsSnapshot> =
     
     return snapshot
   } catch (error) {
-    console.error('[snapshotSession] Error creating snapshot:', error)
+    logger.error('[snapshotSession] Error creating snapshot', error)
     throw error
   }
 }

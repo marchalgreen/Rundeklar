@@ -18,13 +18,14 @@
  * const response = await fetchWithAuth('/api/data', { method: 'GET' }, refreshToken, getAccessToken)
  * ```
  */
+import { logger } from '../utils/logger'
+
 export async function fetchWithAuth(
   url: string,
   options: RequestInit = {},
   refreshTokenFn: (retryCount?: number) => Promise<boolean>,
   getAccessTokenFn: () => string | null
 ): Promise<Response> {
-  const isDev = typeof window !== 'undefined' && (window as any).import?.meta?.env?.DEV
   const token = getAccessTokenFn()
   
   // Add Authorization header if token exists
@@ -40,9 +41,7 @@ export async function fetchWithAuth(
 
   // If 401, try to refresh and retry once
   if (response.status === 401 && token) {
-    if (isDev) {
-      console.log('[fetchWithAuth] Got 401, attempting token refresh before retry...')
-    }
+    logger.debug('[fetchWithAuth] Got 401, attempting token refresh before retry...')
     
     const refreshSuccess = await refreshTokenFn()
     
@@ -52,15 +51,11 @@ export async function fetchWithAuth(
       
       const newToken = getAccessTokenFn()
       if (!newToken) {
-        if (isDev) {
-          console.warn('[fetchWithAuth] Refresh succeeded but no new token found')
-        }
+        logger.warn('[fetchWithAuth] Refresh succeeded but no new token found')
         return response // Return original 401 response
       }
       
-      if (isDev) {
-        console.log('[fetchWithAuth] Retrying request with new token...')
-      }
+      logger.debug('[fetchWithAuth] Retrying request with new token...')
       
       // Retry original request with new token
       const retryHeaders = new Headers(options.headers)
@@ -71,15 +66,15 @@ export async function fetchWithAuth(
         headers: retryHeaders
       })
       
-      if (isDev) {
-        console.log('[fetchWithAuth] Retry result:', retryResponse.status, retryResponse.ok ? 'success' : 'failed')
-      }
+      logger.debug(
+        '[fetchWithAuth] Retry result',
+        retryResponse.status,
+        retryResponse.ok ? 'success' : 'failed'
+      )
       
       return retryResponse
     } else {
-      if (isDev) {
-        console.warn('[fetchWithAuth] Token refresh failed, returning original 401 response')
-      }
+      logger.warn('[fetchWithAuth] Token refresh failed, returning original 401 response')
     }
   }
 

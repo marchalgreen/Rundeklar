@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react'
 import { PageCard } from '../../components/ui'
 import { Button } from '../../components/ui'
 import { Mail, Send, Eye, Clock, CheckCircle2, XCircle, Trash2 } from 'lucide-react'
+import { logger } from '../../lib/utils/logger'
 
 interface EmailHistory {
   id: string
@@ -65,7 +66,7 @@ export default function ColdCallEmailsPage() {
       const data = await response.json()
       setEmailHistory(data.history || [])
     } catch (err) {
-      console.error('Failed to fetch email history:', err)
+      logger.error('Failed to fetch email history', err)
       const errorMessage = err instanceof Error ? err.message : 'Failed to fetch email history'
       setError(`Kunne ikke hente email historik: ${errorMessage}`)
       setEmailHistory([])

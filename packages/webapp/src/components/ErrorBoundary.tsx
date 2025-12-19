@@ -8,6 +8,7 @@
 import React, { Component, type ReactNode } from 'react'
 import { AlertTriangle } from 'lucide-react'
 import { Button, PageCard } from './ui'
+import { logger } from '../lib/utils/logger'
 
 /**
  * Props for ErrorBoundary component.
@@ -82,9 +83,7 @@ export class ErrorBoundary extends Component<ErrorBoundaryProps, ErrorBoundarySt
     }
 
     // Log error to console in development
-    if (import.meta.env.DEV) {
-      console.error('ErrorBoundary caught an error:', error, errorInfo)
-    }
+    logger.error('ErrorBoundary caught an error', { error, errorInfo })
   }
 
   /**

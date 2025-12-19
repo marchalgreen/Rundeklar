@@ -10,6 +10,7 @@ import type { CheckedInPlayer, Player } from '@rundeklar/common'
 import api from '../api'
 import { normalizeError } from '../lib/errors'
 import { useToast } from '../components/ui/Toast'
+import { logger } from '../lib/utils/logger'
 
 /**
  * Return type for useCheckIns hook.
@@ -168,7 +169,7 @@ export const useCheckIns = (sessionId: string | null): UseCheckInsReturn => {
         playerData = players.find(p => p.id === playerId) || null
       } catch (err) {
         // If we can't get player data, continue anyway - will be loaded on sync
-        console.warn('[useCheckIns] Failed to fetch player data for optimistic update:', err)
+        logger.warn('[useCheckIns] Failed to fetch player data for optimistic update', err)
       }
       
       // Optimistic update: Add player to UI immediately with real data if available

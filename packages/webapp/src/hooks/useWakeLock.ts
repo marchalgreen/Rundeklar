@@ -1,4 +1,5 @@
 import { useEffect, useRef } from 'react'
+import { logger } from '../lib/utils/logger'
 
 /**
  * Hook that prevents the screen from sleeping using the Screen Wake Lock API.
@@ -45,7 +46,7 @@ export const useWakeLock = (enabled: boolean = true) => {
             try {
               wakeLockRef.current = await navigator.wakeLock.request('screen')
             } catch (err) {
-              console.warn('[useWakeLock] Failed to re-request wake lock:', err)
+              logger.warn('[useWakeLock] Failed to re-request wake lock', err)
             }
           }
         }
@@ -61,7 +62,7 @@ export const useWakeLock = (enabled: boolean = true) => {
         })
       } catch (err) {
         // Wake Lock request failed (e.g., user denied permission, battery saver mode)
-        console.warn('[useWakeLock] Failed to request wake lock:', err)
+        logger.warn('[useWakeLock] Failed to request wake lock', err)
         wakeLockRef.current = null
       }
     }
@@ -79,7 +80,7 @@ export const useWakeLock = (enabled: boolean = true) => {
       }
       if (wakeLockRef.current) {
         wakeLockRef.current.release().catch((err) => {
-          console.warn('[useWakeLock] Failed to release wake lock:', err)
+          logger.warn('[useWakeLock] Failed to release wake lock', err)
         })
         wakeLockRef.current = null
       }
@@ -93,7 +94,7 @@ export const useWakeLock = (enabled: boolean = true) => {
         await wakeLockRef.current.release()
         wakeLockRef.current = null
       } catch (err) {
-        console.warn('[useWakeLock] Failed to release wake lock:', err)
+        logger.warn('[useWakeLock] Failed to release wake lock', err)
       }
     }
   }

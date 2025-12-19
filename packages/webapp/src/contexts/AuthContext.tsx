@@ -1,5 +1,6 @@
 import React, { createContext, useContext, useEffect, useState, useCallback } from 'react'
 import { useTenant } from './TenantContext'
+import { logger } from '../lib/utils/logger'
 
 export interface Club {
   id: string
@@ -101,7 +102,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     const refresh = getRefreshToken()
     if (!refresh) {
       if (isDev) {
-        console.warn('[Auth] No refresh token available')
+        logger.warn('[Auth] No refresh token available')
       }
       setClub(null)
       clearTokens()
@@ -109,7 +110,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
 
     if (isDev && retryCount === 0) {
-      console.log('[Auth] Attempting token refresh...')
+      logger.debug('[Auth] Attempting token refresh...')
     }
 
     try {
@@ -125,13 +126,15 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         const data = await response.json()
         localStorage.setItem(ACCESS_TOKEN_KEY, data.accessToken)
         if (isDev) {
-          console.log('[Auth] Token refresh successful', retryCount > 0 ? `(after ${retryCount} retries)` : '')
+          logger.debug('[Auth] Token refresh successful', retryCount > 0 ? `(after ${retryCount} retries)` : '')
         }
         return true
       } else if (response.status === 401 && retryCount < MAX_RETRIES) {
         // Temporary failure - retry with exponential backoff
         if (isDev) {
-          console.warn(`[Auth] Refresh failed (401), retrying in ${RETRY_DELAYS[retryCount]}ms (attempt ${retryCount + 1}/${MAX_RETRIES})`)
+          logger.warn(
+            `[Auth] Refresh failed (401), retrying in ${RETRY_DELAYS[retryCount]}ms (attempt ${retryCount + 1}/${MAX_RETRIES})`
+          )
         }
         await new Promise(resolve => setTimeout(resolve, RETRY_DELAYS[retryCount]))
         return refreshToken(retryCount + 1)
@@ -139,7 +142,10 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         // Permanent failure (401 after retries means refresh token is invalid/expired)
         // Only log out if we've exhausted retries - this indicates refresh token is truly expired
         if (isDev) {
-          console.error('[Auth] Token refresh permanently failed:', response.status, response.statusText)
+          logger.error('[Auth] Token refresh permanently failed', {
+            status: response.status,
+            statusText: response.statusText
+          })
         }
         // Only clear tokens if refresh token is actually expired (401 after retries)
         // Don't log out on other errors as they might be temporary
@@ -153,7 +159,10 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       // Network error - retry if we haven't exceeded max retries
       if (retryCount < MAX_RETRIES) {
         if (isDev) {
-          console.warn(`[Auth] Network error, retrying in ${RETRY_DELAYS[retryCount]}ms (attempt ${retryCount + 1}/${MAX_RETRIES}):`, error)
+          logger.warn(
+            `[Auth] Network error, retrying in ${RETRY_DELAYS[retryCount]}ms (attempt ${retryCount + 1}/${MAX_RETRIES})`,
+            error
+          )
         }
         await new Promise(resolve => setTimeout(resolve, RETRY_DELAYS[retryCount]))
         return refreshToken(retryCount + 1)
@@ -162,7 +171,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       // After max retries, don't log out on network errors
       // Network errors are temporary and user should stay logged in
       // Only log out if refresh token is actually expired (handled above)
-      console.error('[Auth] Token refresh failed after retries (network error):', error)
+      logger.error('[Auth] Token refresh failed after retries (network error)', error)
       return false
     }
   }, [getRefreshToken, getApiUrl, clearTokens])
@@ -173,7 +182,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     const token = getAccessToken()
     if (!token) {
       if (isDev) {
-        console.log('[Auth] No access token found, skipping fetchClubInfo')
+        logger.debug('[Auth] No access token found, skipping fetchClubInfo')
       }
       setClub(null)
       setLoading(false)
@@ -185,7 +194,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       
       const meUrl = getApiUrl('/me')
       if (isDev) {
-        console.log('[Auth] Fetching club info from:', meUrl)
+        logger.debug('[Auth] Fetching club info from', meUrl)
       }
       
       const response = await fetchWithAuth(
@@ -202,18 +211,18 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         const data = await response.json()
         setClub(data.club)
         if (isDev) {
-          console.log('[Auth] Club info fetched successfully')
+          logger.debug('[Auth] Club info fetched successfully')
         }
       } else {
         // Token refresh failed or other error
         if (isDev) {
-          console.warn('[Auth] Failed to fetch club info:', response.status, response.statusText)
+          logger.warn('[Auth] Failed to fetch club info', { status: response.status, statusText: response.statusText })
         }
         setClub(null)
         clearTokens()
       }
     } catch (error) {
-      console.error('[Auth] Failed to fetch club info:', error)
+      logger.error('[Auth] Failed to fetch club info', error)
       setClub(null)
     } finally {
       setLoading(false)
@@ -301,7 +310,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           body: JSON.stringify({ refreshToken: refresh })
         })
       } catch (error) {
-        console.error('Logout request failed:', error)
+        logger.error('Logout request failed', error)
       }
     }
 
@@ -337,7 +346,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     const init = async () => {
       await fetchClubInfo()
       if (!cancelled && import.meta.env.DEV) {
-        console.log('[Auth] Initialization complete')
+        logger.debug('[Auth] Initialization complete')
       }
     }
     
@@ -360,19 +369,19 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       : 30 * 60 * 1000  // 30 minutes in production (refresh frequently to prevent expiry)
 
     if (isDev) {
-      console.log('[Auth] Auto-refresh interval set to 1 minute (dev mode)')
+      logger.debug('[Auth] Auto-refresh interval set to 1 minute (dev mode)')
     }
 
     const interval = setInterval(() => {
       if (isDev) {
-        console.log('[Auth] Auto-refresh triggered (interval-based)')
+        logger.debug('[Auth] Auto-refresh triggered (interval-based)')
       }
       refreshToken().then(success => {
         if (isDev) {
-          console.log('[Auth] Auto-refresh result:', success ? 'success' : 'failed')
+          logger.debug('[Auth] Auto-refresh result', success ? 'success' : 'failed')
         }
       }).catch(err => {
-        console.warn('[Auto-refresh] Failed to refresh token:', err)
+        logger.warn('[Auto-refresh] Failed to refresh token', err)
       })
     }, intervalMs)
 
@@ -403,20 +412,24 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         }
 
         if (isDev) {
-          console.log('[Auth] Activity detected, scheduling refresh in', DEBOUNCE_DELAY / 1000, 'seconds')
+          logger.debug(
+            '[Auth] Activity detected, scheduling refresh in',
+            DEBOUNCE_DELAY / 1000,
+            'seconds'
+          )
         }
 
         // Debounce: refresh after delay
         activityRefreshTimeout = setTimeout(() => {
           if (isDev) {
-            console.log('[Auth] Activity-based refresh triggered')
+            logger.debug('[Auth] Activity-based refresh triggered')
           }
           refreshToken().then(success => {
             if (isDev) {
-              console.log('[Auth] Activity refresh result:', success ? 'success' : 'failed')
+              logger.debug('[Auth] Activity refresh result', success ? 'success' : 'failed')
             }
           }).catch(err => {
-            console.warn('[Activity refresh] Failed to refresh token:', err)
+            logger.warn('[Activity refresh] Failed to refresh token', err)
           })
           lastActivityTime = Date.now()
         }, DEBOUNCE_DELAY)
@@ -465,16 +478,20 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           const expiryTime = getTokenExpiry(token)
           if (expiryTime) {
             const timeUntilExpiry = expiryTime - Date.now()
-            console.log('[Auth] Proactive refresh: token expires in', Math.round(timeUntilExpiry / 1000 / 60), 'minutes')
+            logger.debug(
+              '[Auth] Proactive refresh: token expires in',
+              Math.round(timeUntilExpiry / 1000 / 60),
+              'minutes'
+            )
           }
         }
         
         refreshToken().then(success => {
           if (isDev) {
-            console.log('[Auth] Proactive refresh result:', success ? 'success' : 'failed')
+            logger.debug('[Auth] Proactive refresh result', success ? 'success' : 'failed')
           }
         }).catch(err => {
-          console.warn('[Proactive refresh] Failed to refresh token:', err)
+          logger.warn('[Proactive refresh] Failed to refresh token', err)
         })
       }
     }, PROACTIVE_CHECK_INTERVAL)

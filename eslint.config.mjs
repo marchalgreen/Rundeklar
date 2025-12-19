@@ -32,6 +32,7 @@ export default [
     },
     rules: {
       ...reactPlugin.configs.recommended.rules,
+      'no-console': 'error',
       'react/react-in-jsx-scope': 'off',
       'react-hooks/rules-of-hooks': 'error',
       'react-hooks/exhaustive-deps': 'warn',
@@ -45,6 +46,13 @@ export default [
       react: {
         version: 'detect'
       }
+    }
+  },
+  // Allow console usage in the centralized logger only.
+  {
+    files: ['packages/webapp/src/lib/utils/logger.ts'],
+    rules: {
+      'no-console': 'off'
     }
   },
   prettier

@@ -1,5 +1,6 @@
 import { createClient, type SupabaseClient } from '@supabase/supabase-js'
 import type { TenantConfig } from '@rundeklar/common'
+import { logger } from './utils/logger'
 
 /**
  * Cache of Supabase clients by tenant ID to avoid creating duplicate instances.
@@ -24,7 +25,7 @@ export const createTenantSupabaseClient = (config: TenantConfig): SupabaseClient
   }
 
   if (!config.supabaseUrl || !config.supabaseKey) {
-    console.error('Missing Supabase credentials in tenant config:', {
+    logger.error('Missing Supabase credentials in tenant config', {
       tenantId: config.id,
       url: config.supabaseUrl ? '✓ Set' : '✗ Missing',
       key: config.supabaseKey ? '✓ Set' : '✗ Missing'
@@ -37,7 +38,7 @@ export const createTenantSupabaseClient = (config: TenantConfig): SupabaseClient
   // Log connection info in development (only for real tenants)
   // Note: Only logs tenant ID, not sensitive credentials
   if (import.meta.env.DEV) {
-    console.log(`Supabase client initialized for tenant "${config.id}"`)
+    logger.debug(`Supabase client initialized for tenant "${config.id}"`)
   }
 
   const client = createClient(config.supabaseUrl, config.supabaseKey)

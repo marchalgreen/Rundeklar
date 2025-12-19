@@ -7,6 +7,7 @@ import type { Coach } from './landing/types'
 import { useTenant } from '../contexts/TenantContext'
 import courtsSettings from '../services/courtsSettings'
 import { useCheckIns } from '../hooks/useCheckIns'
+import { logger } from '../lib/utils/logger'
 
 export type LandingPageProps = {
   coach?: Coach
@@ -401,7 +402,7 @@ const LandingPage: React.FC<LandingPageProps> = ({ coach, onRedirectToCheckin })
             onSelect={(id) => {
               state.toggleGroupId(id)
               // analytics: group_selected
-              console.debug('analytics:event', 'group_selected', { groupId: id })
+              logger.debug('analytics:event', 'group_selected', { groupId: id })
             }}
           />
 

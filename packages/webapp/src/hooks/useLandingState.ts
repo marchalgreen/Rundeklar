@@ -7,6 +7,7 @@ import { loadPersistedState } from '../lib/matchProgramPersistence'
 import type { CourtWithPlayers } from '@rundeklar/common'
 import { toggleGroupId, normalizeGroupIds } from '../lib/groupSelection'
 import { normalizeError } from '../lib/errors'
+import { logger } from '../lib/utils/logger'
 
 export type UseLandingStateOptions = {
   coach?: { id: string; displayName?: string } | null
@@ -66,7 +67,7 @@ export const useLandingState = (opts?: UseLandingStateOptions): UseLandingState 
   const openSearch = useCallback(() => {
     setSearchOpen(true)
     // analytics: search_opened
-    console.debug('analytics:event', 'search_opened')
+    logger.debug('analytics:event', 'search_opened')
   }, [])
   const closeSearch = useCallback(() => setSearchOpen(false), [])
 
@@ -89,7 +90,7 @@ export const useLandingState = (opts?: UseLandingStateOptions): UseLandingState 
         const fetchedGroups = await api.fetchTrainingGroups()
         setGroups(fetchedGroups)
         // analytics: landing_groups_loaded
-        console.debug('analytics:event', 'landing_groups_loaded')
+        logger.debug('analytics:event', 'landing_groups_loaded')
       } catch (error) {
         const normalizedError = normalizeError(error)
         notify({
@@ -117,7 +118,7 @@ export const useLandingState = (opts?: UseLandingStateOptions): UseLandingState 
         setSearchResults(results)
       } catch (error) {
         // fail silently; UI already conveys empty state
-        console.warn('Player search failed', error)
+        logger.warn('Player search failed', error)
       }
     }
     void run()
@@ -126,7 +127,7 @@ export const useLandingState = (opts?: UseLandingStateOptions): UseLandingState 
   const addCrossGroupPlayer = useCallback((p: PlayerLite) => {
     setCrossGroupPlayers((prev) => (prev.some((x) => x.id === p.id) ? prev : [...prev, p]))
     // analytics: player_selected_from_search
-    console.debug('analytics:event', 'player_selected_from_search', { playerId: p.id })
+    logger.debug('analytics:event', 'player_selected_from_search', { playerId: p.id })
   }, [])
 
   const removeCrossGroupPlayer = useCallback((id: string) => {
@@ -159,7 +160,7 @@ export const useLandingState = (opts?: UseLandingStateOptions): UseLandingState 
     setStarting(true)
     try {
       // analytics: session_start_attempt
-      console.debug('analytics:event', 'session_start_attempt')
+      logger.debug('analytics:event', 'session_start_attempt')
 
       const payload = {
         coachId,
@@ -169,12 +170,12 @@ export const useLandingState = (opts?: UseLandingStateOptions): UseLandingState 
       }
       const result = await api.startSession(payload)
       // analytics: session_start_success
-      console.debug('analytics:event', 'session_start_success')
+      logger.debug('analytics:event', 'session_start_success')
       setActiveSession(result)
       opts?.onRedirectToCheckin?.(result.sessionId)
     } catch (error) {
       // analytics: session_start_failed
-      console.debug('analytics:event', 'session_start_failed')
+      logger.debug('analytics:event', 'session_start_failed')
       const normalizedError = normalizeError(error)
       notify({
         variant: 'danger',
@@ -207,7 +208,7 @@ export const useLandingState = (opts?: UseLandingStateOptions): UseLandingState 
             round: Number(round),
             matches: matches as CourtWithPlayers[]
           }))
-          console.log('[endSession] Loaded match data from persistence:', {
+          logger.debug('[endSession] Loaded match data from persistence', {
             rounds: matchesData.length,
             totalMatches: matchesData.reduce((sum, r) => sum + r.matches.length, 0)
           })

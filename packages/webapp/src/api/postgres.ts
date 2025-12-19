@@ -14,6 +14,7 @@ import type {
 // Since postgres.js doesn't work in browsers, we proxy queries through Vercel serverless functions
 
 import { getCurrentTenantConfig } from '../lib/postgres'
+import { logger } from '../lib/utils/logger'
 
 async function executeQuery(query: string, params: any[] = []): Promise<any[]> {
   // Get current tenant ID for security
@@ -22,7 +23,7 @@ async function executeQuery(query: string, params: any[] = []): Promise<any[]> {
     const tenantConfig = getCurrentTenantConfig()
     tenantId = tenantConfig.id
   } catch (error) {
-    console.error('[executeQuery] Failed to get tenant config:', error)
+    logger.error('[executeQuery] Failed to get tenant config', error)
     throw new Error('Tenant context not initialized. Make sure TenantProvider is mounted and tenant is loaded.')
   }
 
@@ -51,7 +52,7 @@ async function executeQuery(query: string, params: any[] = []): Promise<any[]> {
     } catch {
       errorMessage = errorText || errorMessage
     }
-    console.error('[executeQuery] API error:', {
+    logger.error('[executeQuery] API error', {
       status: response.status,
       statusText: response.statusText,
       error: errorMessage,
@@ -65,7 +66,7 @@ async function executeQuery(query: string, params: any[] = []): Promise<any[]> {
   const result = await response.json()
   // Safety check: ensure result.data is always an array
   if (!Array.isArray(result.data)) {
-    console.error('[executeQuery] API returned non-array data:', result)
+    logger.error('[executeQuery] API returned non-array data', result)
     return []
   }
   return result.data
@@ -128,7 +129,7 @@ const getIsolationIdForCurrentTenant = async (): Promise<string | null> => {
     const { getIsolationId } = await import('../lib/isolation')
     return getIsolationId(tenantId)
   } catch (error) {
-    console.error('[postgres] Failed to get isolation_id:', error)
+    logger.error('[postgres] Failed to get isolation_id', error)
     return null
   }
 }
@@ -252,7 +253,7 @@ const rowToMatchResult = (row: any): MatchResult => {
     try {
       scoreData = JSON.parse(scoreData)
     } catch (e) {
-      console.error('Failed to parse score_data:', e)
+      logger.error('Failed to parse score_data', e)
       scoreData = {}
     }
   }
@@ -319,17 +320,17 @@ export const loadState = async (): Promise<DatabaseState> => {
     const results = await Promise.all([
       // Players don't need isolation filtering (they're shared across isolation sessions)
       sql`SELECT * FROM players WHERE tenant_id = ${tenantId} ORDER BY name`.catch(err => {
-        console.error('[loadState] Error loading players:', err)
+        logger.error('[loadState] Error loading players', err)
         return []
       }),
       // Sessions: filter by isolation_id
       isolationId
         ? sql`SELECT * FROM training_sessions WHERE tenant_id = ${tenantId} AND isolation_id = ${isolationId} ORDER BY created_at DESC`.catch(err => {
-            console.error('[loadState] Error loading sessions:', err)
+            logger.error('[loadState] Error loading sessions', err)
             return []
           })
         : sql`SELECT * FROM training_sessions WHERE tenant_id = ${tenantId} AND (isolation_id IS NULL OR isolation_id = '') ORDER BY created_at DESC`.catch(err => {
-            console.error('[loadState] Error loading sessions:', err)
+            logger.error('[loadState] Error loading sessions', err)
             return []
           }),
       // Check-ins: filter by isolation_id from training_sessions
@@ -340,7 +341,7 @@ export const loadState = async (): Promise<DatabaseState> => {
             WHERE ci.tenant_id = ${tenantId} AND ts.isolation_id = ${isolationId}
             ORDER BY ci.created_at
           `.catch(err => {
-            console.error('[loadState] Error loading checkIns:', err)
+            logger.error('[loadState] Error loading checkIns', err)
             return []
           })
         : sql`
@@ -349,12 +350,12 @@ export const loadState = async (): Promise<DatabaseState> => {
             WHERE ci.tenant_id = ${tenantId} AND (ts.isolation_id IS NULL OR ts.isolation_id = '')
             ORDER BY ci.created_at
           `.catch(err => {
-            console.error('[loadState] Error loading checkIns:', err)
+            logger.error('[loadState] Error loading checkIns', err)
             return []
           }),
       // Courts don't need isolation filtering (they're shared across isolation sessions)
       sql`SELECT * FROM courts WHERE tenant_id = ${tenantId} ORDER BY idx`.catch(err => {
-        console.error('[loadState] Error loading courts:', err)
+        logger.error('[loadState] Error loading courts', err)
         return []
       }),
       // Matches: filter by isolation_id from training_sessions
@@ -365,7 +366,7 @@ export const loadState = async (): Promise<DatabaseState> => {
             WHERE m.tenant_id = ${tenantId} AND ts.isolation_id = ${isolationId}
             ORDER BY m.started_at
           `.catch(err => {
-            console.error('[loadState] Error loading matches:', err)
+            logger.error('[loadState] Error loading matches', err)
             return []
           })
         : sql`
@@ -374,7 +375,7 @@ export const loadState = async (): Promise<DatabaseState> => {
             WHERE m.tenant_id = ${tenantId} AND (ts.isolation_id IS NULL OR ts.isolation_id = '')
             ORDER BY m.started_at
           `.catch(err => {
-            console.error('[loadState] Error loading matches:', err)
+            logger.error('[loadState] Error loading matches', err)
             return []
           }),
       // Match players: filter by isolation_id from training_sessions via matches
@@ -385,7 +386,7 @@ export const loadState = async (): Promise<DatabaseState> => {
             INNER JOIN training_sessions ts ON m.session_id = ts.id
             WHERE mp.tenant_id = ${tenantId} AND ts.isolation_id = ${isolationId}
           `.catch(err => {
-            console.error('[loadState] Error loading matchPlayers:', err)
+            logger.error('[loadState] Error loading matchPlayers', err)
             return []
           })
         : sql`
@@ -394,7 +395,7 @@ export const loadState = async (): Promise<DatabaseState> => {
             INNER JOIN training_sessions ts ON m.session_id = ts.id
             WHERE mp.tenant_id = ${tenantId} AND (ts.isolation_id IS NULL OR ts.isolation_id = '')
           `.catch(err => {
-            console.error('[loadState] Error loading matchPlayers:', err)
+            logger.error('[loadState] Error loading matchPlayers', err)
             return []
           }),
       // Statistics snapshots: filter by isolation_id from training_sessions
@@ -405,7 +406,7 @@ export const loadState = async (): Promise<DatabaseState> => {
             WHERE ss.tenant_id = ${tenantId} AND ts.isolation_id = ${isolationId}
             ORDER BY ss.session_date DESC
           `.catch(err => {
-            console.error('[loadState] Error loading statistics:', err)
+            logger.error('[loadState] Error loading statistics', err)
             return []
           })
         : sql`
@@ -414,7 +415,7 @@ export const loadState = async (): Promise<DatabaseState> => {
             WHERE ss.tenant_id = ${tenantId} AND (ts.isolation_id IS NULL OR ts.isolation_id = '')
             ORDER BY ss.session_date DESC
           `.catch(err => {
-            console.error('[loadState] Error loading statistics:', err)
+            logger.error('[loadState] Error loading statistics', err)
             return []
           })
     ])
@@ -1726,7 +1727,7 @@ export const getMatchResultsBySession = async (sessionId: string): Promise<Match
  */
 export const createMatchResult = async (
   matchId: string,
-  scoreData: BadmintonScoreData | Record<string, any>,
+  scoreData: BadmintonScoreData | Record<string, unknown>,
   sport: 'badminton' | 'tennis' | 'padel',
   winnerTeam: 'team1' | 'team2'
 ): Promise<MatchResult> => {
@@ -1864,9 +1865,9 @@ export const createBackup = async (): Promise<void> => {
   if (storage) {
     try {
       storage.setItem('herlev-hjorten-db-backup', JSON.stringify(state))
-      console.log('✅ Database backup created successfully.')
+      logger.info('✅ Database backup created successfully.')
     } catch (error) {
-      console.error('❌ Failed to create database backup:', error)
+      logger.error('❌ Failed to create database backup', error)
     }
   }
 }
@@ -1882,7 +1883,7 @@ export const restoreFromBackup = async (): Promise<DatabaseState | null> => {
       const backup = storage.getItem('herlev-hjorten-db-backup')
       if (backup) {
         const state: DatabaseState = JSON.parse(backup)
-        console.log('✅ Database state restored from backup.')
+        logger.info('✅ Database state restored from backup.')
         // Clear current data and insert backup data
         await clearAllData()
         await insertBackupData(state)
@@ -1890,7 +1891,7 @@ export const restoreFromBackup = async (): Promise<DatabaseState | null> => {
         return state
       }
     } catch (error) {
-      console.error('❌ Failed to restore database backup:', error)
+      logger.error('❌ Failed to restore database backup', error)
     }
   }
   return null
@@ -1914,7 +1915,7 @@ export const hasBackup = (): boolean => {
 export const clearAllData = async (): Promise<void> => {
   const sql = getPostgres()
   const tenantId = getTenantId()
-  console.log(`Clearing all data for tenant: ${tenantId}`)
+  logger.info(`Clearing all data for tenant: ${tenantId}`)
   await sql`DELETE FROM statistics_snapshots WHERE tenant_id = ${tenantId}`
   await sql`DELETE FROM match_players WHERE tenant_id = ${tenantId}`
   await sql`DELETE FROM matches WHERE tenant_id = ${tenantId}`
@@ -1923,7 +1924,7 @@ export const clearAllData = async (): Promise<void> => {
   await sql`DELETE FROM players WHERE tenant_id = ${tenantId}`
   await sql`DELETE FROM courts WHERE tenant_id = ${tenantId}` // Courts are tenant-specific now
   invalidateCache()
-  console.log(`✅ All data cleared for tenant: ${tenantId}`)
+  logger.info(`✅ All data cleared for tenant: ${tenantId}`)
 }
 
 /**
@@ -1933,7 +1934,7 @@ export const clearAllData = async (): Promise<void> => {
 export const insertBackupData = async (state: DatabaseState): Promise<void> => {
   const sql = getPostgres()
   const tenantId = getTenantId()
-  console.log(`Inserting backup data for tenant: ${tenantId}`)
+  logger.info(`Inserting backup data for tenant: ${tenantId}`)
 
   // Insert courts first (they are referenced by matches)
   for (const court of state.courts) {
@@ -2033,5 +2034,5 @@ export const insertBackupData = async (state: DatabaseState): Promise<void> => {
         tenant_id = EXCLUDED.tenant_id
     `
   }
-  console.log(`✅ Backup data inserted for tenant: ${tenantId}`)
+  logger.info(`✅ Backup data inserted for tenant: ${tenantId}`)
 }

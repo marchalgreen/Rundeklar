@@ -1,4 +1,5 @@
 import type { TenantConfig } from '@rundeklar/common'
+import { logger } from './utils/logger'
 
 /**
  * Extracts tenant ID from URL path.
@@ -56,7 +57,7 @@ export const loadTenantConfig = async (tenantId: string): Promise<TenantConfig> 
                     nodeEnv.VITE_DATABASE_URL_UNPOOLED
       
       if (dbUrl) {
-        console.log(`Using DATABASE_URL from environment variables for tenant "${tenantId}"`)
+        logger.debug(`Using DATABASE_URL from environment variables for tenant "${tenantId}"`)
         return {
           ...tenantConfig,
           postgresUrl: dbUrl
@@ -68,7 +69,7 @@ export const loadTenantConfig = async (tenantId: string): Promise<TenantConfig> 
   } catch (error) {
     // Fallback to herlev-hjorten if tenant not found
     if (tenantId !== 'herlev-hjorten') {
-      console.warn(`Tenant config not found for "${tenantId}", falling back to herlev-hjorten`)
+      logger.warn(`Tenant config not found for "${tenantId}", falling back to herlev-hjorten`)
       return loadTenantConfig('herlev-hjorten')
     }
     throw new Error(`Failed to load tenant config for "${tenantId}": ${error}`)

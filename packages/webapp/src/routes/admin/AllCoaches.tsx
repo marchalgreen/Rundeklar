@@ -4,6 +4,7 @@ import { Button } from '../../components/ui'
 import { formatCoachUsername } from '../../lib/formatting'
 import CreateCoachFormForSysAdmin from '../../components/admin/CreateCoachFormForSysAdmin'
 import { Trash2, RotateCcw, Clock, Building2, Plus } from 'lucide-react'
+import { logger } from '../../lib/utils/logger'
 
 interface Coach {
   id: string
@@ -69,7 +70,7 @@ export default function AllCoachesPage() {
       setCoaches(data.coaches || [])
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : 'Failed to load coaches'
-      console.error('Failed to fetch coaches:', err)
+      logger.error('Failed to fetch coaches', err)
       setError(errorMessage)
       setCoaches([])
     } finally {
