@@ -247,15 +247,30 @@ const getCheckInsBySeason = async (playerId: string): Promise<Record<string, num
  */
 const getTopPartners = async (
   playerId: string,
-  limit: number = 5
+  limit: number = 5,
+  state?: DatabaseState, // Optional state to reuse if already loaded
+  statistics?: StatisticsSnapshot[] // Optional statistics to reuse if already loaded
 ): Promise<Array<{ playerId: string; count: number; names: string }>> => {
-  const [state, statistics] = await Promise.all([getStateCopy(), getStatisticsSnapshots()])
+  const [stateData, statisticsData] = await Promise.all([
+    state ? Promise.resolve(state) : getStateCopy(),
+    statistics ? Promise.resolve(statistics) : getStatisticsSnapshots()
+  ])
+  
+  // Create player lookup Map for O(1) access
+  const playerMap = new Map<string, typeof stateData.players[0]>()
+  stateData.players.forEach(player => {
+    playerMap.set(player.id, player)
+  })
+  
   const partnerCounts = new Map<string, number>()
 
-  statistics.forEach((stat) => {
+  statisticsData.forEach((stat) => {
+    // Defensive check: ensure matchPlayers is an array
+    const matchPlayers = Array.isArray(stat.matchPlayers) ? stat.matchPlayers : []
+    
     // Group matchPlayers by matchId
     const matchGroups = new Map<string, MatchPlayer[]>()
-    stat.matchPlayers.forEach((mp) => {
+    matchPlayers.forEach((mp) => {
       if (!matchGroups.has(mp.matchId)) {
         matchGroups.set(mp.matchId, [])
       }
@@ -288,7 +303,8 @@ const getTopPartners = async (
   // Convert to array and sort by count
   const partners = Array.from(partnerCounts.entries())
     .map(([pid, count]) => {
-      const player = state.players.find((p) => p.id === pid)
+      // Use Map lookup instead of find()
+      const player = playerMap.get(pid)
       return {
         playerId: pid,
         count,
@@ -309,15 +325,30 @@ const getTopPartners = async (
  */
 const getTopOpponents = async (
   playerId: string,
-  limit: number = 5
+  limit: number = 5,
+  state?: DatabaseState, // Optional state to reuse if already loaded
+  statistics?: StatisticsSnapshot[] // Optional statistics to reuse if already loaded
 ): Promise<Array<{ playerId: string; count: number; names: string }>> => {
-  const [state, statistics] = await Promise.all([getStateCopy(), getStatisticsSnapshots()])
+  const [stateData, statisticsData] = await Promise.all([
+    state ? Promise.resolve(state) : getStateCopy(),
+    statistics ? Promise.resolve(statistics) : getStatisticsSnapshots()
+  ])
+  
+  // Create player lookup Map for O(1) access
+  const playerMap = new Map<string, typeof stateData.players[0]>()
+  stateData.players.forEach(player => {
+    playerMap.set(player.id, player)
+  })
+  
   const opponentCounts = new Map<string, number>()
 
-  statistics.forEach((stat) => {
+  statisticsData.forEach((stat) => {
+    // Defensive check: ensure matchPlayers is an array
+    const matchPlayers = Array.isArray(stat.matchPlayers) ? stat.matchPlayers : []
+    
     // Group matchPlayers by matchId
     const matchGroups = new Map<string, MatchPlayer[]>()
-    stat.matchPlayers.forEach((mp) => {
+    matchPlayers.forEach((mp) => {
       if (!matchGroups.has(mp.matchId)) {
         matchGroups.set(mp.matchId, [])
       }
@@ -346,7 +377,8 @@ const getTopOpponents = async (
   // Convert to array and sort by count
   const opponents = Array.from(opponentCounts.entries())
     .map(([pid, count]) => {
-      const player = state.players.find((p) => p.id === pid)
+      // Use Map lookup instead of find()
+      const player = playerMap.get(pid)
       return {
         playerId: pid,
         count,
@@ -595,34 +627,46 @@ const getPlayerStatistics = async (
   playerId: string,
   filters?: StatisticsFilters
 ): Promise<PlayerStatistics> => {
-  // Don't invalidate cache unnecessarily - cache should only be invalidated when data changes
-  // This prevents expensive database queries on every statistics load
-  
-  const state = await getStateCopy()
-  
-  // Create lookup Maps for O(1) access instead of O(n) find()
-  const playerMap = new Map<string, typeof state.players[0]>()
-  state.players.forEach(player => {
-    playerMap.set(player.id, player)
-  })
-  
-  const sessionMap = new Map<string, typeof state.sessions[0]>()
-  state.sessions.forEach(session => {
-    sessionMap.set(session.id, session)
-  })
-  
-  const courtMap = new Map<string, typeof state.courts[0]>()
-  state.courts.forEach(court => {
-    courtMap.set(court.id, court)
-  })
-  
-  const player = playerMap.get(playerId)
-  if (!player) {
-    throw new Error('Spiller ikke fundet')
-  }
+  try {
+    logger.debug('[getPlayerStatistics] Starting', { playerId, filters })
+    
+    // Don't invalidate cache unnecessarily - cache should only be invalidated when data changes
+    // This prevents expensive database queries on every statistics load
+    
+    const state = await getStateCopy()
+    logger.debug('[getPlayerStatistics] State loaded', { 
+      playersCount: state.players.length,
+      sessionsCount: state.sessions.length,
+      courtsCount: state.courts.length
+    })
+    
+    // Create lookup Maps for O(1) access instead of O(n) find()
+    const playerMap = new Map<string, typeof state.players[0]>()
+    state.players.forEach(player => {
+      playerMap.set(player.id, player)
+    })
+    
+    const sessionMap = new Map<string, typeof state.sessions[0]>()
+    state.sessions.forEach(session => {
+      sessionMap.set(session.id, session)
+    })
+    
+    const courtMap = new Map<string, typeof state.courts[0]>()
+    state.courts.forEach(court => {
+      courtMap.set(court.id, court)
+    })
+    
+    const player = playerMap.get(playerId)
+    if (!player) {
+      logger.error('[getPlayerStatistics] Player not found', { playerId, availablePlayers: state.players.length })
+      throw new Error('Spiller ikke fundet')
+    }
 
-  // Filter statistics by filters
-  let relevantStats = await getStatisticsSnapshots()
+    // Filter statistics by filters
+    let relevantStats = await getStatisticsSnapshots()
+    logger.debug('[getPlayerStatistics] Statistics loaded', { 
+      totalStats: relevantStats.length 
+    })
   if (filters?.season) {
     relevantStats = relevantStats.filter((s) => s.season === filters.season)
   }
@@ -707,9 +751,9 @@ const getPlayerStatistics = async (
     lastPlayedDate = matchDates[0]
   }
 
-  // Get partners and opponents
-  const partners = await getTopPartners(playerId, 5)
-  const opponents = await getTopOpponents(playerId, 5)
+  // Get partners and opponents - reuse state and statistics to avoid duplicate calls
+  const partners = await getTopPartners(playerId, 5, state, relevantStats)
+  const opponents = await getTopOpponents(playerId, 5, state, relevantStats)
 
   // Calculate average level difference
   let totalLevelDiff = 0
@@ -889,7 +933,7 @@ const getPlayerStatistics = async (
   // Get recent matches - reuse state to avoid duplicate getStateCopy() call
   const recentMatches = await getPlayerRecentMatches(playerId, 5, state)
 
-  return {
+  const result: PlayerStatistics = {
     playerId,
     totalCheckIns,
     checkInsBySeason,
@@ -911,6 +955,19 @@ const getPlayerStatistics = async (
     lossesBySeason,
     recentMatches
   }
+  
+  logger.debug('[getPlayerStatistics] Completed', {
+    playerId,
+    totalCheckIns: result.totalCheckIns,
+    totalMatches: result.totalMatches,
+    totalWins: result.totalWins,
+    totalLosses: result.totalLosses,
+    partnersCount: result.partners.length,
+    opponentsCount: result.opponents.length,
+    recentMatchesCount: result.recentMatches.length
+  })
+  
+  return result
 }
 
 /**
