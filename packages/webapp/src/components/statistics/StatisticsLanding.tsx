@@ -19,7 +19,7 @@ export const StatisticsLanding: React.FC<StatisticsLandingProps> = ({ onSelectVi
       <header className="flex flex-col gap-2 sm:gap-3 mb-2 lg:mb-1.5">
         <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-2 sm:gap-3">
           <div className="flex-1 min-w-0">
-            <h1 className="text-lg sm:text-xl font-semibold text-[hsl(var(--foreground))]">Statistik</h1>
+            <h1 className="text-lg sm:text-xl font-semibold text-[hsl(var(--foreground))]">Træning & fremmøde</h1>
             <p className="text-xs sm:text-sm md:text-base text-[hsl(var(--muted))] mt-1">
               Vælg en statistiktype for at se data.
             </p>
@@ -39,7 +39,7 @@ export const StatisticsLanding: React.FC<StatisticsLandingProps> = ({ onSelectVi
               <Calendar className="w-6 h-6 sm:w-7 sm:h-7" />
             </div>
             <div className="flex flex-col gap-2">
-              <h2 className="text-lg sm:text-xl font-semibold text-[hsl(var(--foreground))]">Træning & Fremmøde</h2>
+              <h2 className="text-lg sm:text-xl font-semibold text-[hsl(var(--foreground))]">Træning & fremmøde</h2>
               <p className="text-xs sm:text-sm text-[hsl(var(--muted))]">
                 Se generel statistik over træninger, fremmøde pr. træningsgruppe og deltagelsesmønstre.
               </p>
@@ -58,7 +58,7 @@ export const StatisticsLanding: React.FC<StatisticsLandingProps> = ({ onSelectVi
               <User className="w-6 h-6 sm:w-7 sm:h-7" />
             </div>
             <div className="flex flex-col gap-2">
-              <h2 className="text-lg sm:text-xl font-semibold text-[hsl(var(--foreground))]">Individuel Statistik</h2>
+              <h2 className="text-lg sm:text-xl font-semibold text-[hsl(var(--foreground))]">Individuel statistik</h2>
               <p className="text-xs sm:text-sm text-[hsl(var(--muted))]">
                 Se detaljerede statistikker for individuelle spillere, kampresultater og sammenligninger.
               </p>
