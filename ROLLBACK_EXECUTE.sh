@@ -43,3 +43,4 @@ echo "2. Verificer at applikationen kører korrekt"
 echo "3. Begynd implementering baseret på planen"
 
 
+

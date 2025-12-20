@@ -55,3 +55,4 @@ CREATE POLICY "Allow tenant delete access on match_results" ON match_results
 -- All queries must include WHERE tenant_id = ? clause
 
 
+
