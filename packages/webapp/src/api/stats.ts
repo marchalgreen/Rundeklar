@@ -668,9 +668,12 @@ const getPlayerStatistics = async (
   })
   
   relevantStats.forEach((stat) => {
+    // Defensive check: ensure matchPlayers is an array
+    const matchPlayers = Array.isArray(stat.matchPlayers) ? stat.matchPlayers : []
+    
     // Group matchPlayers by matchId to count unique matches
     const playerMatches = new Set<string>()
-    stat.matchPlayers
+    matchPlayers
       .filter((mp) => mp.playerId === playerId)
       .forEach((mp) => {
         playerMatches.add(mp.matchId)
