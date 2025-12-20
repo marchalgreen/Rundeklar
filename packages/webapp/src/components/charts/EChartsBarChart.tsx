@@ -19,6 +19,7 @@ export interface EChartsBarChartProps {
   height?: number
   showLegend?: boolean
   showGrid?: boolean
+  showValueLabels?: boolean // New prop to show values on bars
 }
 
 /**
@@ -36,7 +37,8 @@ export const EChartsBarChart: React.FC<EChartsBarChartProps> = ({
   yAxisLabel,
   height = 300,
   showLegend = false,
-  showGrid = true
+  showGrid = true,
+  showValueLabels = false
 }) => {
   const textColor = 'hsl(var(--foreground))'
   const mutedColor = 'hsl(var(--muted))'
@@ -45,6 +47,7 @@ export const EChartsBarChart: React.FC<EChartsBarChartProps> = ({
   const borderColor = 'hsl(var(--border))'
 
   const option: EChartsOption = useMemo(() => {
+    const hasManyItems = data.length > 10
     const series = bars.map((bar, index) => ({
       name: bar.name || bar.dataKey,
       type: 'bar' as const,
@@ -52,6 +55,18 @@ export const EChartsBarChart: React.FC<EChartsBarChartProps> = ({
       itemStyle: {
         color: bar.color || `hsl(var(--chart-${(index % 5) + 1}))`,
         borderRadius: [4, 4, 0, 0]
+      },
+      label: showValueLabels ? {
+        show: true,
+        position: 'top' as const,
+        color: textColor,
+        fontSize: 11,
+        fontWeight: 500,
+        formatter: (params: any) => {
+          return params.value?.toString() || '0'
+        }
+      } : {
+        show: false
       },
       emphasis: {
         itemStyle: {
@@ -102,8 +117,8 @@ export const EChartsBarChart: React.FC<EChartsBarChartProps> = ({
       grid: {
         left: '3%',
         right: '4%',
-        bottom: '10%',
-        top: showLegend ? '15%' : '5%',
+        bottom: hasManyItems ? '20%' : '10%', // More space at bottom if labels are rotated
+        top: showLegend ? '15%' : showValueLabels ? '10%' : '5%', // More space at top if value labels shown
         containLabel: true
       },
       xAxis: {
@@ -111,7 +126,13 @@ export const EChartsBarChart: React.FC<EChartsBarChartProps> = ({
         data: data.map(item => item.name),
         axisLabel: {
           color: textColor,
-          fontSize: 12
+          fontSize: 12,
+          rotate: hasManyItems ? 45 : 0, // Rotate labels if many items to prevent overlap
+          interval: 0, // Show all labels
+          formatter: (value: string) => {
+            // Truncate long names if needed
+            return value.length > 12 ? value.substring(0, 12) + '...' : value
+          }
         },
         axisLine: {
           lineStyle: {
@@ -120,7 +141,7 @@ export const EChartsBarChart: React.FC<EChartsBarChartProps> = ({
         },
         name: xAxisLabel,
         nameLocation: 'middle',
-        nameGap: 30,
+        nameGap: hasManyItems ? 50 : 30, // More space if labels are rotated
         nameTextStyle: {
           color: mutedColor,
           fontSize: 12
@@ -155,7 +176,7 @@ export const EChartsBarChart: React.FC<EChartsBarChartProps> = ({
       },
       series
     }
-  }, [data, bars, xAxisLabel, yAxisLabel, showLegend, showGrid, textColor, mutedColor, gridColor, surfaceColor, borderColor])
+  }, [data, bars, xAxisLabel, yAxisLabel, showLegend, showGrid, showValueLabels, textColor, mutedColor, gridColor, surfaceColor, borderColor])
 
   return (
     <div style={{ width: '100%', height }}>

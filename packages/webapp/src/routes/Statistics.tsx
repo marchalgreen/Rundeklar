@@ -407,6 +407,7 @@ const StatisticsPage = () => {
                     yAxisLabel="Antal indtjekninger"
                     height={400}
                     showLegend={false}
+                    showValueLabels={true}
                   />
                   {trainingAttendance.playerCheckInLongTail.length > 20 && (
                     <p className="text-xs text-[hsl(var(--muted))] text-center mt-2">
