@@ -219,7 +219,7 @@ async function diagnoseStatistics() {
       console.log('')
       console.log('💡 Recommendation:')
       console.log('   Run the fix script to create missing snapshots:')
-      console.log('   pnpm tsx packages/webapp/scripts/fix-missing-snapshots.ts')
+      console.log('   cd packages/webapp && pnpm exec tsx scripts/fix-missing-snapshots.ts [tenantId]')
     }
 
   } catch (error) {
