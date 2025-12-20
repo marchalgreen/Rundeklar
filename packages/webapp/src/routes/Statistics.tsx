@@ -20,6 +20,7 @@ import {
   HeadToHeadResults 
 } from '../components/statistics'
 import { BarChart, LineChart } from '../components/charts'
+import { EChartsBarChart } from '../components/charts/EChartsBarChart'
 import { formatDate } from '../lib/formatting'
 
 type ViewMode = 'landing' | 'training' | 'player'
@@ -158,64 +159,124 @@ const StatisticsPage = () => {
 
           {/* Charts Section */}
           <div className="space-y-4 sm:space-y-6">
-            {/* Training Group Attendance */}
-            <div className="card-glass-active border-hair rounded-lg p-3 sm:p-4 md:p-5 shadow-sm">
-              <h3 className="text-sm sm:text-base font-semibold text-[hsl(var(--foreground))] mb-3 sm:mb-4">
-                Fremmøde pr. træningsgruppe
-              </h3>
-              {trainingAttendance.attendanceLoading ? (
-                <div className="flex items-center justify-center py-8">
-                  <p className="text-xs sm:text-sm text-[hsl(var(--muted))]">Indlæser fremmøde...</p>
-                </div>
-              ) : trainingAttendance.trainingGroupAttendance.length > 0 ? (
-                <BarChart
-                  data={trainingAttendance.trainingGroupAttendance.map((group) => ({
-                    name: group.groupName,
-                    'Indtjekninger': group.checkInCount,
-                    'Unikke spillere': group.uniquePlayers
-                  }))}
-                  bars={[
-                    { dataKey: 'Indtjekninger', name: 'Indtjekninger', color: 'hsl(var(--primary))' },
-                    { dataKey: 'Unikke spillere', name: 'Unikke spillere', color: 'hsl(var(--accent))' }
-                  ]}
-                  xAxisLabel="Træningsgruppe"
-                  yAxisLabel="Antal"
-                  height={300}
-                  showLegend={true}
-                />
-              ) : (
-                <p className="text-xs sm:text-sm text-[hsl(var(--muted))]">Ingen fremmødedata tilgængelig</p>
-              )}
+            {/* Training Group Attendance - Split into two charts to avoid mixing units */}
+            <div className="space-y-4 sm:space-y-6">
+              {/* Average Attendance per Group - Using ECharts */}
+              <div className="card-glass-active border-hair rounded-lg p-3 sm:p-4 md:p-5 shadow-sm">
+                <h3 className="text-sm sm:text-base font-semibold text-[hsl(var(--foreground))] mb-3 sm:mb-4">
+                  Gennemsnitligt fremmøde pr. træningsgruppe
+                </h3>
+                {trainingAttendance.attendanceLoading ? (
+                  <div className="flex items-center justify-center py-8">
+                    <p className="text-xs sm:text-sm text-[hsl(var(--muted))]">Indlæser fremmøde...</p>
+                  </div>
+                ) : trainingAttendance.trainingGroupAttendance.length > 0 ? (
+                  <EChartsBarChart
+                    data={trainingAttendance.trainingGroupAttendance.map((group) => ({
+                      name: group.groupName,
+                      'Gennemsnitligt fremmøde': group.averageAttendance
+                    }))}
+                    bars={[
+                      { dataKey: 'Gennemsnitligt fremmøde', name: 'Gennemsnitligt fremmøde', color: 'hsl(var(--primary))' }
+                    ]}
+                    xAxisLabel="Træningsgruppe"
+                    yAxisLabel="Gennemsnitligt antal spillere"
+                    height={300}
+                    showLegend={false}
+                  />
+                ) : (
+                  <p className="text-xs sm:text-sm text-[hsl(var(--muted))]">Ingen fremmødedata tilgængelig</p>
+                )}
+              </div>
+
+              {/* Total Check-ins and Unique Players per Group - Using ECharts */}
+              <div className="card-glass-active border-hair rounded-lg p-3 sm:p-4 md:p-5 shadow-sm">
+                <h3 className="text-sm sm:text-base font-semibold text-[hsl(var(--foreground))] mb-3 sm:mb-4">
+                  Total indtjekninger og unikke spillere pr. træningsgruppe
+                </h3>
+                {trainingAttendance.attendanceLoading ? (
+                  <div className="flex items-center justify-center py-8">
+                    <p className="text-xs sm:text-sm text-[hsl(var(--muted))]">Indlæser fremmøde...</p>
+                  </div>
+                ) : trainingAttendance.trainingGroupAttendance.length > 0 ? (
+                  <EChartsBarChart
+                    data={trainingAttendance.trainingGroupAttendance.map((group) => ({
+                      name: group.groupName,
+                      'Indtjekninger': group.checkInCount,
+                      'Unikke spillere': group.uniquePlayers
+                    }))}
+                    bars={[
+                      { dataKey: 'Indtjekninger', name: 'Indtjekninger', color: 'hsl(var(--primary))' },
+                      { dataKey: 'Unikke spillere', name: 'Unikke spillere', color: 'hsl(var(--accent))' }
+                    ]}
+                    xAxisLabel="Træningsgruppe"
+                    yAxisLabel="Antal"
+                    height={300}
+                    showLegend={true}
+                  />
+                ) : (
+                  <p className="text-xs sm:text-sm text-[hsl(var(--muted))]">Ingen fremmødedata tilgængelig</p>
+                )}
+              </div>
             </div>
 
-            {/* Weekday Attendance Bar Chart */}
-            <div className="card-glass-active border-hair rounded-lg p-3 sm:p-4 md:p-5 shadow-sm">
-              <h3 className="text-sm sm:text-base font-semibold text-[hsl(var(--foreground))] mb-3 sm:mb-4">
-                Fremmøde pr. ugedag
-              </h3>
-              {trainingAttendance.weekdayLoading ? (
-                <div className="flex items-center justify-center py-8">
-                  <p className="text-xs sm:text-sm text-[hsl(var(--muted))]">Indlæser ugedagsanalyse...</p>
-                </div>
-              ) : trainingAttendance.weekdayAttendance.length > 0 ? (
-                <BarChart
-                  data={trainingAttendance.weekdayAttendance.map((day) => ({
-                    name: day.weekdayName,
-                    'Gennemsnitligt fremmøde': day.averageAttendance,
-                    'Indtjekninger': day.checkInCount
-                  }))}
-                  bars={[
-                    { dataKey: 'Gennemsnitligt fremmøde', name: 'Gennemsnitligt fremmøde', color: 'hsl(var(--primary))' },
-                    { dataKey: 'Indtjekninger', name: 'Indtjekninger', color: 'hsl(var(--accent))' }
-                  ]}
-                  xAxisLabel="Ugedag"
-                  yAxisLabel="Antal"
-                  height={300}
-                  showLegend={true}
-                />
-              ) : (
-                <p className="text-xs sm:text-sm text-[hsl(var(--muted))]">Ingen ugedagsdata tilgængelig</p>
-              )}
+            {/* Weekday Attendance - Split into two charts to avoid mixing units */}
+            <div className="space-y-4 sm:space-y-6">
+              {/* Average Attendance per Weekday - Using ECharts for enhanced visualization */}
+              <div className="card-glass-active border-hair rounded-lg p-3 sm:p-4 md:p-5 shadow-sm">
+                <h3 className="text-sm sm:text-base font-semibold text-[hsl(var(--foreground))] mb-3 sm:mb-4">
+                  Gennemsnitligt fremmøde pr. ugedag
+                </h3>
+                {trainingAttendance.weekdayLoading ? (
+                  <div className="flex items-center justify-center py-8">
+                    <p className="text-xs sm:text-sm text-[hsl(var(--muted))]">Indlæser ugedagsanalyse...</p>
+                  </div>
+                ) : trainingAttendance.weekdayAttendance.length > 0 ? (
+                  <EChartsBarChart
+                    data={trainingAttendance.weekdayAttendance.map((day) => ({
+                      name: day.weekdayName,
+                      'Gennemsnitligt fremmøde': day.averageAttendance
+                    }))}
+                    bars={[
+                      { dataKey: 'Gennemsnitligt fremmøde', name: 'Gennemsnitligt fremmøde', color: 'hsl(var(--primary))' }
+                    ]}
+                    xAxisLabel="Ugedag"
+                    yAxisLabel="Gennemsnitligt antal spillere"
+                    height={300}
+                    showLegend={false}
+                  />
+                ) : (
+                  <p className="text-xs sm:text-sm text-[hsl(var(--muted))]">Ingen ugedagsdata tilgængelig</p>
+                )}
+              </div>
+
+              {/* Total Check-ins per Weekday */}
+              <div className="card-glass-active border-hair rounded-lg p-3 sm:p-4 md:p-5 shadow-sm">
+                <h3 className="text-sm sm:text-base font-semibold text-[hsl(var(--foreground))] mb-3 sm:mb-4">
+                  Total indtjekninger pr. ugedag
+                </h3>
+                {trainingAttendance.weekdayLoading ? (
+                  <div className="flex items-center justify-center py-8">
+                    <p className="text-xs sm:text-sm text-[hsl(var(--muted))]">Indlæser ugedagsanalyse...</p>
+                  </div>
+                ) : trainingAttendance.weekdayAttendance.length > 0 ? (
+                  <EChartsBarChart
+                    data={trainingAttendance.weekdayAttendance.map((day) => ({
+                      name: day.weekdayName,
+                      'Indtjekninger': day.checkInCount
+                    }))}
+                    bars={[
+                      { dataKey: 'Indtjekninger', name: 'Indtjekninger', color: 'hsl(var(--accent))' }
+                    ]}
+                    xAxisLabel="Ugedag"
+                    yAxisLabel="Antal indtjekninger"
+                    height={300}
+                    showLegend={false}
+                  />
+                ) : (
+                  <p className="text-xs sm:text-sm text-[hsl(var(--muted))]">Ingen ugedagsdata tilgængelig</p>
+                )}
+              </div>
             </div>
 
             {/* Training Day 1 vs Training Day 2 Comparison */}
@@ -334,7 +395,7 @@ const StatisticsPage = () => {
                 </div>
               ) : trainingAttendance.playerCheckInLongTail.length > 0 ? (
                 <div className="space-y-2">
-                  <BarChart
+                  <EChartsBarChart
                     data={trainingAttendance.playerCheckInLongTail.slice(0, 20).map((player) => ({
                       name: player.playerName.length > 15 ? player.playerName.substring(0, 15) + '...' : player.playerName,
                       'Indtjekninger': player.checkInCount
