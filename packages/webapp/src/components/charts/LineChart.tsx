@@ -89,6 +89,7 @@ export const LineChart: React.FC<LineChartProps> = ({
               strokeWidth={line.strokeWidth || 2}
               dot={{ r: 4, fill: line.color || `hsl(var(--chart-${(index % 5) + 1}))` }}
               activeDot={{ r: 6 }}
+              connectNulls={false} // Don't connect lines across missing data points
             />
           ))}
         </RechartsLineChart>

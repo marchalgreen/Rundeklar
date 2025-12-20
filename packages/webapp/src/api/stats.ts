@@ -1412,6 +1412,12 @@ const getWeekdayAttendanceOverTime = async (
     getStateCopy()
   ])
 
+  // Create player lookup Map for O(1) access instead of O(n) find()
+  const playerMap = new Map<string, typeof state.players[0]>()
+  state.players.forEach(player => {
+    playerMap.set(player.id, player)
+  })
+
   // Filter statistics by date range if provided
   let relevantStats = statistics
   if (dateFrom || dateTo) {
@@ -1440,7 +1446,12 @@ const getWeekdayAttendanceOverTime = async (
     
     let sessionCheckInCount = 0
     checkIns.forEach((checkIn) => {
-      const player = state.players.find((p) => p.id === checkIn.playerId)
+      // Handle both camelCase (playerId) and snake_case (player_id) formats
+      const playerId = (checkIn as any).playerId || (checkIn as any).player_id
+      if (!playerId) return
+      
+      // Use Map lookup for O(1) performance
+      const player = playerMap.get(playerId)
       if (!player) return
 
       // Filter by training groups if provided
@@ -1452,6 +1463,10 @@ const getWeekdayAttendanceOverTime = async (
 
       sessionCheckInCount++
     })
+
+    // Only include sessions that have check-ins matching the filter
+    // This prevents showing 0 values for sessions with no relevant check-ins
+    if (sessionCheckInCount === 0) return
 
     if (!dateWeekdayStats.has(dateKey)) {
       dateWeekdayStats.set(dateKey, {
@@ -1465,20 +1480,22 @@ const getWeekdayAttendanceOverTime = async (
     stats.sessions.add(stat.sessionId)
   })
 
-  // Convert to array
-  const result: WeekdayAttendanceOverTime[] = Array.from(dateWeekdayStats.entries()).map(([dateKey, stats]) => {
-    const [date, weekdayStr] = dateKey.split('_')
-    const weekday = parseInt(weekdayStr, 10)
-    const averageAttendance = stats.sessions.size > 0 ? stats.checkInCount / stats.sessions.size : 0
+  // Convert to array - only include entries with actual check-ins
+  const result: WeekdayAttendanceOverTime[] = Array.from(dateWeekdayStats.entries())
+    .filter(([_, stats]) => stats.checkInCount > 0) // Only include if there are check-ins
+    .map(([dateKey, stats]) => {
+      const [date, weekdayStr] = dateKey.split('_')
+      const weekday = parseInt(weekdayStr, 10)
+      const averageAttendance = stats.sessions.size > 0 ? stats.checkInCount / stats.sessions.size : 0
 
-    return {
-      date,
-      weekday,
-      weekdayName: weekdayNames[weekday],
-      checkInCount: stats.checkInCount,
-      averageAttendance: Math.round(averageAttendance * 10) / 10
-    }
-  })
+      return {
+        date,
+        weekday,
+        weekdayName: weekdayNames[weekday],
+        checkInCount: stats.checkInCount,
+        averageAttendance: Math.round(averageAttendance * 10) / 10
+      }
+    })
 
   // Sort by date (ascending)
   return result.sort((a, b) => a.date.localeCompare(b.date))

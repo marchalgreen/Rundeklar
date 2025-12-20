@@ -349,8 +349,12 @@ const StatisticsPage = () => {
                 <LineChart
                   data={(() => {
                     // Group by date and create lines for each weekday
+                    // Only include dates that have actual attendance data
                     const dateMap = new Map<string, Record<string, number>>()
                     trainingAttendance.weekdayAttendanceOverTime.forEach((item) => {
+                      // Only include items with actual attendance (not 0)
+                      if (item.averageAttendance <= 0) return
+                      
                       if (!dateMap.has(item.date)) {
                         dateMap.set(item.date, {})
                       }
