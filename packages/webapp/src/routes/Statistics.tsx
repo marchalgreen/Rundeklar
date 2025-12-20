@@ -789,11 +789,11 @@ const StatisticsPage = () => {
                 Sejre/Nederlag pr. sæson
               </h3>
               <div className="grid gap-3 sm:gap-4 md:grid-cols-2 xl:grid-cols-3">
-                {Object.keys(playerStatistics.statistics.winsBySeason)
+                {playerStatistics.statistics && Object.keys(playerStatistics.statistics.winsBySeason)
                   .sort()
                   .map((season) => {
-                    const wins = playerStatistics.statistics.winsBySeason?.[season] || 0
-                    const losses = playerStatistics.statistics.lossesBySeason?.[season] || 0
+                    const wins = playerStatistics.statistics?.winsBySeason?.[season] || 0
+                    const losses = playerStatistics.statistics?.lossesBySeason?.[season] || 0
                     const total = wins + losses
                     const winRate = total > 0 ? ((wins / total) * 100).toFixed(1) : '0.0'
                     
