@@ -1,18 +1,47 @@
 #!/usr/bin/env tsx
+/// <reference types="node" />
 /**
  * Fix script to create missing statistics snapshots for ended sessions.
  * 
  * This script finds all ended sessions without snapshots and creates snapshots for them.
  * 
- * Usage: pnpm tsx packages/webapp/scripts/fix-missing-snapshots.ts [tenantId]
+ * Usage: cd packages/webapp && pnpm exec tsx scripts/fix-missing-snapshots.ts [tenantId]
  */
 
 import postgres from 'postgres'
 import { createId } from '@paralleldrive/cuid2'
+import { readFileSync, existsSync } from 'fs'
+import { join, dirname } from 'path'
+import { fileURLToPath } from 'url'
+
+const __filename = fileURLToPath(import.meta.url)
+const __dirname = dirname(__filename)
+
+// Load environment variables from .env.local
+const envPath = join(__dirname, '../../.env.local')
+if (existsSync(envPath)) {
+  const envContent = readFileSync(envPath, 'utf-8')
+  envContent.split('\n').forEach((line) => {
+    const [key, ...valueParts] = line.split('=')
+    if (key && valueParts.length > 0) {
+      const value = valueParts.join('=').trim().replace(/^["']|["']$/g, '')
+      if (!process.env[key.trim()]) {
+        process.env[key.trim()] = value
+      }
+    }
+  })
+}
 
 const tenantId = process.argv[2] || 'demo'
 
-const sql = postgres(process.env.DATABASE_URL || process.env.VITE_DATABASE_URL || '', {
+const databaseUrl = process.env.DATABASE_URL || process.env.VITE_DATABASE_URL || process.env.DATABASE_URL_UNPOOLED
+if (!databaseUrl) {
+  console.error('❌ Error: DATABASE_URL environment variable not set')
+  console.error('   Please set DATABASE_URL or VITE_DATABASE_URL in .env.local')
+  process.exit(1)
+}
+
+const sql = postgres(databaseUrl, {
   max: 1
 })
 
