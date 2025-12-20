@@ -137,11 +137,13 @@ export type PlayerMatchResult = {
   matchId: string
   date: string
   sessionId: string
-  opponentNames: string[] // Modstandere eller makkere
-  wasPartner: boolean // True hvis makkere (samme team), false hvis modstandere
-  won: boolean
-  scoreData: BadmintonScoreData | TennisScoreData | PadelScoreData
-  sport: 'badminton' | 'tennis' | 'padel'
+  opponentNames: string[] // Modstandere eller makkere (deprecated: use partnerNames and opponentNames separately)
+  wasPartner: boolean // True hvis makkere (samme team), false hvis modstandere (deprecated: use partnerNames.length > 0)
+  partnerNames?: string[] // Makkere (spillere på samme hold)
+  opponentNamesSeparate?: string[] // Modstandere (spillere på modstanderens hold)
+  won?: boolean // Optional - only present if match has result
+  scoreData?: BadmintonScoreData | TennisScoreData | PadelScoreData // Optional - only present if match has result
+  sport?: 'badminton' | 'tennis' | 'padel' // Optional - only present if match has result
 }
 
 export type HeadToHeadResult = {

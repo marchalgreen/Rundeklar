@@ -512,6 +512,126 @@ const getPlayerComparison = async (
 }
 
 /**
+ * Gets head-to-head statistics between two specific players.
+ * @param playerId1 - First player ID
+ * @param playerId2 - Second player ID
+ * @returns Object with head-to-head matches and win counts
+ */
+const getPlayerHeadToHead = async (
+  playerId1: string,
+  playerId2: string
+): Promise<{ headToHeadMatches: HeadToHeadResult[], player1Wins: number, player2Wins: number }> => {
+  const [allMatchResults, allMatches, allMatchPlayers, state] = await Promise.all([
+    getMatchResults(),
+    getMatches(),
+    getMatchPlayers(),
+    getStateCopy()
+  ])
+  
+  const headToHeadMatches: HeadToHeadResult[] = []
+  let player1Wins = 0
+  let player2Wins = 0
+
+  // Create a map of match results by matchId
+  const matchResultsMap = new Map<string, MatchResult>()
+  allMatchResults.forEach((mr) => {
+    matchResultsMap.set(mr.matchId, mr)
+  })
+
+  // Create a map of sessions by sessionId for dates
+  const sessionsMap = new Map<string, { date: string }>()
+  state.sessions.forEach((s) => {
+    sessionsMap.set(s.id, { date: s.date })
+  })
+
+  // Group matchPlayers by matchId
+  const matchPlayersByMatch = new Map<string, MatchPlayer[]>()
+  allMatchPlayers.forEach((mp) => {
+    if (!matchPlayersByMatch.has(mp.matchId)) {
+      matchPlayersByMatch.set(mp.matchId, [])
+    }
+    matchPlayersByMatch.get(mp.matchId)!.push(mp)
+  })
+
+  // Find all matches where both players participated
+  const relevantMatchIds = new Set<string>()
+  matchPlayersByMatch.forEach((matchPlayers, matchId) => {
+    const player1InMatch = matchPlayers.some((mp) => mp.playerId === playerId1)
+    const player2InMatch = matchPlayers.some((mp) => mp.playerId === playerId2)
+    if (player1InMatch && player2InMatch) {
+      relevantMatchIds.add(matchId)
+    }
+  })
+
+  // Process each relevant match
+  relevantMatchIds.forEach((matchId) => {
+    const matchPlayers = matchPlayersByMatch.get(matchId) || []
+    const { team1, team2 } = getTeamStructure(matchPlayers)
+    const player1InTeam1 = team1.includes(playerId1)
+    const player1InTeam2 = team2.includes(playerId1)
+    const player2InTeam1 = team1.includes(playerId2)
+    const player2InTeam2 = team2.includes(playerId2)
+
+    // Check if both players are in the same match
+    if ((player1InTeam1 || player1InTeam2) && (player2InTeam1 || player2InTeam2)) {
+      const sameTeam = (player1InTeam1 && player2InTeam1) || (player1InTeam2 && player2InTeam2)
+
+      // If there's a match result, add to head-to-head
+      const matchResult = matchResultsMap.get(matchId)
+      if (matchResult) {
+        const match = allMatches.find((m) => m.id === matchId)
+        const session = match ? sessionsMap.get(match.sessionId) : null
+        
+        if (session) {
+          const player1Team: 'team1' | 'team2' = player1InTeam1 ? 'team1' : 'team2'
+          const player2Team: 'team1' | 'team2' = player2InTeam1 ? 'team1' : 'team2'
+          
+          // Determine who won
+          let player1WonThisMatch = false
+          if (sameTeam) {
+            // They played together - both win or both lose
+            player1WonThisMatch = matchResult.winnerTeam === player1Team
+          } else {
+            // They played against each other
+            player1WonThisMatch = matchResult.winnerTeam === player1Team
+          }
+
+          headToHeadMatches.push({
+            matchId,
+            date: session.date,
+            sessionId: match.sessionId,
+            player1Won: player1WonThisMatch,
+            player1Team,
+            player2Team,
+            scoreData: matchResult.scoreData,
+            sport: matchResult.sport,
+            wasPartner: sameTeam
+          })
+
+          // Count wins for head-to-head (only when playing against each other)
+          if (!sameTeam) {
+            if (player1WonThisMatch) {
+              player1Wins++
+            } else {
+              player2Wins++
+            }
+          }
+        }
+      }
+    }
+  })
+
+  // Sort head-to-head matches by date (newest first)
+  headToHeadMatches.sort((a, b) => b.date.localeCompare(a.date))
+
+  return {
+    headToHeadMatches,
+    player1Wins,
+    player2Wins
+  }
+}
+
+/**
  * Gets recent match results for a player.
  * @param playerId - Player ID
  * @param limit - Maximum number of results to return (default: 5)
@@ -554,16 +674,195 @@ const getPlayerRecentMatches = async (
     playerMap.set(player.id, player)
   })
 
-  // Find all matches where player participated and has a result
+  logger.debug('[getPlayerRecentMatches] Starting', {
+    playerId,
+    limit,
+    totalMatchResults: allMatchResults.length,
+    totalMatches: allMatches.length,
+    totalMatchPlayers: allMatchPlayers.length,
+    sampleMatchResultIds: allMatchResults.slice(0, 5).map(mr => mr.matchId)
+  })
+
+  // Create a map of match results by matchId for quick lookup
+  const matchResultsMap = new Map<string, MatchResult>()
+  allMatchResults.forEach((mr) => {
+    matchResultsMap.set(mr.matchId, mr)
+  })
+
+  // Find all matches where player participated AND has a result
   const playerMatches: PlayerMatchResult[] = []
 
+  // Only process matches that have results
+  let checkedMatches = 0
+  let skippedNoMatchPlayers = 0
+  let skippedPlayerNotInMatch = 0
+  let skippedNoMatch = 0
+  let skippedNoSession = 0
+  
+  for (const matchResult of allMatchResults) {
+    if (playerMatches.length >= limit) break
+    checkedMatches++
+
+    const matchPlayers = matchPlayersByMatch.get(matchResult.matchId) || []
+    if (matchPlayers.length === 0) {
+      skippedNoMatchPlayers++
+      continue
+    }
+    
+    const playerInMatch = matchPlayers.some((mp) => mp.playerId === playerId)
+    if (!playerInMatch) {
+      skippedPlayerNotInMatch++
+      continue
+    }
+
+    const match = allMatchesMap.get(matchResult.matchId)
+    if (!match) {
+      skippedNoMatch++
+      continue
+    }
+
+    const session = sessionsMap.get(match.sessionId)
+    if (!session) {
+      skippedNoSession++
+      continue
+    }
+
+    const { team1, team2 } = getTeamStructure(matchPlayers)
+    const playerInTeam1 = team1.includes(playerId)
+    const playerInTeam2 = team2.includes(playerId)
+    const playerTeam: 'team1' | 'team2' = playerInTeam1 ? 'team1' : 'team2'
+    
+    // Get opponent/partner names
+    const partnerIds = playerInTeam1 
+      ? team1.filter(id => id !== playerId)
+      : team2.filter(id => id !== playerId)
+    
+    const opponentIds = playerInTeam1 
+      ? team2
+      : team1
+    
+    const otherPlayerIds = [...partnerIds, ...opponentIds]
+    
+    const opponentNames = otherPlayerIds.map((pid) => {
+      const player = playerMap.get(pid)
+      return player?.name || 'Ukendt spiller'
+    })
+
+    const partnerNames = partnerIds.map((pid) => {
+      const player = playerMap.get(pid)
+      return player?.name || 'Ukendt spiller'
+    })
+
+    const opponentNamesSeparate = opponentIds.map((pid) => {
+      const player = playerMap.get(pid)
+      return player?.name || 'Ukendt spiller'
+    })
+
+    const wasPartner = partnerIds.length > 0
+    const won = matchResult.winnerTeam === playerTeam
+
+    playerMatches.push({
+      matchId: matchResult.matchId,
+      date: session.date,
+      sessionId: match.sessionId,
+      opponentNames, // Keep for backward compatibility
+      wasPartner, // Keep for backward compatibility
+      partnerNames,
+      opponentNamesSeparate,
+      won,
+      scoreData: matchResult.scoreData,
+      sport: matchResult.sport
+    })
+  }
+
+  // Sort by date (newest first) and return top N
+  const sorted = playerMatches.sort((a, b) => b.date.localeCompare(a.date))
+  
+  logger.debug('[getPlayerRecentMatches] Completed', {
+    playerId,
+    foundMatches: sorted.length,
+    matchIds: sorted.map(m => m.matchId),
+    checkedMatches,
+    skippedNoMatchPlayers,
+    skippedPlayerNotInMatch,
+    skippedNoMatch,
+    skippedNoSession,
+    sampleMatchResultIds: allMatchResults.slice(0, 5).map(mr => ({
+      matchId: mr.matchId,
+      hasMatchPlayers: matchPlayersByMatch.has(mr.matchId),
+      matchPlayersCount: matchPlayersByMatch.get(mr.matchId)?.length || 0
+    }))
+  })
+  
+  return sorted.slice(0, limit)
+}
+
+/**
+ * Gets all match results for a player (no limit).
+ * @param playerId - Player ID
+ * @param state - Optional state to reuse if already loaded
+ * @returns Array of all match results with details
+ */
+const getPlayerAllMatches = async (
+  playerId: string,
+  state?: DatabaseState // Optional state to reuse if already loaded
+): Promise<PlayerMatchResult[]> => {
+  // Reuse logic from getPlayerRecentMatches but without limit
+  const [allMatchResults, allMatches, allMatchPlayers, stateData] = await Promise.all([
+    getMatchResults(),
+    getMatches(),
+    getMatchPlayers(),
+    state ? Promise.resolve(state) : getStateCopy()
+  ])
+
+  // Create maps for quick lookup - use Maps instead of find() for O(1) access
+  const allMatchesMap = new Map<string, typeof allMatches[0]>()
+  allMatches.forEach((m) => {
+    allMatchesMap.set(m.id, m)
+  })
+
+  const sessionsMap = new Map<string, { date: string }>()
+  stateData.sessions.forEach((s) => {
+    sessionsMap.set(s.id, { date: s.date })
+  })
+
+  const matchPlayersByMatch = new Map<string, MatchPlayer[]>()
+  allMatchPlayers.forEach((mp) => {
+    if (!matchPlayersByMatch.has(mp.matchId)) {
+      matchPlayersByMatch.set(mp.matchId, [])
+    }
+    matchPlayersByMatch.get(mp.matchId)!.push(mp)
+  })
+
+  // Create player lookup Map for O(1) access
+  const playerMap = new Map<string, typeof stateData.players[0]>()
+  stateData.players.forEach(player => {
+    playerMap.set(player.id, player)
+  })
+
+  logger.debug('[getPlayerAllMatches] Starting', {
+    playerId,
+    totalMatchResults: allMatchResults.length,
+    totalMatches: allMatches.length,
+    totalMatchPlayers: allMatchPlayers.length
+  })
+
+  // Create a map of match results by matchId for quick lookup
+  const matchResultsMap = new Map<string, MatchResult>()
+  allMatchResults.forEach((mr) => {
+    matchResultsMap.set(mr.matchId, mr)
+  })
+
+  // Find all matches where player participated AND has a result
+  const playerMatches: PlayerMatchResult[] = []
+
+  // Only process matches that have results
   for (const matchResult of allMatchResults) {
     const matchPlayers = matchPlayersByMatch.get(matchResult.matchId) || []
     const playerInMatch = matchPlayers.some((mp) => mp.playerId === playerId)
     
     if (!playerInMatch) continue
 
-    // Use Map lookup instead of find()
     const match = allMatchesMap.get(matchResult.matchId)
     if (!match) continue
 
@@ -576,7 +875,6 @@ const getPlayerRecentMatches = async (
     const playerTeam: 'team1' | 'team2' = playerInTeam1 ? 'team1' : 'team2'
     
     // Get opponent/partner names
-    // Partners are on the same team, opponents are on the opposite team
     const partnerIds = playerInTeam1 
       ? team1.filter(id => id !== playerId)
       : team2.filter(id => id !== playerId)
@@ -585,36 +883,50 @@ const getPlayerRecentMatches = async (
       ? team2
       : team1
     
-    // Combine partners and opponents for display (partners first, then opponents)
     const otherPlayerIds = [...partnerIds, ...opponentIds]
     
-    // Use Map lookup instead of find()
     const opponentNames = otherPlayerIds.map((pid) => {
       const player = playerMap.get(pid)
       return player?.name || 'Ukendt spiller'
     })
 
-    // wasPartner is true if there are partners (same team), false if only opponents
-    const wasPartner = partnerIds.length > 0
+    const partnerNames = partnerIds.map((pid) => {
+      const player = playerMap.get(pid)
+      return player?.name || 'Ukendt spiller'
+    })
 
+    const opponentNamesSeparate = opponentIds.map((pid) => {
+      const player = playerMap.get(pid)
+      return player?.name || 'Ukendt spiller'
+    })
+
+    const wasPartner = partnerIds.length > 0
     const won = matchResult.winnerTeam === playerTeam
 
     playerMatches.push({
       matchId: matchResult.matchId,
       date: session.date,
       sessionId: match.sessionId,
-      opponentNames,
-      wasPartner,
+      opponentNames, // Keep for backward compatibility
+      wasPartner, // Keep for backward compatibility
+      partnerNames,
+      opponentNamesSeparate,
       won,
       scoreData: matchResult.scoreData,
       sport: matchResult.sport
     })
   }
 
-  // Sort by date (newest first) and return top N
-  return playerMatches
-    .sort((a, b) => b.date.localeCompare(a.date))
-    .slice(0, limit)
+  // Sort by date (newest first) and return all
+  const sorted = playerMatches.sort((a, b) => b.date.localeCompare(a.date))
+  
+  logger.debug('[getPlayerAllMatches] Completed', {
+    playerId,
+    foundMatches: sorted.length,
+    matchIds: sorted.slice(0, 10).map(m => m.matchId)
+  })
+  
+  return sorted
 }
 
 /**
@@ -931,7 +1243,8 @@ const getPlayerStatistics = async (
     const averageScoreDifference = scoreDifferenceCount > 0 ? totalScoreDifference / scoreDifferenceCount : null
 
     // Get recent matches - reuse state to avoid duplicate getStateCopy() call
-    const recentMatches = await getPlayerRecentMatches(playerId, 5, state)
+    // Default to 10 matches for better balance between information and scroll
+    const recentMatches = await getPlayerRecentMatches(playerId, 10, state)
 
     const result: PlayerStatistics = {
       playerId,
@@ -1761,8 +2074,10 @@ const statsApi = {
   getSessionHistory,
   generateDummyHistoricalData,
   getPlayerComparison,
+  getPlayerHeadToHead,
   searchMatchResults,
   getPlayerRecentMatches,
+  getPlayerAllMatches,
   getTrainingGroupAttendance,
   getWeekdayAttendance,
   getPlayerCheckInLongTail,
