@@ -667,20 +667,20 @@ const getPlayerStatistics = async (
     logger.debug('[getPlayerStatistics] Statistics loaded', { 
       totalStats: relevantStats.length 
     })
-  if (filters?.season) {
-    relevantStats = relevantStats.filter((s) => s.season === filters.season)
-  }
-  if (filters?.dateFrom) {
-    relevantStats = relevantStats.filter((s) => s.sessionDate >= filters.dateFrom!)
-  }
-  if (filters?.dateTo) {
-    relevantStats = relevantStats.filter((s) => s.sessionDate <= filters.dateTo!)
-  }
+    if (filters?.season) {
+      relevantStats = relevantStats.filter((s) => s.season === filters.season)
+    }
+    if (filters?.dateFrom) {
+      relevantStats = relevantStats.filter((s) => s.sessionDate >= filters.dateFrom!)
+    }
+    if (filters?.dateTo) {
+      relevantStats = relevantStats.filter((s) => s.sessionDate <= filters.dateTo!)
+    }
 
-  // Calculate check-ins
-  const checkInsBySeason: Record<string, number> = {}
-  let totalCheckIns = 0
-  relevantStats.forEach((stat) => {
+    // Calculate check-ins
+    const checkInsBySeason: Record<string, number> = {}
+    let totalCheckIns = 0
+    relevantStats.forEach((stat) => {
     // Defensive check: ensure checkIns is an array
     const checkIns = Array.isArray(stat.checkIns) ? stat.checkIns : []
     // Handle both camelCase (playerId) and snake_case (player_id) formats
@@ -694,24 +694,24 @@ const getPlayerStatistics = async (
     }
   })
 
-  // Calculate matches
-  const matchesBySeason: Record<string, number> = {}
-  let totalMatches = 0
-  const courtCounts = new Map<number, number>()
-  const matchDates: string[] = []
-  let lastPlayedDate: string | null = null
+    // Calculate matches
+    const matchesBySeason: Record<string, number> = {}
+    let totalMatches = 0
+    const courtCounts = new Map<number, number>()
+    const matchDates: string[] = []
+    let lastPlayedDate: string | null = null
 
-  // Create match lookup Map for O(1) access across all stats
-  const matchMap = new Map<string, any>()
-  relevantStats.forEach((stat) => {
-    if (Array.isArray(stat.matches)) {
-      stat.matches.forEach(match => {
-        matchMap.set(match.id, match)
-      })
-    }
-  })
-  
-  relevantStats.forEach((stat) => {
+    // Create match lookup Map for O(1) access across all stats
+    const matchMap = new Map<string, any>()
+    relevantStats.forEach((stat) => {
+      if (Array.isArray(stat.matches)) {
+        stat.matches.forEach(match => {
+          matchMap.set(match.id, match)
+        })
+      }
+    })
+    
+    relevantStats.forEach((stat) => {
     // Defensive check: ensure matchPlayers is an array
     const matchPlayers = Array.isArray(stat.matchPlayers) ? stat.matchPlayers : []
     
@@ -738,236 +738,240 @@ const getPlayerStatistics = async (
     }
   })
 
-  // Find most played court
-  let mostPlayedCourt: number | null = null
-  if (courtCounts.size > 0) {
-    const sorted = Array.from(courtCounts.entries()).sort((a, b) => b[1] - a[1])
-    mostPlayedCourt = sorted[0][0]
-  }
-
-  // Find last played date
-  if (matchDates.length > 0) {
-    matchDates.sort((a, b) => b.localeCompare(a))
-    lastPlayedDate = matchDates[0]
-  }
-
-  // Get partners and opponents - reuse state and statistics to avoid duplicate calls
-  const partners = await getTopPartners(playerId, 5, state, relevantStats)
-  const opponents = await getTopOpponents(playerId, 5, state, relevantStats)
-
-  // Calculate average level difference
-  let totalLevelDiff = 0
-  let levelDiffCount = 0
-  const playerLevel = player.level ?? 0
-
-  partners.forEach((partner) => {
-    const partnerPlayer = playerMap.get(partner.playerId)
-    if (partnerPlayer?.level !== null && partnerPlayer?.level !== undefined) {
-      const diff = Math.abs(playerLevel - partnerPlayer.level)
-      totalLevelDiff += diff * partner.count
-      levelDiffCount += partner.count
+    // Find most played court
+    let mostPlayedCourt: number | null = null
+    if (courtCounts.size > 0) {
+      const sorted = Array.from(courtCounts.entries()).sort((a, b) => b[1] - a[1])
+      mostPlayedCourt = sorted[0][0]
     }
-  })
 
-  opponents.forEach((opponent) => {
-    const opponentPlayer = playerMap.get(opponent.playerId)
-    if (opponentPlayer?.level !== null && opponentPlayer?.level !== undefined) {
-      const diff = Math.abs(playerLevel - opponentPlayer.level)
-      totalLevelDiff += diff * opponent.count
-      levelDiffCount += opponent.count
+    // Find last played date
+    if (matchDates.length > 0) {
+      matchDates.sort((a, b) => b.localeCompare(a))
+      lastPlayedDate = matchDates[0]
     }
-  })
 
-  const averageLevelDifference = levelDiffCount > 0 ? totalLevelDiff / levelDiffCount : null
+    // Get partners and opponents - reuse state and statistics to avoid duplicate calls
+    const partners = await getTopPartners(playerId, 5, state, relevantStats)
+    const opponents = await getTopOpponents(playerId, 5, state, relevantStats)
 
-  // Determine preferred category based on match history
-  let preferredCategory: 'Single' | 'Double' | 'Mixed' | null = null
-  const singlesCount = new Map<string, number>()
-  const doublesCount = new Map<string, number>()
+    // Calculate average level difference
+    let totalLevelDiff = 0
+    let levelDiffCount = 0
+    const playerLevel = player.level ?? 0
 
-  relevantStats.forEach((stat) => {
-    // Defensive check: ensure matchPlayers is an array
-    const matchPlayers = Array.isArray(stat.matchPlayers) ? stat.matchPlayers : []
-    
-    const matchGroups = new Map<string, MatchPlayer[]>()
-    matchPlayers.forEach((mp) => {
-      if (!matchGroups.has(mp.matchId)) {
-        matchGroups.set(mp.matchId, [])
-      }
-      matchGroups.get(mp.matchId)!.push(mp)
-    })
-
-    matchGroups.forEach((matchPlayers) => {
-      const playerInMatch = matchPlayers.some((mp) => mp.playerId === playerId)
-      if (playerInMatch) {
-        if (matchPlayers.length === 2) {
-          // Singles match
-          singlesCount.set(stat.season, (singlesCount.get(stat.season) ?? 0) + 1)
-        } else if (matchPlayers.length >= 4) {
-          // Doubles match
-          doublesCount.set(stat.season, (doublesCount.get(stat.season) ?? 0) + 1)
-        }
+    partners.forEach((partner) => {
+      const partnerPlayer = playerMap.get(partner.playerId)
+      if (partnerPlayer?.level !== null && partnerPlayer?.level !== undefined) {
+        const diff = Math.abs(playerLevel - partnerPlayer.level)
+        totalLevelDiff += diff * partner.count
+        levelDiffCount += partner.count
       }
     })
-  })
 
-  const totalSingles = Array.from(singlesCount.values()).reduce((a, b) => a + b, 0)
-  const totalDoubles = Array.from(doublesCount.values()).reduce((a, b) => a + b, 0)
+    opponents.forEach((opponent) => {
+      const opponentPlayer = playerMap.get(opponent.playerId)
+      if (opponentPlayer?.level !== null && opponentPlayer?.level !== undefined) {
+        const diff = Math.abs(playerLevel - opponentPlayer.level)
+        totalLevelDiff += diff * opponent.count
+        levelDiffCount += opponent.count
+      }
+    })
 
-  if (totalSingles > 0 && totalDoubles > 0) {
-    preferredCategory = 'Mixed'
-  } else if (totalSingles > 0) {
-    preferredCategory = 'Single'
-  } else if (totalDoubles > 0) {
-    preferredCategory = 'Double'
-  }
+    const averageLevelDifference = levelDiffCount > 0 ? totalLevelDiff / levelDiffCount : null
 
-  // Calculate match result statistics
-  const [allMatchResults, allMatches, allMatchPlayers] = await Promise.all([
-    getMatchResults(),
-    getMatches(),
-    getMatchPlayers()
-  ])
+    // Determine preferred category based on match history
+    let preferredCategory: 'Single' | 'Double' | 'Mixed' | null = null
+    const singlesCount = new Map<string, number>()
+    const doublesCount = new Map<string, number>()
 
-  // Create maps for quick lookup
-  const matchResultsMap = new Map<string, MatchResult>()
-  allMatchResults.forEach((mr) => {
-    matchResultsMap.set(mr.matchId, mr)
-  })
-
-  const matchPlayersByMatch = new Map<string, MatchPlayer[]>()
-  allMatchPlayers.forEach((mp) => {
-    if (!matchPlayersByMatch.has(mp.matchId)) {
-      matchPlayersByMatch.set(mp.matchId, [])
-    }
-    matchPlayersByMatch.get(mp.matchId)!.push(mp)
-  })
-
-  // Create match and session lookup Maps for O(1) access
-  const allMatchesMap = new Map<string, typeof allMatches[0]>()
-  allMatches.forEach(match => {
-    allMatchesMap.set(match.id, match)
-  })
-  
-  // Filter match results by relevant stats (same filters as above)
-  let relevantMatchResults = allMatchResults.filter((mr) => {
-    const match = allMatchesMap.get(mr.matchId)
-    if (!match) return false
-    
-    const session = sessionMap.get(match.sessionId)
-    if (!session) return false
-
-    // Check if player was in this match
-    const matchPlayers = matchPlayersByMatch.get(mr.matchId) || []
-    if (!matchPlayers.some((mp) => mp.playerId === playerId)) return false
-
-    // Apply filters
-    if (filters?.season) {
-      const season = getSeasonFromDate(session.date)
-      if (season !== filters.season) return false
-    }
-    if (filters?.dateFrom && session.date < filters.dateFrom) return false
-    if (filters?.dateTo && session.date > filters.dateTo) return false
-
-    return true
-  })
-
-  // Calculate wins/losses
-  let totalWins = 0
-  let totalLosses = 0
-  const winsBySeason: Record<string, number> = {}
-  const lossesBySeason: Record<string, number> = {}
-  let totalScoreDifference = 0
-  let scoreDifferenceCount = 0
-
-  relevantMatchResults.forEach((matchResult) => {
-    const match = allMatchesMap.get(matchResult.matchId)
-    if (!match) return
-
-    const session = sessionMap.get(match.sessionId)
-    if (!session) return
-
-    const matchPlayers = matchPlayersByMatch.get(matchResult.matchId) || []
-    const { team1, team2 } = getTeamStructure(matchPlayers)
-    const playerInTeam1 = team1.includes(playerId)
-    const playerInTeam2 = team2.includes(playerId)
-    const playerTeam: 'team1' | 'team2' = playerInTeam1 ? 'team1' : 'team2'
-    
-    const won = matchResult.winnerTeam === playerTeam
-    const season = getSeasonFromDate(session.date)
-
-    if (won) {
-      totalWins++
-      winsBySeason[season] = (winsBySeason[season] || 0) + 1
-    } else {
-      totalLosses++
-      lossesBySeason[season] = (lossesBySeason[season] || 0) + 1
-    }
-
-    // Calculate score difference for badminton
-    if (matchResult.sport === 'badminton' && 'sets' in matchResult.scoreData) {
-      const scoreData = matchResult.scoreData as { sets: Array<{ team1: number; team2: number }> }
-      let playerScore = 0
-      let opponentScore = 0
+    relevantStats.forEach((stat) => {
+      // Defensive check: ensure matchPlayers is an array
+      const matchPlayers = Array.isArray(stat.matchPlayers) ? stat.matchPlayers : []
       
-      scoreData.sets.forEach((set) => {
-        if (playerTeam === 'team1') {
-          playerScore += set.team1
-          opponentScore += set.team2
-        } else {
-          playerScore += set.team2
-          opponentScore += set.team1
+      const matchGroups = new Map<string, MatchPlayer[]>()
+      matchPlayers.forEach((mp) => {
+        if (!matchGroups.has(mp.matchId)) {
+          matchGroups.set(mp.matchId, [])
         }
+        matchGroups.get(mp.matchId)!.push(mp)
       })
 
-      const diff = playerScore - opponentScore
-      totalScoreDifference += diff
-      scoreDifferenceCount++
+      matchGroups.forEach((matchPlayers) => {
+        const playerInMatch = matchPlayers.some((mp) => mp.playerId === playerId)
+        if (playerInMatch) {
+          if (matchPlayers.length === 2) {
+            // Singles match
+            singlesCount.set(stat.season, (singlesCount.get(stat.season) ?? 0) + 1)
+          } else if (matchPlayers.length >= 4) {
+            // Doubles match
+            doublesCount.set(stat.season, (doublesCount.get(stat.season) ?? 0) + 1)
+          }
+        }
+      })
+    })
+
+    const totalSingles = Array.from(singlesCount.values()).reduce((a, b) => a + b, 0)
+    const totalDoubles = Array.from(doublesCount.values()).reduce((a, b) => a + b, 0)
+
+    if (totalSingles > 0 && totalDoubles > 0) {
+      preferredCategory = 'Mixed'
+    } else if (totalSingles > 0) {
+      preferredCategory = 'Single'
+    } else if (totalDoubles > 0) {
+      preferredCategory = 'Double'
     }
-  })
 
-  const matchesWithResults = relevantMatchResults.length
-  const winRate = matchesWithResults > 0 ? (totalWins / matchesWithResults) * 100 : 0
-  const averageScoreDifference = scoreDifferenceCount > 0 ? totalScoreDifference / scoreDifferenceCount : null
+    // Calculate match result statistics
+    const [allMatchResults, allMatches, allMatchPlayers] = await Promise.all([
+      getMatchResults(),
+      getMatches(),
+      getMatchPlayers()
+    ])
 
-  // Get recent matches - reuse state to avoid duplicate getStateCopy() call
-  const recentMatches = await getPlayerRecentMatches(playerId, 5, state)
+    // Create maps for quick lookup
+    const matchResultsMap = new Map<string, MatchResult>()
+    allMatchResults.forEach((mr) => {
+      matchResultsMap.set(mr.matchId, mr)
+    })
 
-  const result: PlayerStatistics = {
-    playerId,
-    totalCheckIns,
-    checkInsBySeason,
-    totalMatches,
-    matchesBySeason,
-    partners,
-    opponents,
-    preferredCategory,
-    averageLevelDifference,
-    mostPlayedCourt,
-    lastPlayedDate,
-    // Match result statistics
-    totalWins,
-    totalLosses,
-    winRate,
-    matchesWithResults,
-    averageScoreDifference,
-    winsBySeason,
-    lossesBySeason,
-    recentMatches
+    const matchPlayersByMatch = new Map<string, MatchPlayer[]>()
+    allMatchPlayers.forEach((mp) => {
+      if (!matchPlayersByMatch.has(mp.matchId)) {
+        matchPlayersByMatch.set(mp.matchId, [])
+      }
+      matchPlayersByMatch.get(mp.matchId)!.push(mp)
+    })
+
+    // Create match and session lookup Maps for O(1) access
+    const allMatchesMap = new Map<string, typeof allMatches[0]>()
+    allMatches.forEach(match => {
+      allMatchesMap.set(match.id, match)
+    })
+    
+    // Filter match results by relevant stats (same filters as above)
+    let relevantMatchResults = allMatchResults.filter((mr) => {
+      const match = allMatchesMap.get(mr.matchId)
+      if (!match) return false
+      
+      const session = sessionMap.get(match.sessionId)
+      if (!session) return false
+
+      // Check if player was in this match
+      const matchPlayers = matchPlayersByMatch.get(mr.matchId) || []
+      if (!matchPlayers.some((mp) => mp.playerId === playerId)) return false
+
+      // Apply filters
+      if (filters?.season) {
+        const season = getSeasonFromDate(session.date)
+        if (season !== filters.season) return false
+      }
+      if (filters?.dateFrom && session.date < filters.dateFrom) return false
+      if (filters?.dateTo && session.date > filters.dateTo) return false
+
+      return true
+    })
+
+    // Calculate wins/losses
+    let totalWins = 0
+    let totalLosses = 0
+    const winsBySeason: Record<string, number> = {}
+    const lossesBySeason: Record<string, number> = {}
+    let totalScoreDifference = 0
+    let scoreDifferenceCount = 0
+
+    relevantMatchResults.forEach((matchResult) => {
+      const match = allMatchesMap.get(matchResult.matchId)
+      if (!match) return
+
+      const session = sessionMap.get(match.sessionId)
+      if (!session) return
+
+      const matchPlayers = matchPlayersByMatch.get(matchResult.matchId) || []
+      const { team1, team2 } = getTeamStructure(matchPlayers)
+      const playerInTeam1 = team1.includes(playerId)
+      const playerInTeam2 = team2.includes(playerId)
+      const playerTeam: 'team1' | 'team2' = playerInTeam1 ? 'team1' : 'team2'
+      
+      const won = matchResult.winnerTeam === playerTeam
+      const season = getSeasonFromDate(session.date)
+
+      if (won) {
+        totalWins++
+        winsBySeason[season] = (winsBySeason[season] || 0) + 1
+      } else {
+        totalLosses++
+        lossesBySeason[season] = (lossesBySeason[season] || 0) + 1
+      }
+
+      // Calculate score difference for badminton
+      if (matchResult.sport === 'badminton' && 'sets' in matchResult.scoreData) {
+        const scoreData = matchResult.scoreData as { sets: Array<{ team1: number; team2: number }> }
+        let playerScore = 0
+        let opponentScore = 0
+        
+        scoreData.sets.forEach((set) => {
+          if (playerTeam === 'team1') {
+            playerScore += set.team1
+            opponentScore += set.team2
+          } else {
+            playerScore += set.team2
+            opponentScore += set.team1
+          }
+        })
+
+        const diff = playerScore - opponentScore
+        totalScoreDifference += diff
+        scoreDifferenceCount++
+      }
+    })
+
+    const matchesWithResults = relevantMatchResults.length
+    const winRate = matchesWithResults > 0 ? (totalWins / matchesWithResults) * 100 : 0
+    const averageScoreDifference = scoreDifferenceCount > 0 ? totalScoreDifference / scoreDifferenceCount : null
+
+    // Get recent matches - reuse state to avoid duplicate getStateCopy() call
+    const recentMatches = await getPlayerRecentMatches(playerId, 5, state)
+
+    const result: PlayerStatistics = {
+      playerId,
+      totalCheckIns,
+      checkInsBySeason,
+      totalMatches,
+      matchesBySeason,
+      partners,
+      opponents,
+      preferredCategory,
+      averageLevelDifference,
+      mostPlayedCourt,
+      lastPlayedDate,
+      // Match result statistics
+      totalWins,
+      totalLosses,
+      winRate,
+      matchesWithResults,
+      averageScoreDifference,
+      winsBySeason,
+      lossesBySeason,
+      recentMatches
+    }
+    
+    logger.debug('[getPlayerStatistics] Completed', {
+      playerId,
+      totalCheckIns: result.totalCheckIns,
+      totalMatches: result.totalMatches,
+      totalWins: result.totalWins,
+      totalLosses: result.totalLosses,
+      partnersCount: result.partners.length,
+      opponentsCount: result.opponents.length,
+      recentMatchesCount: result.recentMatches.length
+    })
+    
+    return result
+  } catch (error) {
+    logger.error('[getPlayerStatistics] Error', { playerId, error })
+    throw error
   }
-  
-  logger.debug('[getPlayerStatistics] Completed', {
-    playerId,
-    totalCheckIns: result.totalCheckIns,
-    totalMatches: result.totalMatches,
-    totalWins: result.totalWins,
-    totalLosses: result.totalLosses,
-    partnersCount: result.partners.length,
-    opponentsCount: result.opponents.length,
-    recentMatchesCount: result.recentMatches.length
-  })
-  
-  return result
 }
 
 /**
