@@ -1081,14 +1081,19 @@ const getTrainingGroupAttendance = async (
   dateTo?: string,
   groupNames?: string[]
 ): Promise<TrainingGroupAttendance[]> => {
-  // Invalidate cache to ensure we get fresh data (especially after seeding)
-  invalidateCache('statistics')
-  invalidateCache('players')
+  // Don't invalidate cache here - cache should only be invalidated when data actually changes
+  // This prevents unnecessary database queries on every filter change
   
   const [statistics, state] = await Promise.all([
     getStatisticsSnapshots(),
     getStateCopy()
   ])
+  
+  // Create player lookup Map for O(1) access instead of O(n) find()
+  const playerMap = new Map<string, typeof state.players[0]>()
+  state.players.forEach(player => {
+    playerMap.set(player.id, player)
+  })
 
   // Filter statistics by date range if provided
   let relevantStats = statistics
@@ -1139,19 +1144,9 @@ const getTrainingGroupAttendance = async (
     const checkIns = Array.isArray(stat.checkIns) ? stat.checkIns : []
     totalCheckInsProcessed += checkIns.length
     
+    
     checkIns.forEach((checkIn) => {
-      // Debug: Log check-in structure for first few check-ins
-      const checkInIndex = totalCheckInsProcessed - checkIns.length + checkIns.indexOf(checkIn)
-      if (checkInIndex < 3) {
-        logger.debug(`[getTrainingGroupAttendance] Check-in #${checkInIndex}`, {
-          checkInKeys: Object.keys(checkIn),
-          checkInFull: checkIn,
-          playerIdValue: checkIn.playerId,
-          playerIdType: typeof checkIn.playerId,
-          matchingPlayers: state.players.filter(p => p.id === checkIn.playerId).length,
-          allPlayerIdsSample: state.players.slice(0, 5).map(p => p.id)
-        })
-      }
+      // Debug logging removed for performance - only log in development if needed
       
       // Handle both camelCase (playerId) and snake_case (player_id) formats
       // This is needed because old snapshots might have snake_case from fix scripts
@@ -1160,7 +1155,8 @@ const getTrainingGroupAttendance = async (
         checkInsWithoutPlayer++
         return
       }
-      const player = state.players.find((p) => p.id === playerId)
+      // Use Map lookup for O(1) performance instead of O(n) find()
+      const player = playerMap.get(playerId)
       if (!player) {
         checkInsWithoutPlayer++
         return
@@ -1203,7 +1199,14 @@ const getTrainingGroupAttendance = async (
     })
   })
 
-  // Convert to array and calculate averages
+  // Collect all unique session IDs across all groups for accurate total session count
+  const allUniqueSessionIds = new Set<string>()
+  groupStats.forEach(stats => {
+    stats.sessions.forEach(sessionId => allUniqueSessionIds.add(sessionId))
+  })
+  
+  // Store total unique sessions in a way that calculateKPIs can access it
+  // We'll attach it to the result array as a non-enumerable property
   const result: TrainingGroupAttendance[] = Array.from(groupStats.entries()).map(([groupName, stats]) => {
     const uniqueSessions = stats.sessions.size
     const averageAttendance = uniqueSessions > 0 ? stats.checkInCount / uniqueSessions : 0
@@ -1216,6 +1219,10 @@ const getTrainingGroupAttendance = async (
       averageAttendance: Math.round(averageAttendance * 10) / 10 // Round to 1 decimal
     }
   })
+  
+  // Attach total unique sessions as a property on the result array
+  // This allows calculateKPIs to access it without re-querying
+  ;(result as any).__totalUniqueSessions = allUniqueSessionIds.size
 
   // Debug: Log result summary
   logger.debug('[getTrainingGroupAttendance] Result summary', {
@@ -1224,6 +1231,7 @@ const getTrainingGroupAttendance = async (
     checkInsWithoutGroups,
     groupsFound: result.length,
     totalCheckInsInResult: result.reduce((sum, g) => sum + g.checkInCount, 0),
+    totalUniqueSessions: allUniqueSessionIds.size,
     groups: result.map(g => ({ name: g.groupName, checkIns: g.checkInCount }))
   })
 

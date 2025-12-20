@@ -217,95 +217,10 @@ export async function calculateKPIs(
   
   const totalCheckIns = attendance.reduce((sum, group) => sum + group.checkInCount, 0)
   
-  // CRITICAL FIX: Aggregate unique sessions across all groups
-  // Each group's `sessions` property is the count of unique sessions for that group
-  // We need to count unique sessions across ALL selected groups
-  // Since group.sessions is a number (not IDs), we need to reconstruct session IDs from snapshots
-  // BUT we must use the exact same filtering logic as getTrainingGroupAttendance
-  
-  // Get snapshots filtered by date (same as getTrainingGroupAttendance)
-  // CRITICAL: Invalidate cache first to ensure fresh data (same as getTrainingGroupAttendance does)
-  const { invalidateCache } = await import('../../api/postgres')
-  invalidateCache('statistics')
-  invalidateCache('players')
-  
-  const statistics = await getStatisticsSnapshots()
-  let relevantStats = statistics
-  if (dateFrom || dateTo) {
-    relevantStats = statistics.filter((stat) => {
-      if (dateFrom && stat.sessionDate < dateFrom) return false
-      if (dateTo && stat.sessionDate > dateTo) return false
-      return true
-    })
-  }
-  
-  // Get the selected group names from attendance data
-  const selectedGroupNames = attendance.map(g => g.groupName)
-  
-  logger.debug('[calculateKPIs] Starting session count calculation', {
-    attendanceGroups: attendance.map(g => ({ name: g.groupName, sessions: g.sessions, checkIns: g.checkInCount })),
-    selectedGroupNames,
-    relevantStatsCount: relevantStats.length,
-    totalSnapshots: statistics.length
-  })
-  
-  // Count unique sessions that have check-ins from selected groups
-  // This matches exactly how getTrainingGroupAttendance counts sessions
-  const sessionIdsWithCheckIns = new Set<string>()
-  
-  // Get state to look up players and their training groups
-  const { getStateCopy } = await import('../../api/postgres')
-  const state = await getStateCopy()
-  
-  let sessionsProcessed = 0
-  let sessionsWithCheckIns = 0
-  let sessionsWithMatchingGroups = 0
-  
-  relevantStats.forEach((stat) => {
-    sessionsProcessed++
-    const checkIns = Array.isArray(stat.checkIns) ? stat.checkIns : []
-    if (checkIns.length === 0) return
-    
-    sessionsWithCheckIns++
-    
-    // Check if this session has any check-ins from selected groups
-    // This matches the exact logic in getTrainingGroupAttendance (lines 1174-1201)
-    const hasCheckInFromSelectedGroups = checkIns.some((checkIn: any) => {
-      const playerId = checkIn.playerId || checkIn.player_id
-      if (!playerId) return false
-      
-      const player = state.players.find((p) => p.id === playerId)
-      if (!player) return false
-      
-      const trainingGroups = player.trainingGroups || []
-      if (trainingGroups.length === 0) return false
-      
-      // If filtering by group names, check if player belongs to any selected group
-      // If no group filter (selectedGroupNames is empty or all groups selected), include all players
-      if (selectedGroupNames && selectedGroupNames.length > 0) {
-        const hasMatchingGroup = trainingGroups.some(groupName => selectedGroupNames.includes(groupName))
-        if (!hasMatchingGroup) return false
-      }
-      // If no group filter, include all players (all groups are selected)
-      
-      return true
-    })
-    
-    if (hasCheckInFromSelectedGroups) {
-      sessionsWithMatchingGroups++
-      sessionIdsWithCheckIns.add(stat.sessionId)
-    }
-  })
-  
-  const totalSessions = sessionIdsWithCheckIns.size
-  
-  logger.debug('[calculateKPIs] Session count calculation complete', {
-    sessionsProcessed,
-    sessionsWithCheckIns,
-    sessionsWithMatchingGroups,
-    totalSessions,
-    selectedGroupNames
-  })
+  // PERFORMANCE OPTIMIZATION: Use total unique sessions from getTrainingGroupAttendance
+  // getTrainingGroupAttendance attaches __totalUniqueSessions to the result array
+  // This avoids re-querying the database and re-processing all snapshots
+  const totalSessions = (attendance as any).__totalUniqueSessions ?? Math.max(...attendance.map(g => g.sessions), 0)
   
   // Calculate unique players across all groups (not sum - use Set to deduplicate)
   const uniquePlayerSet = new Set<string>()
