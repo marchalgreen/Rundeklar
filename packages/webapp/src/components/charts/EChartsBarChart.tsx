@@ -117,7 +117,7 @@ export const EChartsBarChart: React.FC<EChartsBarChartProps> = ({
       grid: {
         left: '3%',
         right: '4%',
-        bottom: hasManyItems ? '20%' : '10%', // More space at bottom if labels are rotated
+        bottom: hasManyItems ? '25%' : '10%', // More space at bottom if labels are rotated (increased to prevent overlap)
         top: showLegend ? '15%' : showValueLabels ? '10%' : '5%', // More space at top if value labels shown
         containLabel: true
       },
@@ -141,7 +141,7 @@ export const EChartsBarChart: React.FC<EChartsBarChartProps> = ({
         },
         name: xAxisLabel,
         nameLocation: 'middle',
-        nameGap: hasManyItems ? 50 : 30, // More space if labels are rotated
+        nameGap: hasManyItems ? 70 : 30, // More space if labels are rotated (increased to prevent overlap)
         nameTextStyle: {
           color: mutedColor,
           fontSize: 12
