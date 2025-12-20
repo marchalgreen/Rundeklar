@@ -586,11 +586,28 @@ const getPlayerStatistics = async (
   playerId: string,
   filters?: StatisticsFilters
 ): Promise<PlayerStatistics> => {
-  // Invalidate cache to ensure fresh statistics snapshots
-  invalidateCache()
+  // Don't invalidate cache unnecessarily - cache should only be invalidated when data changes
+  // This prevents expensive database queries on every statistics load
   
   const state = await getStateCopy()
-  const player = state.players.find((p) => p.id === playerId)
+  
+  // Create lookup Maps for O(1) access instead of O(n) find()
+  const playerMap = new Map<string, typeof state.players[0]>()
+  state.players.forEach(player => {
+    playerMap.set(player.id, player)
+  })
+  
+  const sessionMap = new Map<string, typeof state.sessions[0]>()
+  state.sessions.forEach(session => {
+    sessionMap.set(session.id, session)
+  })
+  
+  const courtMap = new Map<string, typeof state.courts[0]>()
+  state.courts.forEach(court => {
+    courtMap.set(court.id, court)
+  })
+  
+  const player = playerMap.get(playerId)
   if (!player) {
     throw new Error('Spiller ikke fundet')
   }
@@ -613,7 +630,11 @@ const getPlayerStatistics = async (
   relevantStats.forEach((stat) => {
     // Defensive check: ensure checkIns is an array
     const checkIns = Array.isArray(stat.checkIns) ? stat.checkIns : []
-    const checkInCount = checkIns.filter((c) => c.playerId === playerId).length
+    // Handle both camelCase (playerId) and snake_case (player_id) formats
+    const checkInCount = checkIns.filter((c) => {
+      const checkInPlayerId = (c as any).playerId || (c as any).player_id
+      return checkInPlayerId === playerId
+    }).length
     if (checkInCount > 0) {
       checkInsBySeason[stat.season] = (checkInsBySeason[stat.season] ?? 0) + checkInCount
       totalCheckIns += checkInCount
@@ -627,6 +648,16 @@ const getPlayerStatistics = async (
   const matchDates: string[] = []
   let lastPlayedDate: string | null = null
 
+  // Create match lookup Map for O(1) access across all stats
+  const matchMap = new Map<string, any>()
+  relevantStats.forEach((stat) => {
+    if (Array.isArray(stat.matches)) {
+      stat.matches.forEach(match => {
+        matchMap.set(match.id, match)
+      })
+    }
+  })
+  
   relevantStats.forEach((stat) => {
     // Group matchPlayers by matchId to count unique matches
     const playerMatches = new Set<string>()
@@ -634,9 +665,9 @@ const getPlayerStatistics = async (
       .filter((mp) => mp.playerId === playerId)
       .forEach((mp) => {
         playerMatches.add(mp.matchId)
-        const match = stat.matches.find((m) => m.id === mp.matchId)
+        const match = matchMap.get(mp.matchId)
         if (match) {
-          const court = state.courts.find((c) => c.id === match.courtId)
+          const court = courtMap.get(match.courtId)
           if (court) {
             courtCounts.set(court.idx, (courtCounts.get(court.idx) ?? 0) + 1)
           }
@@ -674,7 +705,7 @@ const getPlayerStatistics = async (
   const playerLevel = player.level ?? 0
 
   partners.forEach((partner) => {
-    const partnerPlayer = state.players.find((p) => p.id === partner.playerId)
+    const partnerPlayer = playerMap.get(partner.playerId)
     if (partnerPlayer?.level !== null && partnerPlayer?.level !== undefined) {
       const diff = Math.abs(playerLevel - partnerPlayer.level)
       totalLevelDiff += diff * partner.count
@@ -683,7 +714,7 @@ const getPlayerStatistics = async (
   })
 
   opponents.forEach((opponent) => {
-    const opponentPlayer = state.players.find((p) => p.id === opponent.playerId)
+    const opponentPlayer = playerMap.get(opponent.playerId)
     if (opponentPlayer?.level !== null && opponentPlayer?.level !== undefined) {
       const diff = Math.abs(playerLevel - opponentPlayer.level)
       totalLevelDiff += diff * opponent.count
@@ -753,12 +784,18 @@ const getPlayerStatistics = async (
     matchPlayersByMatch.get(mp.matchId)!.push(mp)
   })
 
+  // Create match and session lookup Maps for O(1) access
+  const allMatchesMap = new Map<string, typeof allMatches[0]>()
+  allMatches.forEach(match => {
+    allMatchesMap.set(match.id, match)
+  })
+  
   // Filter match results by relevant stats (same filters as above)
   let relevantMatchResults = allMatchResults.filter((mr) => {
-    const match = allMatches.find((m) => m.id === mr.matchId)
+    const match = allMatchesMap.get(mr.matchId)
     if (!match) return false
     
-    const session = state.sessions.find((s) => s.id === match.sessionId)
+    const session = sessionMap.get(match.sessionId)
     if (!session) return false
 
     // Check if player was in this match
@@ -785,10 +822,10 @@ const getPlayerStatistics = async (
   let scoreDifferenceCount = 0
 
   relevantMatchResults.forEach((matchResult) => {
-    const match = allMatches.find((m) => m.id === matchResult.matchId)
+    const match = allMatchesMap.get(matchResult.matchId)
     if (!match) return
 
-    const session = state.sessions.find((s) => s.id === match.sessionId)
+    const session = sessionMap.get(match.sessionId)
     if (!session) return
 
     const matchPlayers = matchPlayersByMatch.get(matchResult.matchId) || []
