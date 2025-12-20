@@ -156,6 +156,7 @@ export type HeadToHeadResult = {
   scoreData: BadmintonScoreData | TennisScoreData | PadelScoreData
   sport: 'badminton' | 'tennis' | 'padel'
   wasPartner: boolean // True hvis de spillede sammen, false hvis mod hinanden
+  opponentNames?: string[] // Modstandernes navne (kun for partner matches)
 }
 
 export type PlayerComparison = {

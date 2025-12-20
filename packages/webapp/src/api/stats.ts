@@ -544,6 +544,12 @@ const getPlayerHeadToHead = async (
     sessionsMap.set(s.id, { date: s.date })
   })
 
+  // Create a map of players by ID for name lookup
+  const playerMap = new Map<string, Player>()
+  state.players.forEach((p) => {
+    playerMap.set(p.id, p)
+  })
+
   // Process statistics snapshots to find all matches where both players participated
   statistics.forEach((stat) => {
     // Group matchPlayers by matchId
@@ -586,6 +592,19 @@ const getPlayerHeadToHead = async (
               player1WonThisMatch = matchResult.winnerTeam === player1Team
             }
 
+            // For partner matches, get opponent names
+            let opponentNames: string[] | undefined = undefined
+            if (sameTeam) {
+              // They played together - get opponents from the other team
+              const opponentTeam = player1InTeam1 ? team2 : team1
+              opponentNames = opponentTeam
+                .map((pid) => {
+                  const player = playerMap.get(pid)
+                  return player?.name || 'Ukendt spiller'
+                })
+                .filter(name => name !== 'Ukendt spiller')
+            }
+
             headToHeadMatches.push({
               matchId,
               date: session.date,
@@ -595,7 +614,8 @@ const getPlayerHeadToHead = async (
               player2Team,
               scoreData: matchResult.scoreData,
               sport: matchResult.sport,
-              wasPartner: sameTeam
+              wasPartner: sameTeam,
+              opponentNames
             })
 
             // Count wins for head-to-head (only when playing against each other)
