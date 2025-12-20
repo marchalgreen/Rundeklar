@@ -9,10 +9,24 @@
  */
 
 import postgres from 'postgres'
-import { createId } from '@paralleldrive/cuid2'
 import { readFileSync, existsSync } from 'fs'
 import { join, dirname } from 'path'
 import { fileURLToPath } from 'url'
+
+/**
+ * Generates a unique ID (UUID).
+ */
+function createId(): string {
+  if (typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function') {
+    return crypto.randomUUID()
+  }
+  // Fallback for older environments
+  return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, (c) => {
+    const r = (Math.random() * 16) | 0
+    const v = c === 'x' ? r : (r & 0x3) | 0x8
+    return v.toString(16)
+  })
+}
 
 const __filename = fileURLToPath(import.meta.url)
 const __dirname = dirname(__filename)
