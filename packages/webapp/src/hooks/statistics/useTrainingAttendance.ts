@@ -37,6 +37,7 @@ export interface UseTrainingAttendanceReturn {
   
   // KPIs
   kpis: KPIMetricsWithDeltas
+  kpisLoading: boolean
   
   // Actions
   loadAllGroups: () => Promise<void>
@@ -320,6 +321,7 @@ export function useTrainingAttendance(
   ])
   
   // Load data when enabled and filters change
+  // Use filter values directly instead of callbacks to prevent infinite loops
   useEffect(() => {
     if (enabled) {
       void loadTrainingGroupAttendance()
@@ -328,13 +330,13 @@ export function useTrainingAttendance(
       void loadWeekdayAttendanceOverTime()
       void loadTrainingDayComparison()
     }
+    // Only depend on filter values, not callbacks - callbacks are stable and don't need to trigger re-runs
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [
     enabled,
-    loadTrainingGroupAttendance,
-    loadWeekdayAttendance,
-    loadPlayerCheckInLongTail,
-    loadWeekdayAttendanceOverTime,
-    loadTrainingDayComparison
+    filters.dateRange.dateFrom,
+    filters.dateRange.dateTo,
+    filters.groupNames
   ])
   
   // Load groups when enabled (only once, not on every render)
@@ -357,6 +359,7 @@ export function useTrainingAttendance(
     trainingDayComparison,
     comparisonLoading,
     kpis,
+    kpisLoading,
     loadAllGroups,
     refetch
   }
