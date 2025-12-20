@@ -1100,6 +1100,31 @@ const getTrainingGroupAttendance = async (
     })
   }
 
+  // Debug: Log statistics summary
+  logger.debug('[getTrainingGroupAttendance] Processing statistics', {
+    totalSnapshots: statistics.length,
+    relevantSnapshots: relevantStats.length,
+    dateFrom,
+    dateTo,
+    groupNames,
+    firstSnapshotSample: relevantStats.length > 0 ? {
+      sessionId: relevantStats[0].sessionId,
+      sessionDate: relevantStats[0].sessionDate,
+      checkInsType: typeof relevantStats[0].checkIns,
+      checkInsIsArray: Array.isArray(relevantStats[0].checkIns),
+      checkInsLength: Array.isArray(relevantStats[0].checkIns) 
+        ? relevantStats[0].checkIns.length 
+        : typeof relevantStats[0].checkIns === 'string'
+          ? relevantStats[0].checkIns.length
+          : 'unknown',
+      checkInsPreview: Array.isArray(relevantStats[0].checkIns) && relevantStats[0].checkIns.length > 0
+        ? JSON.stringify(relevantStats[0].checkIns[0]).substring(0, 200)
+        : typeof relevantStats[0].checkIns === 'string'
+          ? relevantStats[0].checkIns.substring(0, 200)
+          : 'empty or null'
+    } : null
+  })
+
   // Group check-ins by training group
   const groupStats = new Map<string, {
     checkInCount: number
@@ -1107,14 +1132,44 @@ const getTrainingGroupAttendance = async (
     sessions: Set<string>
   }>()
 
+  let totalCheckInsProcessed = 0
+  let checkInsWithoutPlayer = 0
+  let checkInsWithoutGroups = 0
   relevantStats.forEach((stat) => {
     const checkIns = Array.isArray(stat.checkIns) ? stat.checkIns : []
+    totalCheckInsProcessed += checkIns.length
     
     checkIns.forEach((checkIn) => {
-      const player = state.players.find((p) => p.id === checkIn.playerId)
-      if (!player) return
+      // Debug: Log check-in structure for first few check-ins
+      const checkInIndex = totalCheckInsProcessed - checkIns.length + checkIns.indexOf(checkIn)
+      if (checkInIndex < 3) {
+        logger.debug(`[getTrainingGroupAttendance] Check-in #${checkInIndex}`, {
+          checkInKeys: Object.keys(checkIn),
+          checkInFull: checkIn,
+          playerIdValue: checkIn.playerId,
+          playerIdType: typeof checkIn.playerId,
+          matchingPlayers: state.players.filter(p => p.id === checkIn.playerId).length,
+          allPlayerIdsSample: state.players.slice(0, 5).map(p => p.id)
+        })
+      }
+      
+      // Handle both camelCase (playerId) and snake_case (player_id) formats
+      // This is needed because old snapshots might have snake_case from fix scripts
+      const playerId = (checkIn as any).playerId || (checkIn as any).player_id
+      if (!playerId) {
+        checkInsWithoutPlayer++
+        return
+      }
+      const player = state.players.find((p) => p.id === playerId)
+      if (!player) {
+        checkInsWithoutPlayer++
+        return
+      }
 
       const trainingGroups = player.trainingGroups || []
+      if (trainingGroups.length === 0) {
+        checkInsWithoutGroups++
+      }
       
       // If filtering by group names, check if player belongs to any of the selected groups
       if (groupNames && groupNames.length > 0) {
@@ -1160,6 +1215,16 @@ const getTrainingGroupAttendance = async (
       sessions: uniqueSessions,
       averageAttendance: Math.round(averageAttendance * 10) / 10 // Round to 1 decimal
     }
+  })
+
+  // Debug: Log result summary
+  logger.debug('[getTrainingGroupAttendance] Result summary', {
+    totalCheckInsProcessed,
+    checkInsWithoutPlayer,
+    checkInsWithoutGroups,
+    groupsFound: result.length,
+    totalCheckInsInResult: result.reduce((sum, g) => sum + g.checkInCount, 0),
+    groups: result.map(g => ({ name: g.groupName, checkIns: g.checkInCount }))
   })
 
   // Sort by group name
