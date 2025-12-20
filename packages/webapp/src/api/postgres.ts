@@ -367,9 +367,9 @@ export const loadState = async (): Promise<DatabaseState> => {
         logger.error('[loadState] Error loading players', err)
         return []
       }),
-      // Sessions: filter by isolation_id
+      // Sessions: filter by isolation_id (include NULL for demo tenants to match seeded data)
       isolationId
-        ? sql`SELECT * FROM training_sessions WHERE tenant_id = ${tenantId} AND isolation_id = ${isolationId} ORDER BY created_at DESC`.catch(err => {
+        ? sql`SELECT * FROM training_sessions WHERE tenant_id = ${tenantId} AND (isolation_id = ${isolationId} OR isolation_id IS NULL) ORDER BY created_at DESC`.catch(err => {
             logger.error('[loadState] Error loading sessions', err)
             return []
           })
@@ -1296,9 +1296,15 @@ export const deleteCourt = async (id: string): Promise<void> => {
  * Gets all matches from Postgres (uses cache if available).
  */
 export const getMatches = async (): Promise<Match[]> => {
-  // Check cache first
-  if (tableCaches.matches) {
+  // Check cache first - but don't use empty arrays as they might be stale
+  // Only use cache if it has actual data (length > 0)
+  if (tableCaches.matches && tableCaches.matches.length > 0) {
     return tableCaches.matches
+  }
+  
+  // If cache exists but is empty, clear it and query fresh
+  if (tableCaches.matches && tableCaches.matches.length === 0) {
+    tableCaches.matches = null
   }
 
   const sql = getPostgres()
@@ -1306,32 +1312,53 @@ export const getMatches = async (): Promise<Match[]> => {
   const isolationId = await getIsolationIdForCurrentTenant()
   
   let matches
-  if (isolationId) {
-    // Demo tenant: filter by isolation_id from training_sessions
-    matches = await sql`
-      SELECT m.* FROM matches m
-      INNER JOIN training_sessions ts ON m.session_id = ts.id
-      WHERE m.tenant_id = ${tenantId} 
-        AND ts.isolation_id = ${isolationId}
-      ORDER BY m.started_at
-    `
-  } else {
-    // Production tenants: filter by NULL isolation_id
-    matches = await sql`
-      SELECT m.* FROM matches m
-      INNER JOIN training_sessions ts ON m.session_id = ts.id
-      WHERE m.tenant_id = ${tenantId} 
-        AND (ts.isolation_id IS NULL OR ts.isolation_id = '')
-      ORDER BY m.started_at
-    `
+  try {
+    if (isolationId) {
+      // Demo tenant: include both current isolation_id AND NULL isolation_id (seeded data)
+      matches = await sql`
+        SELECT m.* FROM matches m
+        INNER JOIN training_sessions ts ON m.session_id = ts.id
+        WHERE m.tenant_id = ${tenantId} 
+          AND (ts.isolation_id = ${isolationId} OR ts.isolation_id IS NULL)
+        ORDER BY m.started_at
+      `
+    } else {
+      // Production tenants: filter by NULL isolation_id
+      matches = await sql`
+        SELECT m.* FROM matches m
+        INNER JOIN training_sessions ts ON m.session_id = ts.id
+        WHERE m.tenant_id = ${tenantId} 
+          AND (ts.isolation_id IS NULL OR ts.isolation_id = '')
+        ORDER BY m.started_at
+      `
+    }
+  } catch (error) {
+    logger.error('[getMatches] Query failed', {
+      error,
+      tenantId,
+      isolationId
+    })
+    throw error
   }
   
   const converted = matches.map(rowToMatch)
   
-  // Update cache
-  tableCaches.matches = converted
-  if (cachedState) {
-    cachedState.matches = converted
+  logger.debug('[getMatches] Query completed', {
+    tenantId,
+    isolationId,
+    rawCount: matches.length,
+    convertedCount: converted.length
+  })
+  
+  // Only cache if we got results - don't cache empty arrays as they might be stale
+  if (converted.length > 0) {
+    tableCaches.matches = converted
+    if (cachedState) {
+      cachedState.matches = converted
+    }
+  } else {
+    // Don't cache empty arrays - leave cache as null so next call will retry
+    tableCaches.matches = null
   }
   
   return converted
@@ -1454,9 +1481,15 @@ export const deleteMatch = async (id: string): Promise<void> => {
  * Gets all match players from Postgres (uses cache if available).
  */
 export const getMatchPlayers = async (): Promise<MatchPlayer[]> => {
-  // Check cache first
-  if (tableCaches.matchPlayers) {
+  // Check cache first - but don't use empty arrays as they might be stale
+  // Only use cache if it has actual data (length > 0)
+  if (tableCaches.matchPlayers && tableCaches.matchPlayers.length > 0) {
     return tableCaches.matchPlayers
+  }
+  
+  // If cache exists but is empty, clear it and query fresh
+  if (tableCaches.matchPlayers && tableCaches.matchPlayers.length === 0) {
+    tableCaches.matchPlayers = null
   }
 
   const sql = getPostgres()
@@ -1464,32 +1497,53 @@ export const getMatchPlayers = async (): Promise<MatchPlayer[]> => {
   const isolationId = await getIsolationIdForCurrentTenant()
   
   let matchPlayers
-  if (isolationId) {
-    // Demo tenant: filter by isolation_id from training_sessions via matches
-    matchPlayers = await sql`
-      SELECT mp.* FROM match_players mp
-      INNER JOIN matches m ON mp.match_id = m.id
-      INNER JOIN training_sessions ts ON m.session_id = ts.id
-      WHERE mp.tenant_id = ${tenantId} 
-        AND ts.isolation_id = ${isolationId}
-    `
-  } else {
-    // Production tenants: filter by NULL isolation_id
-    matchPlayers = await sql`
-      SELECT mp.* FROM match_players mp
-      INNER JOIN matches m ON mp.match_id = m.id
-      INNER JOIN training_sessions ts ON m.session_id = ts.id
-      WHERE mp.tenant_id = ${tenantId} 
-        AND (ts.isolation_id IS NULL OR ts.isolation_id = '')
-    `
+  try {
+    if (isolationId) {
+      // Demo tenant: include both current isolation_id AND NULL isolation_id (seeded data)
+      matchPlayers = await sql`
+        SELECT mp.* FROM match_players mp
+        INNER JOIN matches m ON mp.match_id = m.id
+        INNER JOIN training_sessions ts ON m.session_id = ts.id
+        WHERE mp.tenant_id = ${tenantId} 
+          AND (ts.isolation_id = ${isolationId} OR ts.isolation_id IS NULL)
+      `
+    } else {
+      // Production tenants: filter by NULL isolation_id
+      matchPlayers = await sql`
+        SELECT mp.* FROM match_players mp
+        INNER JOIN matches m ON mp.match_id = m.id
+        INNER JOIN training_sessions ts ON m.session_id = ts.id
+        WHERE mp.tenant_id = ${tenantId} 
+          AND (ts.isolation_id IS NULL OR ts.isolation_id = '')
+      `
+    }
+  } catch (error) {
+    logger.error('[getMatchPlayers] Query failed', {
+      error,
+      tenantId,
+      isolationId
+    })
+    throw error
   }
   
   const converted = matchPlayers.map(rowToMatchPlayer)
   
-  // Update cache
-  tableCaches.matchPlayers = converted
-  if (cachedState) {
-    cachedState.matchPlayers = converted
+  logger.debug('[getMatchPlayers] Query completed', {
+    tenantId,
+    isolationId,
+    rawCount: matchPlayers.length,
+    convertedCount: converted.length
+  })
+  
+  // Only cache if we got results - don't cache empty arrays as they might be stale
+  if (converted.length > 0) {
+    tableCaches.matchPlayers = converted
+    if (cachedState) {
+      cachedState.matchPlayers = converted
+    }
+  } else {
+    // Don't cache empty arrays - leave cache as null so next call will retry
+    tableCaches.matchPlayers = null
   }
   
   return converted
@@ -1630,23 +1684,23 @@ export const getStatisticsSnapshots = async (): Promise<StatisticsSnapshot[]> =>
   // This allows seeded data to be visible alongside user-created data
   let snapshots
   try {
-    if (isolationId) {
-      // Demo tenant: include both current isolation_id AND NULL isolation_id (seeded data)
-      snapshots = await sql`
-        SELECT ss.* FROM statistics_snapshots ss
-        INNER JOIN training_sessions ts ON ss.session_id = ts.id
-        WHERE ss.tenant_id = ${tenantId} 
-          AND (ts.isolation_id = ${isolationId} OR ts.isolation_id IS NULL)
-        ORDER BY ss.session_date DESC
-      `
-    } else {
-      // Production tenants: only NULL isolation_id
-      snapshots = await sql`
-        SELECT ss.* FROM statistics_snapshots ss
-        INNER JOIN training_sessions ts ON ss.session_id = ts.id
-        WHERE ss.tenant_id = ${tenantId} AND (ts.isolation_id IS NULL OR ts.isolation_id = '')
-        ORDER BY ss.session_date DESC
-      `
+  if (isolationId) {
+    // Demo tenant: include both current isolation_id AND NULL isolation_id (seeded data)
+    snapshots = await sql`
+      SELECT ss.* FROM statistics_snapshots ss
+      INNER JOIN training_sessions ts ON ss.session_id = ts.id
+      WHERE ss.tenant_id = ${tenantId} 
+        AND (ts.isolation_id = ${isolationId} OR ts.isolation_id IS NULL)
+      ORDER BY ss.session_date DESC
+    `
+  } else {
+    // Production tenants: only NULL isolation_id
+    snapshots = await sql`
+      SELECT ss.* FROM statistics_snapshots ss
+      INNER JOIN training_sessions ts ON ss.session_id = ts.id
+      WHERE ss.tenant_id = ${tenantId} AND (ts.isolation_id IS NULL OR ts.isolation_id = '')
+      ORDER BY ss.session_date DESC
+    `
     }
   } catch (error) {
     logger.error('[getStatisticsSnapshots] Query failed', {
@@ -1663,9 +1717,9 @@ export const getStatisticsSnapshots = async (): Promise<StatisticsSnapshot[]> =>
   // This prevents race conditions where an empty cache from a failed query
   // prevents subsequent successful queries
   if (converted.length > 0) {
-    tableCaches.statistics = converted
-    if (cachedState) {
-      cachedState.statistics = converted
+  tableCaches.statistics = converted
+  if (cachedState) {
+    cachedState.statistics = converted
     }
   } else {
     // Don't cache empty arrays - leave cache as null so next call will retry
@@ -1730,9 +1784,15 @@ export const deleteStatisticsSnapshot = async (id: string): Promise<void> => {
  * Gets all match results from Postgres (uses cache if available).
  */
 export const getMatchResults = async (): Promise<MatchResult[]> => {
-  // Check cache first
-  if (tableCaches.matchResults) {
+  // Check cache first - but don't use empty arrays as they might be stale
+  // Only use cache if it has actual data (length > 0)
+  if (tableCaches.matchResults && tableCaches.matchResults.length > 0) {
     return tableCaches.matchResults
+  }
+  
+  // If cache exists but is empty, clear it and query fresh
+  if (tableCaches.matchResults && tableCaches.matchResults.length === 0) {
+    tableCaches.matchResults = null
   }
 
   const sql = getPostgres()
@@ -1740,30 +1800,54 @@ export const getMatchResults = async (): Promise<MatchResult[]> => {
   const isolationId = await getIsolationIdForCurrentTenant()
   
   let matchResults
-  if (isolationId) {
-    // Demo tenant: filter by isolation_id from training_sessions via matches
-    matchResults = await sql`
-      SELECT mr.* FROM match_results mr
-      INNER JOIN matches m ON mr.match_id = m.id
-      INNER JOIN training_sessions ts ON m.session_id = ts.id
-      WHERE mr.tenant_id = ${tenantId} 
-        AND ts.isolation_id = ${isolationId}
-    `
-  } else {
-    // Production tenants: filter by NULL isolation_id
-    matchResults = await sql`
-      SELECT mr.* FROM match_results mr
-      INNER JOIN matches m ON mr.match_id = m.id
-      INNER JOIN training_sessions ts ON m.session_id = ts.id
-      WHERE mr.tenant_id = ${tenantId} 
-        AND (ts.isolation_id IS NULL OR ts.isolation_id = '')
-    `
+  try {
+    if (isolationId) {
+      // Demo tenant: include both current isolation_id AND NULL isolation_id (seeded data)
+      matchResults = await sql`
+        SELECT mr.* FROM match_results mr
+        INNER JOIN matches m ON mr.match_id = m.id
+        INNER JOIN training_sessions ts ON m.session_id = ts.id
+        WHERE mr.tenant_id = ${tenantId} 
+          AND (ts.isolation_id = ${isolationId} OR ts.isolation_id IS NULL)
+      `
+    } else {
+      // Production tenants: filter by NULL isolation_id
+      matchResults = await sql`
+        SELECT mr.* FROM match_results mr
+        INNER JOIN matches m ON mr.match_id = m.id
+        INNER JOIN training_sessions ts ON m.session_id = ts.id
+        WHERE mr.tenant_id = ${tenantId} 
+          AND (ts.isolation_id IS NULL OR ts.isolation_id = '')
+      `
+    }
+  } catch (error) {
+    logger.error('[getMatchResults] Query failed', {
+      error,
+      tenantId,
+      isolationId
+    })
+    throw error
   }
   
   const converted = matchResults.map(rowToMatchResult)
   
-  // Cache the results
-  tableCaches.matchResults = converted
+  logger.debug('[getMatchResults] Query completed', {
+    tenantId,
+    isolationId,
+    rawCount: matchResults.length,
+    convertedCount: converted.length,
+    sampleMatchIds: converted.slice(0, 5).map(mr => mr.matchId)
+  })
+  
+  // Only cache if we got results - don't cache empty arrays as they might be stale
+  // This prevents race conditions where an empty cache from a failed query
+  // prevents subsequent successful queries
+  if (converted.length > 0) {
+    tableCaches.matchResults = converted
+  } else {
+    // Don't cache empty arrays - leave cache as null so next call will retry
+    tableCaches.matchResults = null
+  }
   
   return converted
 }
