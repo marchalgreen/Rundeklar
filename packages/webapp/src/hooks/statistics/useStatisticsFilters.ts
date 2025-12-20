@@ -7,14 +7,12 @@
 
 import { useCallback, useState, useMemo } from 'react'
 import type { AttendancePeriod } from '../../lib/statistics/dateRange'
-import { calculateDateRange, getDefaultSelectedMonth } from '../../lib/statistics/dateRange'
+import { calculateDateRange } from '../../lib/statistics/dateRange'
 
 export interface UseStatisticsFiltersReturn {
   // Period filter state
   attendancePeriod: AttendancePeriod
   setAttendancePeriod: (period: AttendancePeriod) => void
-  selectedMonth: string
-  setSelectedMonth: (month: string) => void
   customDateFrom: string
   setCustomDateFrom: (date: string) => void
   customDateTo: string
@@ -49,8 +47,7 @@ export interface UseStatisticsFiltersReturn {
  * ```
  */
 export function useStatisticsFilters(): UseStatisticsFiltersReturn {
-  const [attendancePeriod, setAttendancePeriod] = useState<AttendancePeriod>('lastSeason')
-  const [selectedMonth, setSelectedMonth] = useState<string>(getDefaultSelectedMonth())
+  const [attendancePeriod, setAttendancePeriod] = useState<AttendancePeriod>('currentSeason')
   const [customDateFrom, setCustomDateFrom] = useState<string>('')
   const [customDateTo, setCustomDateTo] = useState<string>('')
   const [selectedGroups, setSelectedGroups] = useState<string[]>([])
@@ -60,11 +57,10 @@ export function useStatisticsFilters(): UseStatisticsFiltersReturn {
   const dateRange = useMemo(() => {
     return calculateDateRange({
       period: attendancePeriod,
-      selectedMonth,
       customDateFrom,
       customDateTo
     })
-  }, [attendancePeriod, selectedMonth, customDateFrom, customDateTo])
+  }, [attendancePeriod, customDateFrom, customDateTo])
   
   // Get group names for filtering (undefined if no groups selected)
   const groupNames = useMemo(() => {
@@ -74,8 +70,6 @@ export function useStatisticsFilters(): UseStatisticsFiltersReturn {
   return {
     attendancePeriod,
     setAttendancePeriod,
-    selectedMonth,
-    setSelectedMonth,
     customDateFrom,
     setCustomDateFrom,
     customDateTo,

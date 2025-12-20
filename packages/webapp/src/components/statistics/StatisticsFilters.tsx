@@ -16,8 +16,6 @@ export const StatisticsFilters: React.FC<StatisticsFiltersProps> = ({ filters })
   const {
     attendancePeriod,
     setAttendancePeriod,
-    selectedMonth,
-    setSelectedMonth,
     customDateFrom,
     setCustomDateFrom,
     customDateTo,
@@ -50,6 +48,17 @@ export const StatisticsFilters: React.FC<StatisticsFiltersProps> = ({ filters })
           <div className="flex flex-wrap items-center gap-2">
             <button
               type="button"
+              onClick={() => setAttendancePeriod('currentSeason')}
+              className={`px-2 sm:px-3 py-1 text-xs rounded transition-colors ${
+                attendancePeriod === 'currentSeason'
+                  ? 'bg-[hsl(var(--primary))] text-white'
+                  : 'bg-[hsl(var(--surface-2))] text-[hsl(var(--muted))] hover:bg-[hsl(var(--surface))]'
+              }`}
+            >
+              Denne sæson
+            </button>
+            <button
+              type="button"
               onClick={() => setAttendancePeriod('last7days')}
               className={`px-2 sm:px-3 py-1 text-xs rounded transition-colors ${
                 attendancePeriod === 'last7days'
@@ -61,36 +70,14 @@ export const StatisticsFilters: React.FC<StatisticsFiltersProps> = ({ filters })
             </button>
             <button
               type="button"
-              onClick={() => setAttendancePeriod('lastMonth')}
+              onClick={() => setAttendancePeriod('last30days')}
               className={`px-2 sm:px-3 py-1 text-xs rounded transition-colors ${
-                attendancePeriod === 'lastMonth'
+                attendancePeriod === 'last30days'
                   ? 'bg-[hsl(var(--primary))] text-white'
                   : 'bg-[hsl(var(--surface-2))] text-[hsl(var(--muted))] hover:bg-[hsl(var(--surface))]'
               }`}
             >
-              Sidste måned
-            </button>
-            <button
-              type="button"
-              onClick={() => setAttendancePeriod('lastSeason')}
-              className={`px-2 sm:px-3 py-1 text-xs rounded transition-colors ${
-                attendancePeriod === 'lastSeason'
-                  ? 'bg-[hsl(var(--primary))] text-white'
-                  : 'bg-[hsl(var(--surface-2))] text-[hsl(var(--muted))] hover:bg-[hsl(var(--surface))]'
-              }`}
-            >
-              Denne sæson
-            </button>
-            <button
-              type="button"
-              onClick={() => setAttendancePeriod('month')}
-              className={`px-2 sm:px-3 py-1 text-xs rounded transition-colors ${
-                attendancePeriod === 'month'
-                  ? 'bg-[hsl(var(--primary))] text-white'
-                  : 'bg-[hsl(var(--surface-2))] text-[hsl(var(--muted))] hover:bg-[hsl(var(--surface))]'
-              }`}
-            >
-              Måned
+              Sidste 30 dage
             </button>
             <button
               type="button"
@@ -105,26 +92,18 @@ export const StatisticsFilters: React.FC<StatisticsFiltersProps> = ({ filters })
             </button>
             <button
               type="button"
-              onClick={() => setAttendancePeriod('all')}
+              onClick={() => setAttendancePeriod('allSeasons')}
               className={`px-2 sm:px-3 py-1 text-xs rounded transition-colors ${
-                attendancePeriod === 'all'
+                attendancePeriod === 'allSeasons'
                   ? 'bg-[hsl(var(--primary))] text-white'
                   : 'bg-[hsl(var(--surface-2))] text-[hsl(var(--muted))] hover:bg-[hsl(var(--surface))]'
               }`}
             >
-              Hele perioden
+              Alle sæsoner
             </button>
           </div>
           
           {/* Period-specific inputs */}
-          {attendancePeriod === 'month' && (
-            <input
-              type="month"
-              value={selectedMonth}
-              onChange={(e) => setSelectedMonth(e.target.value)}
-              className="mt-2 px-2 py-1 text-xs rounded bg-[hsl(var(--surface))] border-hair max-w-[200px]"
-            />
-          )}
           {attendancePeriod === 'custom' && (
             <div className="mt-2 flex flex-col sm:flex-row gap-2">
               <input
