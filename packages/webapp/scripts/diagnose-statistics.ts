@@ -138,9 +138,15 @@ async function diagnoseStatistics() {
     `
 
     // Count check-ins in snapshots
+    // Handle case where check_ins might be null or not an array
     const [checkInsInSnapshots] = await sql`
       SELECT 
-        SUM(jsonb_array_length(check_ins)) as total_check_ins_in_snapshots
+        SUM(
+          CASE 
+            WHEN jsonb_typeof(check_ins) = 'array' THEN jsonb_array_length(check_ins)
+            ELSE 0
+          END
+        ) as total_check_ins_in_snapshots
       FROM statistics_snapshots
       WHERE tenant_id = ${tenantId}
     `
