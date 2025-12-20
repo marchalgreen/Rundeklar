@@ -276,17 +276,61 @@ const rowToMatchResult = (row: any): MatchResult => {
  */
 const rowToStatisticsSnapshot = (row: any): StatisticsSnapshot => {
   // Helper to ensure array format (handles JSONB strings, null, undefined, etc.)
-  const ensureArray = (value: any): any[] => {
+  // CRITICAL: postgres.js returns JSONB values as JavaScript objects/arrays when possible
+  // But when stored as JSONB strings (legacy data), they come as strings and need parsing
+  const ensureArray = (value: any, fieldName: string = 'field'): any[] => {
+    // Already an array - return as-is
     if (Array.isArray(value)) return value
+    
+    // Null or undefined - return empty array
     if (value == null) return []
+    
+    // String - try to parse as JSON (handles JSONB strings from database)
     if (typeof value === 'string') {
+      // Handle double-encoded strings (can happen through API serialization)
+      let stringToParse = value
+      // If string looks like it's already JSON-encoded, try parsing twice
+      if (stringToParse.startsWith('"') && stringToParse.endsWith('"')) {
+        try {
+          stringToParse = JSON.parse(stringToParse)
+          // If result is still a string, parse again
+          if (typeof stringToParse === 'string') {
+            const parsed = JSON.parse(stringToParse)
+            return Array.isArray(parsed) ? parsed : []
+          }
+        } catch {
+          // If first parse fails, continue with original string
+        }
+      }
+      
       try {
-        const parsed = JSON.parse(value)
+        const parsed = JSON.parse(stringToParse)
         return Array.isArray(parsed) ? parsed : []
-      } catch {
+      } catch (e) {
+        // Log parsing errors for debugging (only in development)
+        if (import.meta.env.DEV) {
+          logger.warn(`[rowToStatisticsSnapshot] Failed to parse ${fieldName} as JSON`, {
+            fieldName,
+            valueType: typeof value,
+            valuePreview: value.substring(0, 100),
+            error: e instanceof Error ? e.message : String(e)
+          })
+        }
         return []
       }
     }
+    
+    // Object but not array - log warning in development
+    if (typeof value === 'object' && value !== null) {
+      if (import.meta.env.DEV) {
+        logger.warn(`[rowToStatisticsSnapshot] ${fieldName} is object but not array`, {
+          fieldName,
+          valueType: typeof value,
+          valueKeys: Object.keys(value).slice(0, 5)
+        })
+      }
+    }
+    
     return []
   }
 
@@ -295,9 +339,9 @@ const rowToStatisticsSnapshot = (row: any): StatisticsSnapshot => {
   sessionId: row.session_id,
   sessionDate: row.session_date,
   season: row.season,
-    matches: ensureArray(row.matches),
-    matchPlayers: ensureArray(row.match_players),
-    checkIns: ensureArray(row.check_ins),
+    matches: ensureArray(row.matches, 'matches'),
+    matchPlayers: ensureArray(row.match_players, 'matchPlayers'),
+    checkIns: ensureArray(row.check_ins, 'checkIns'),
   createdAt: row.created_at
   }
 }
@@ -1573,7 +1617,31 @@ export const getStatisticsSnapshots = async (): Promise<StatisticsSnapshot[]> =>
 
   const sql = getPostgres()
   const tenantId = getTenantId()
-  const snapshots = await sql`SELECT * FROM statistics_snapshots WHERE tenant_id = ${tenantId} ORDER BY session_date DESC`
+  const isolationId = await getIsolationIdForCurrentTenant()
+  
+  // Filter by isolation_id to match loadState behavior
+  // For demo tenant: also include sessions with NULL isolation_id (seeded data)
+  // This allows seeded data to be visible alongside user-created data
+  let snapshots
+  if (isolationId) {
+    // Demo tenant: include both current isolation_id AND NULL isolation_id (seeded data)
+    snapshots = await sql`
+      SELECT ss.* FROM statistics_snapshots ss
+      INNER JOIN training_sessions ts ON ss.session_id = ts.id
+      WHERE ss.tenant_id = ${tenantId} 
+        AND (ts.isolation_id = ${isolationId} OR ts.isolation_id IS NULL)
+      ORDER BY ss.session_date DESC
+    `
+  } else {
+    // Production tenants: only NULL isolation_id
+    snapshots = await sql`
+      SELECT ss.* FROM statistics_snapshots ss
+      INNER JOIN training_sessions ts ON ss.session_id = ts.id
+      WHERE ss.tenant_id = ${tenantId} AND (ts.isolation_id IS NULL OR ts.isolation_id = '')
+      ORDER BY ss.session_date DESC
+    `
+  }
+  
   const converted = snapshots.map(rowToStatisticsSnapshot)
   
   // Update cache
@@ -1591,19 +1659,21 @@ export const getStatisticsSnapshots = async (): Promise<StatisticsSnapshot[]> =>
 export const createStatisticsSnapshot = async (snapshot: Omit<StatisticsSnapshot, 'id' | 'createdAt'>): Promise<StatisticsSnapshot> => {
   const sql = getPostgres()
   const tenantId = getTenantId()
-  const [created] = await sql`
-    INSERT INTO statistics_snapshots (session_id, session_date, season, matches, match_players, check_ins, tenant_id)
-    VALUES (
-      ${snapshot.sessionId},
-      ${snapshot.sessionDate},
-      ${snapshot.season},
-      ${JSON.stringify(snapshot.matches)},
-      ${JSON.stringify(snapshot.matchPlayers)},
-      ${JSON.stringify(snapshot.checkIns)},
-      ${tenantId}
-    )
-    RETURNING *
-  `
+  // Use raw SQL with ::jsonb cast to ensure arrays are stored as JSONB, not text
+  const [created] = await sql.unsafe(
+    `INSERT INTO statistics_snapshots (session_id, session_date, season, matches, match_players, check_ins, tenant_id)
+     VALUES ($1, $2, $3, $4::jsonb, $5::jsonb, $6::jsonb, $7)
+     RETURNING *`,
+    [
+      snapshot.sessionId,
+      snapshot.sessionDate,
+      snapshot.season,
+      JSON.stringify(snapshot.matches),
+      JSON.stringify(snapshot.matchPlayers),
+      JSON.stringify(snapshot.checkIns),
+      tenantId
+    ]
+  )
   const converted = rowToStatisticsSnapshot(created)
   
   // Optimistic cache update
