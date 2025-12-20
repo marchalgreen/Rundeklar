@@ -10,7 +10,7 @@ import statsApi from '../../api/stats'
 import api from '../../api'
 import { useToast } from '../../components/ui/Toast'
 import { normalizeError } from '../../lib/errors'
-import { calculateKPIs, type KPIMetrics } from '../../lib/statistics/kpiCalculation'
+import { calculateKPIs, calculateKPIsWithDeltas, type KPIMetrics, type KPIMetricsWithDeltas } from '../../lib/statistics/kpiCalculation'
 import type { UseStatisticsFiltersReturn } from './useStatisticsFilters'
 
 export interface UseTrainingAttendanceReturn {
@@ -35,7 +35,7 @@ export interface UseTrainingAttendanceReturn {
   comparisonLoading: boolean
   
   // KPIs
-  kpis: KPIMetrics
+  kpis: KPIMetricsWithDeltas
   
   // Actions
   loadAllGroups: () => Promise<void>
@@ -81,10 +81,68 @@ export function useTrainingAttendance(
   const [trainingDayComparison, setTrainingDayComparison] = useState<TrainingDayComparison | null>(null)
   const [comparisonLoading, setComparisonLoading] = useState(false)
   
-  // Calculate KPIs from training group attendance
-  const kpis = useMemo(() => {
-    return calculateKPIs(trainingGroupAttendance)
-  }, [trainingGroupAttendance])
+  // KPI state - calculated from training group attendance and statistics snapshots
+  const [kpis, setKpis] = useState<KPIMetricsWithDeltas>({
+    totalCheckIns: 0,
+    totalSessions: 0,
+    averageAttendance: 0,
+    uniquePlayers: 0
+  })
+  const [kpisLoading, setKpisLoading] = useState(false)
+  
+  // Calculate KPIs when attendance data or filters change
+  useEffect(() => {
+    if (!enabled || trainingGroupAttendance.length === 0) {
+      setKpis({
+        totalCheckIns: 0,
+        totalSessions: 0,
+        averageAttendance: 0,
+        uniquePlayers: 0
+      })
+      return
+    }
+    
+    let cancelled = false
+    setKpisLoading(true)
+    
+    void (async () => {
+      try {
+        const calculated = await calculateKPIs(
+          trainingGroupAttendance,
+          filters.dateRange.dateFrom,
+          filters.dateRange.dateTo
+        )
+        
+        // Calculate deltas if we have date range
+        const withDeltas = await calculateKPIsWithDeltas(
+          calculated,
+          filters.dateRange.dateFrom,
+          filters.dateRange.dateTo
+        )
+        
+        if (!cancelled) {
+          setKpis(withDeltas)
+        }
+      } catch (err: unknown) {
+        if (!cancelled) {
+          const normalizedError = normalizeError(err)
+          notify({
+            variant: 'danger',
+            title: 'Kunne ikke beregne KPI',
+            description: normalizedError.message
+          })
+        }
+      } finally {
+        if (!cancelled) {
+          setKpisLoading(false)
+        }
+      }
+    })()
+    
+    return () => {
+      cancelled = true
+    }
+  }, [enabled, trainingGroupAttendance, filters.dateRange.dateFrom, filters.dateRange.dateTo, notify])
   
   // Load all training groups
   const loadAllGroups = useCallback(async () => {
