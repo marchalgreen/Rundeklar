@@ -138,14 +138,19 @@ async function diagnoseStatistics() {
     `
 
     // Count check-ins in snapshots
-    // Handle case where check_ins might be null or not an array
+    // Handle case where check_ins might be null, not an array, or empty
     const [checkInsInSnapshots] = await sql`
       SELECT 
-        SUM(
-          CASE 
-            WHEN jsonb_typeof(check_ins) = 'array' THEN jsonb_array_length(check_ins)
-            ELSE 0
-          END
+        COALESCE(
+          SUM(
+            CASE 
+              WHEN check_ins IS NULL THEN 0
+              WHEN jsonb_typeof(check_ins) = 'array' THEN jsonb_array_length(check_ins)
+              WHEN jsonb_typeof(check_ins) = 'null' THEN 0
+              ELSE 0
+            END
+          ),
+          0
         ) as total_check_ins_in_snapshots
       FROM statistics_snapshots
       WHERE tenant_id = ${tenantId}
