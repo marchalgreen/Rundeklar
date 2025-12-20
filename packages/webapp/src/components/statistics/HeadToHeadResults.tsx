@@ -96,7 +96,7 @@ export const HeadToHeadResults: React.FC<HeadToHeadResultsProps> = ({
           <h4 className="text-xs sm:text-sm font-medium text-[hsl(var(--muted))] mb-2">
             Mod hinanden ({headToHeadOnly.length})
           </h4>
-          <div className="space-y-2">
+          <div className="space-y-2 max-h-[400px] overflow-y-auto pr-2 scrollbar-thin">
             {headToHeadOnly.map((result) => (
               <div
                 key={result.matchId}
@@ -133,7 +133,7 @@ export const HeadToHeadResults: React.FC<HeadToHeadResultsProps> = ({
           <h4 className="text-xs sm:text-sm font-medium text-[hsl(var(--muted))] mb-2">
             Spillet sammen ({partnerMatches.length})
           </h4>
-          <div className="space-y-2">
+          <div className="space-y-2 max-h-[400px] overflow-y-auto pr-2 scrollbar-thin">
             {partnerMatches.map((result) => (
               <div
                 key={result.matchId}

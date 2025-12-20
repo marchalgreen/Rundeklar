@@ -1,6 +1,6 @@
 import React from 'react'
 import type { PlayerMatchResult } from '@rundeklar/common'
-import { Trophy, Users, Target, ChevronDown, ChevronUp } from 'lucide-react'
+import { Trophy, Users, Target } from 'lucide-react'
 import { formatDate } from '../../lib/formatting'
 
 interface RecentMatchesProps {
@@ -21,12 +21,7 @@ export const RecentMatches: React.FC<RecentMatchesProps> = ({
   onLoadAll, 
   loadingAll = false 
 }) => {
-  const [showAll, setShowAll] = React.useState(false)
-  
-  // Determine which matches to display
-  const displayMatches = showAll && allMatches ? allMatches : matches
   const totalCount = allMatches ? allMatches.length : matches.length
-  const hasMore = matches.length < totalCount
 
   if (matches.length === 0 && (!allMatches || allMatches.length === 0)) {
     return (
@@ -48,50 +43,34 @@ export const RecentMatches: React.FC<RecentMatchesProps> = ({
     return 'N/A'
   }
 
-  const handleToggleShowAll = () => {
-    if (!showAll && !allMatches && onLoadAll) {
-      // Need to load all matches first
+  // Always load all matches if available, show in scrollable container
+  React.useEffect(() => {
+    if (!allMatches && onLoadAll && matches.length > 0) {
+      // Auto-load all matches when component mounts if we have some matches
       onLoadAll()
-    } else {
-      // Toggle between showing recent and all
-      setShowAll(!showAll)
     }
-  }
+  }, [allMatches, onLoadAll, matches.length])
+
+  // Use allMatches if available, otherwise use matches
+  const matchesToDisplay = allMatches || matches
 
   return (
     <div className="card-glass-active border-hair rounded-lg p-3 sm:p-4 md:p-5 shadow-sm">
       <div className="flex items-center justify-between mb-3 sm:mb-4">
         <h3 className="text-sm sm:text-base font-semibold text-[hsl(var(--foreground))]">
-          {showAll && allMatches 
+          {allMatches 
             ? `Alle resultater (${totalCount})`
-            : `Seneste ${matches.length} resultater${hasMore ? ` (af ${totalCount} total)` : ''}`
+            : `Seneste ${matches.length} resultater${matches.length < totalCount ? ` (indlæser alle...)` : ''}`
           }
         </h3>
-        {hasMore && (
-          <button
-            type="button"
-            onClick={handleToggleShowAll}
-            disabled={loadingAll}
-            className="flex items-center gap-1 text-xs sm:text-sm text-[hsl(var(--primary))] hover:text-[hsl(var(--primary)/.8)] transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-          >
-            {loadingAll ? (
-              'Indlæser...'
-            ) : showAll && allMatches ? (
-              <>
-                <ChevronUp className="w-4 h-4" />
-                Vis færre
-              </>
-            ) : (
-              <>
-                <ChevronDown className="w-4 h-4" />
-                Vis alle
-              </>
-            )}
-          </button>
+        {loadingAll && (
+          <span className="text-xs sm:text-sm text-[hsl(var(--muted))]">
+            Indlæser...
+          </span>
         )}
       </div>
-      <div className="space-y-2 sm:space-y-3">
-        {displayMatches.map((match) => {
+      <div className="space-y-2 sm:space-y-3 max-h-[600px] overflow-y-auto pr-2 scrollbar-thin">
+        {matchesToDisplay.map((match) => {
           const hasResult = match.won !== undefined && match.scoreData !== undefined && match.sport !== undefined
           
           return (
