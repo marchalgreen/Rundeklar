@@ -521,10 +521,10 @@ const getPlayerHeadToHead = async (
   playerId1: string,
   playerId2: string
 ): Promise<{ headToHeadMatches: HeadToHeadResult[], player1Wins: number, player2Wins: number }> => {
-  const [allMatchResults, allMatches, allMatchPlayers, state] = await Promise.all([
+  const [statistics, allMatchResults, allMatches, state] = await Promise.all([
+    getStatisticsSnapshots(),
     getMatchResults(),
     getMatches(),
-    getMatchPlayers(),
     getStateCopy()
   ])
   
@@ -544,81 +544,72 @@ const getPlayerHeadToHead = async (
     sessionsMap.set(s.id, { date: s.date })
   })
 
-  // Group matchPlayers by matchId
-  const matchPlayersByMatch = new Map<string, MatchPlayer[]>()
-  allMatchPlayers.forEach((mp) => {
-    if (!matchPlayersByMatch.has(mp.matchId)) {
-      matchPlayersByMatch.set(mp.matchId, [])
-    }
-    matchPlayersByMatch.get(mp.matchId)!.push(mp)
-  })
+  // Process statistics snapshots to find all matches where both players participated
+  statistics.forEach((stat) => {
+    // Group matchPlayers by matchId
+    const matchGroups = new Map<string, MatchPlayer[]>()
+    stat.matchPlayers.forEach((mp) => {
+      if (!matchGroups.has(mp.matchId)) {
+        matchGroups.set(mp.matchId, [])
+      }
+      matchGroups.get(mp.matchId)!.push(mp)
+    })
 
-  // Find all matches where both players participated
-  const relevantMatchIds = new Set<string>()
-  matchPlayersByMatch.forEach((matchPlayers, matchId) => {
-    const player1InMatch = matchPlayers.some((mp) => mp.playerId === playerId1)
-    const player2InMatch = matchPlayers.some((mp) => mp.playerId === playerId2)
-    if (player1InMatch && player2InMatch) {
-      relevantMatchIds.add(matchId)
-    }
-  })
+    matchGroups.forEach((matchPlayers, matchId) => {
+      const { team1, team2 } = getTeamStructure(matchPlayers)
+      const player1InTeam1 = team1.includes(playerId1)
+      const player1InTeam2 = team2.includes(playerId1)
+      const player2InTeam1 = team1.includes(playerId2)
+      const player2InTeam2 = team2.includes(playerId2)
 
-  // Process each relevant match
-  relevantMatchIds.forEach((matchId) => {
-    const matchPlayers = matchPlayersByMatch.get(matchId) || []
-    const { team1, team2 } = getTeamStructure(matchPlayers)
-    const player1InTeam1 = team1.includes(playerId1)
-    const player1InTeam2 = team2.includes(playerId1)
-    const player2InTeam1 = team1.includes(playerId2)
-    const player2InTeam2 = team2.includes(playerId2)
+      // Check if both players are in the same match
+      if ((player1InTeam1 || player1InTeam2) && (player2InTeam1 || player2InTeam2)) {
+        const sameTeam = (player1InTeam1 && player2InTeam1) || (player1InTeam2 && player2InTeam2)
 
-    // Check if both players are in the same match
-    if ((player1InTeam1 || player1InTeam2) && (player2InTeam1 || player2InTeam2)) {
-      const sameTeam = (player1InTeam1 && player2InTeam1) || (player1InTeam2 && player2InTeam2)
-
-      // If there's a match result, add to head-to-head
-      const matchResult = matchResultsMap.get(matchId)
-      if (matchResult) {
-        const match = allMatches.find((m) => m.id === matchId)
-        const session = match ? sessionsMap.get(match.sessionId) : null
-        
-        if (session) {
-          const player1Team: 'team1' | 'team2' = player1InTeam1 ? 'team1' : 'team2'
-          const player2Team: 'team1' | 'team2' = player2InTeam1 ? 'team1' : 'team2'
+        // If there's a match result, add to head-to-head
+        const matchResult = matchResultsMap.get(matchId)
+        if (matchResult) {
+          const match = allMatches.find((m) => m.id === matchId)
+          const session = match ? sessionsMap.get(match.sessionId) : null
           
-          // Determine who won
-          let player1WonThisMatch = false
-          if (sameTeam) {
-            // They played together - both win or both lose
-            player1WonThisMatch = matchResult.winnerTeam === player1Team
-          } else {
-            // They played against each other
-            player1WonThisMatch = matchResult.winnerTeam === player1Team
-          }
-
-          headToHeadMatches.push({
-            matchId,
-            date: session.date,
-            sessionId: match.sessionId,
-            player1Won: player1WonThisMatch,
-            player1Team,
-            player2Team,
-            scoreData: matchResult.scoreData,
-            sport: matchResult.sport,
-            wasPartner: sameTeam
-          })
-
-          // Count wins for head-to-head (only when playing against each other)
-          if (!sameTeam) {
-            if (player1WonThisMatch) {
-              player1Wins++
+          if (session) {
+            const player1Team: 'team1' | 'team2' = player1InTeam1 ? 'team1' : 'team2'
+            const player2Team: 'team1' | 'team2' = player2InTeam1 ? 'team1' : 'team2'
+            
+            // Determine who won
+            let player1WonThisMatch = false
+            if (sameTeam) {
+              // They played together - both win or both lose
+              player1WonThisMatch = matchResult.winnerTeam === player1Team
             } else {
-              player2Wins++
+              // They played against each other
+              player1WonThisMatch = matchResult.winnerTeam === player1Team
+            }
+
+            headToHeadMatches.push({
+              matchId,
+              date: session.date,
+              sessionId: match.sessionId,
+              player1Won: player1WonThisMatch,
+              player1Team,
+              player2Team,
+              scoreData: matchResult.scoreData,
+              sport: matchResult.sport,
+              wasPartner: sameTeam
+            })
+
+            // Count wins for head-to-head (only when playing against each other)
+            if (!sameTeam) {
+              if (player1WonThisMatch) {
+                player1Wins++
+              } else {
+                player2Wins++
+              }
             }
           }
         }
       }
-    }
+    })
   })
 
   // Sort head-to-head matches by date (newest first)
