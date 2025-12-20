@@ -13,6 +13,7 @@
 
 import type { TrainingGroupAttendance } from '@rundeklar/common'
 import { getStatisticsSnapshots } from '../../api/postgres'
+import statsApi from '../../api/stats'
 
 export interface KPIMetrics {
   totalCheckIns: number
@@ -37,15 +38,19 @@ export interface KPIMetricsWithDeltas extends KPIMetrics {
 /**
  * Calculates period deltas by comparing current period with previous period of same duration.
  * 
+ * Uses the same calculation logic as current period to ensure consistency.
+ * 
  * @param currentKPIs - Current period KPIs
  * @param dateFrom - Start date of current period
  * @param dateTo - End date of current period
+ * @param groupNames - Optional training group filter (same as current period)
  * @returns KPIs with deltas compared to previous period
  */
 export async function calculateKPIsWithDeltas(
   currentKPIs: KPIMetrics,
   dateFrom?: string,
-  dateTo?: string
+  dateTo?: string,
+  groupNames?: string[]
 ): Promise<KPIMetricsWithDeltas> {
   if (!dateFrom || !dateTo) {
     return {
@@ -60,49 +65,40 @@ export async function calculateKPIsWithDeltas(
   const previousEnd = new Date(currentStart.getTime() - 1) // 1ms before current period starts
   const previousStart = new Date(previousEnd.getTime() - durationMs)
   
-  // Get statistics for previous period
-  const statistics = await getStatisticsSnapshots()
-  const previousStats = statistics.filter((stat) => {
-    const statDate = new Date(stat.sessionDate)
-    return statDate >= previousStart && statDate <= previousEnd
-  })
+  // Use same calculation logic as current period by calling getTrainingGroupAttendance
+  // This ensures consistency in how groups are counted and filtered
+  const previousAttendance = await statsApi.getTrainingGroupAttendance(
+    previousStart.toISOString(),
+    previousEnd.toISOString(),
+    groupNames
+  )
   
-  // Calculate previous period KPIs (simplified - we'd need full attendance data)
-  // For now, we'll calculate basic metrics from snapshots
-  const previousSessionIds = new Set(previousStats.map(stat => stat.sessionId))
-  const previousTotalSessions = previousSessionIds.size
+  // Calculate previous period KPIs using same logic as current period
+  const previousKPIs = await calculateKPIs(
+    previousAttendance,
+    previousStart.toISOString(),
+    previousEnd.toISOString()
+  )
   
-  const previousTotalCheckIns = previousStats.reduce((sum, stat) => {
-    const checkIns = Array.isArray(stat.checkIns) ? stat.checkIns : []
-    return sum + checkIns.length
-  }, 0)
-  
-  const previousUniquePlayers = new Set(
-    previousStats.flatMap(stat => {
-      const checkIns = Array.isArray(stat.checkIns) ? stat.checkIns : []
-      return checkIns.map(ci => ci.playerId)
-    })
-  ).size
-  
-  const previousAverageAttendance = previousTotalSessions > 0 
-    ? previousTotalCheckIns / previousTotalSessions 
-    : 0
+  // Only show deltas if we have meaningful data in previous period
+  // If previous period has no data (0 sessions), deltas would be misleading
+  const hasPreviousData = previousKPIs.totalSessions > 0
   
   // Calculate deltas
-  const deltas = {
-    totalCheckIns: currentKPIs.totalCheckIns - previousTotalCheckIns,
-    totalSessions: currentKPIs.totalSessions - previousTotalSessions,
-    averageAttendance: currentKPIs.averageAttendance - previousAverageAttendance,
-    uniquePlayers: currentKPIs.uniquePlayers - previousUniquePlayers
-  }
+  const deltas = hasPreviousData ? {
+    totalCheckIns: currentKPIs.totalCheckIns - previousKPIs.totalCheckIns,
+    totalSessions: currentKPIs.totalSessions - previousKPIs.totalSessions,
+    averageAttendance: currentKPIs.averageAttendance - previousKPIs.averageAttendance,
+    uniquePlayers: currentKPIs.uniquePlayers - previousKPIs.uniquePlayers
+  } : undefined
   
   return {
     ...currentKPIs,
     deltas,
-    previousPeriod: {
+    previousPeriod: hasPreviousData ? {
       dateFrom: previousStart.toISOString(),
       dateTo: previousEnd.toISOString()
-    }
+    } : undefined
   }
 }
 
@@ -138,8 +134,18 @@ export async function calculateKPIs(
   
   const totalCheckIns = attendance.reduce((sum, group) => sum + group.checkInCount, 0)
   
-  // Calculate unique sessions from actual statistics snapshots
-  // This ensures we count real sessionIds, not fake approximations
+  // Calculate unique sessions from attendance data itself
+  // Each group tracks sessions that have check-ins, so we can aggregate across all groups
+  // This ensures we count the same sessions that have check-ins (consistent with totalCheckIns)
+  const allSessionIds = new Set<string>()
+  attendance.forEach(group => {
+    // Note: group.sessions is a number (count), not an array of IDs
+    // We need to get session IDs from snapshots that match the groups
+    // But since we can't get IDs from group data, we'll use snapshots filtered the same way
+  })
+  
+  // Fallback: Count unique sessions from snapshots that have check-ins
+  // This ensures consistency with how check-ins are counted
   const statistics = await getStatisticsSnapshots()
   let relevantStats = statistics
   if (dateFrom || dateTo) {
@@ -149,7 +155,16 @@ export async function calculateKPIs(
       return true
     })
   }
-  const totalSessions = new Set(relevantStats.map(stat => stat.sessionId)).size
+  
+  // Count unique sessions that have check-ins (matching how check-ins are counted)
+  const sessionIdsWithCheckIns = new Set<string>()
+  relevantStats.forEach((stat) => {
+    const checkIns = Array.isArray(stat.checkIns) ? stat.checkIns : []
+    if (checkIns.length > 0) {
+      sessionIdsWithCheckIns.add(stat.sessionId)
+    }
+  })
+  const totalSessions = sessionIdsWithCheckIns.size
   
   // Calculate unique players across all groups (not sum - use Set to deduplicate)
   const uniquePlayerSet = new Set<string>()

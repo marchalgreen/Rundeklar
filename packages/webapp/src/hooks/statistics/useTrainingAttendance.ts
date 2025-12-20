@@ -114,10 +114,12 @@ export function useTrainingAttendance(
         )
         
         // Calculate deltas if we have date range
+        // Pass groupNames to ensure same filtering logic is applied
         const withDeltas = await calculateKPIsWithDeltas(
           calculated,
           filters.dateRange.dateFrom,
-          filters.dateRange.dateTo
+          filters.dateRange.dateTo,
+          filters.groupNames
         )
         
         if (!cancelled) {
