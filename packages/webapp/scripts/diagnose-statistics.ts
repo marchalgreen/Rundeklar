@@ -20,23 +20,47 @@ const __filename = fileURLToPath(import.meta.url)
 const __dirname = dirname(__filename)
 
 // Load environment variables from .env.local
-const envPath = join(__dirname, '../../.env.local')
-if (existsSync(envPath)) {
-  const envContent = readFileSync(envPath, 'utf-8')
-  envContent.split('\n').forEach((line) => {
-    const [key, ...valueParts] = line.split('=')
-    if (key && valueParts.length > 0) {
-      const value = valueParts.join('=').trim().replace(/^["']|["']$/g, '')
-      if (!process.env[key.trim()]) {
-        process.env[key.trim()] = value
+const possiblePaths = [
+  join(__dirname, '../.env.local'),  // packages/webapp/.env.local
+  join(__dirname, '../../.env.local'), // root/.env.local
+  join(process.cwd(), '.env.local')  // current working directory
+]
+
+let envLoaded = false
+for (const envPath of possiblePaths) {
+  if (existsSync(envPath)) {
+    console.log(`📄 Loading environment from: ${envPath}`)
+    const envContent = readFileSync(envPath, 'utf-8')
+    const lines = envContent.split('\n')
+    for (const line of lines) {
+      const trimmed = line.trim()
+      if (trimmed && !trimmed.startsWith('#')) {
+        const [key, ...valueParts] = trimmed.split('=')
+        if (key && valueParts.length > 0) {
+          const value = valueParts.join('=').trim().replace(/^["']|["']$/g, '') // Remove quotes
+          process.env[key.trim()] = value
+        }
       }
     }
-  })
+    envLoaded = true
+    break
+  }
+}
+
+if (!envLoaded) {
+  console.warn('⚠️  No .env.local file found. Looking in:', possiblePaths)
+  console.warn('⚠️  Make sure DATABASE_URL is set in environment or .env.local')
+}
+
+// Fallback: Use VITE_DATABASE_URL if DATABASE_URL is not set (for compatibility)
+if (!process.env.DATABASE_URL && process.env.VITE_DATABASE_URL) {
+  process.env.DATABASE_URL = process.env.VITE_DATABASE_URL
+  console.log('📝 Using VITE_DATABASE_URL as DATABASE_URL')
 }
 
 const tenantId = process.argv[2] || 'demo'
 
-const databaseUrl = process.env.DATABASE_URL || process.env.VITE_DATABASE_URL || process.env.DATABASE_URL_UNPOOLED
+const databaseUrl = process.env.DATABASE_URL || process.env.DATABASE_URL_UNPOOLED
 if (!databaseUrl) {
   console.error('❌ Error: DATABASE_URL environment variable not set')
   console.error('   Please set DATABASE_URL or VITE_DATABASE_URL in .env.local')
