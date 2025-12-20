@@ -742,8 +742,11 @@ const getPlayerStatistics = async (
   const doublesCount = new Map<string, number>()
 
   relevantStats.forEach((stat) => {
+    // Defensive check: ensure matchPlayers is an array
+    const matchPlayers = Array.isArray(stat.matchPlayers) ? stat.matchPlayers : []
+    
     const matchGroups = new Map<string, MatchPlayer[]>()
-    stat.matchPlayers.forEach((mp) => {
+    matchPlayers.forEach((mp) => {
       if (!matchGroups.has(mp.matchId)) {
         matchGroups.set(mp.matchId, [])
       }
