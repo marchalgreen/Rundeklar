@@ -54,7 +54,8 @@ const StatisticsPage = () => {
     } else {
       playerStatistics.clearStatistics()
     }
-  }, [selectedPlayerId, playerStatistics])
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [selectedPlayerId]) // Only depend on selectedPlayerId, not playerStatistics object to avoid infinite loops
 
   // Load comparison when both players are selected
   useEffect(() => {
@@ -63,7 +64,8 @@ const StatisticsPage = () => {
     } else {
       playerComparison.clearComparison()
     }
-  }, [selectedPlayerId, comparisonPlayerId, playerComparison])
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [selectedPlayerId, comparisonPlayerId]) // Only depend on player IDs, not playerComparison object to avoid infinite loops
 
   /** Memoized filtered players list — applies search term to name/alias. */
   const filteredPlayers = useMemo(() => {
