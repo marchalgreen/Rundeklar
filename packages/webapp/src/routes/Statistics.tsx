@@ -138,7 +138,7 @@ const StatisticsPage = () => {
             </button>
             <div className="flex-1 min-w-0">
               <h1 className="text-lg sm:text-xl font-semibold text-[hsl(var(--foreground))]">
-                {viewMode === 'training' ? 'Træning & Fremmøde' : 'Individuel Statistik'}
+                {viewMode === 'training' ? 'Træning & fremmøde' : 'Individuel Statistik'}
               </h1>
               <p className="text-xs sm:text-sm md:text-base text-[hsl(var(--muted))] mt-1">
                 {viewMode === 'training' 
@@ -157,7 +157,7 @@ const StatisticsPage = () => {
           <StatisticsFilters filters={filters} />
 
           {/* KPI Cards Section */}
-          <KPICards kpis={trainingAttendance.kpis} />
+          <KPICards kpis={trainingAttendance.kpis} loading={trainingAttendance.kpisLoading || trainingAttendance.attendanceLoading} />
 
           {/* Charts Section */}
           <div className="space-y-4 sm:space-y-6">
@@ -185,6 +185,7 @@ const StatisticsPage = () => {
                     yAxisLabel="Gennemsnitligt antal spillere"
                     height={300}
                     showLegend={false}
+                    showValueLabels={true}
                   />
                 ) : (
                   <p className="text-xs sm:text-sm text-[hsl(var(--muted))]">Ingen fremmødedata tilgængelig</p>
@@ -215,6 +216,7 @@ const StatisticsPage = () => {
                     yAxisLabel="Antal"
                     height={300}
                     showLegend={true}
+                    showValueLabels={true}
                   />
                 ) : (
                   <p className="text-xs sm:text-sm text-[hsl(var(--muted))]">Ingen fremmødedata tilgængelig</p>
@@ -246,6 +248,7 @@ const StatisticsPage = () => {
                     yAxisLabel="Gennemsnitligt antal spillere"
                     height={300}
                     showLegend={false}
+                    showValueLabels={true}
                   />
                 ) : (
                   <p className="text-xs sm:text-sm text-[hsl(var(--muted))]">Ingen ugedagsdata tilgængelig</p>
@@ -274,6 +277,7 @@ const StatisticsPage = () => {
                     yAxisLabel="Antal indtjekninger"
                     height={300}
                     showLegend={false}
+                    showValueLabels={true}
                   />
                 ) : (
                   <p className="text-xs sm:text-sm text-[hsl(var(--muted))]">Ingen ugedagsdata tilgængelig</p>
@@ -341,7 +345,7 @@ const StatisticsPage = () => {
             {/* Attendance Over Time per Weekday Line Chart */}
             <div className="card-glass-active border-hair rounded-lg p-3 sm:p-4 md:p-5 shadow-sm">
               <h3 className="text-sm sm:text-base font-semibold text-[hsl(var(--foreground))] mb-3 sm:mb-4">
-                Fremmøde over tid pr. ugedag
+                fremmøde over tid pr. ugedag
               </h3>
               {trainingAttendance.attendanceOverTimeLoading ? (
                 <div className="flex items-center justify-center py-8">
