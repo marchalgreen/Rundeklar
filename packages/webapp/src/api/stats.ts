@@ -15,7 +15,7 @@ import type {
   WeekdayAttendanceOverTime,
   TrainingDayComparison
 } from '@rundeklar/common'
-import { createId, getStateCopy, getStatisticsSnapshots, createStatisticsSnapshot, createSession, createCheckIn, getMatches, getMatchPlayers, getMatchResults, getMatchResultsBySession, invalidateCache } from './postgres'
+import { createId, getStateCopy, getStatisticsSnapshots, createStatisticsSnapshot, createSession, createCheckIn, getMatches, getMatchPlayers, getMatchResults, getMatchResultsBySession, invalidateCache, type DatabaseState } from './postgres'
 import { logger } from '../lib/utils/logger'
 
 /**
@@ -487,23 +487,24 @@ const getPlayerComparison = async (
  */
 const getPlayerRecentMatches = async (
   playerId: string,
-  limit: number = 5
+  limit: number = 5,
+  state?: DatabaseState // Optional state to reuse if already loaded
 ): Promise<PlayerMatchResult[]> => {
-  const [allMatchResults, allMatches, allMatchPlayers, state] = await Promise.all([
+  const [allMatchResults, allMatches, allMatchPlayers, stateData] = await Promise.all([
     getMatchResults(),
     getMatches(),
     getMatchPlayers(),
-    getStateCopy()
+    state ? Promise.resolve(state) : getStateCopy()
   ])
 
-  // Create maps for quick lookup
-  const matchResultsMap = new Map<string, MatchResult>()
-  allMatchResults.forEach((mr) => {
-    matchResultsMap.set(mr.matchId, mr)
+  // Create maps for quick lookup - use Maps instead of find() for O(1) access
+  const allMatchesMap = new Map<string, typeof allMatches[0]>()
+  allMatches.forEach((m) => {
+    allMatchesMap.set(m.id, m)
   })
 
   const sessionsMap = new Map<string, { date: string }>()
-  state.sessions.forEach((s) => {
+  stateData.sessions.forEach((s) => {
     sessionsMap.set(s.id, { date: s.date })
   })
 
@@ -515,6 +516,12 @@ const getPlayerRecentMatches = async (
     matchPlayersByMatch.get(mp.matchId)!.push(mp)
   })
 
+  // Create player lookup Map for O(1) access
+  const playerMap = new Map<string, typeof stateData.players[0]>()
+  stateData.players.forEach(player => {
+    playerMap.set(player.id, player)
+  })
+
   // Find all matches where player participated and has a result
   const playerMatches: PlayerMatchResult[] = []
 
@@ -524,7 +531,8 @@ const getPlayerRecentMatches = async (
     
     if (!playerInMatch) continue
 
-    const match = allMatches.find((m) => m.id === matchResult.matchId)
+    // Use Map lookup instead of find()
+    const match = allMatchesMap.get(matchResult.matchId)
     if (!match) continue
 
     const session = sessionsMap.get(match.sessionId)
@@ -548,8 +556,9 @@ const getPlayerRecentMatches = async (
     // Combine partners and opponents for display (partners first, then opponents)
     const otherPlayerIds = [...partnerIds, ...opponentIds]
     
+    // Use Map lookup instead of find()
     const opponentNames = otherPlayerIds.map((pid) => {
-      const player = state.players.find((p) => p.id === pid)
+      const player = playerMap.get(pid)
       return player?.name || 'Ukendt spiller'
     })
 
@@ -871,8 +880,8 @@ const getPlayerStatistics = async (
   const winRate = matchesWithResults > 0 ? (totalWins / matchesWithResults) * 100 : 0
   const averageScoreDifference = scoreDifferenceCount > 0 ? totalScoreDifference / scoreDifferenceCount : null
 
-  // Get recent matches
-  const recentMatches = await getPlayerRecentMatches(playerId, 5)
+  // Get recent matches - reuse state to avoid duplicate getStateCopy() call
+  const recentMatches = await getPlayerRecentMatches(playerId, 5, state)
 
   return {
     playerId,
