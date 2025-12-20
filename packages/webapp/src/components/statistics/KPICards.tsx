@@ -54,7 +54,7 @@ export const KPICards: React.FC<KPICardsProps> = ({ kpis }) => {
               )}
             </div>
             {kpis.previousPeriod && (
-              <span className="text-xs text-[hsl(var(--muted))] mt-0.5">vs forrige periode</span>
+              <span className="text-xs text-[hsl(var(--muted))] mt-0.5">vs {kpis.previousPeriod.label}</span>
             )}
           </div>
         </div>
@@ -76,7 +76,7 @@ export const KPICards: React.FC<KPICardsProps> = ({ kpis }) => {
               )}
             </div>
             {kpis.previousPeriod && (
-              <span className="text-xs text-[hsl(var(--muted))] mt-0.5">vs forrige periode</span>
+              <span className="text-xs text-[hsl(var(--muted))] mt-0.5">vs {kpis.previousPeriod.label}</span>
             )}
           </div>
         </div>
@@ -98,7 +98,7 @@ export const KPICards: React.FC<KPICardsProps> = ({ kpis }) => {
               )}
             </div>
             {kpis.previousPeriod && (
-              <span className="text-xs text-[hsl(var(--muted))] mt-0.5">vs forrige periode</span>
+              <span className="text-xs text-[hsl(var(--muted))] mt-0.5">vs {kpis.previousPeriod.label}</span>
             )}
           </div>
         </div>
@@ -120,7 +120,7 @@ export const KPICards: React.FC<KPICardsProps> = ({ kpis }) => {
               )}
             </div>
             {kpis.previousPeriod && (
-              <span className="text-xs text-[hsl(var(--muted))] mt-0.5">vs forrige periode</span>
+              <span className="text-xs text-[hsl(var(--muted))] mt-0.5">vs {kpis.previousPeriod.label}</span>
             )}
           </div>
         </div>
