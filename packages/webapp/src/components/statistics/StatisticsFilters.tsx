@@ -132,39 +132,56 @@ export const StatisticsFilters: React.FC<StatisticsFiltersProps> = ({ filters })
           {allGroups.length === 0 ? (
             <p className="text-xs text-[hsl(var(--muted))]">Ingen træningsgrupper fundet</p>
           ) : (
-            <div className="flex flex-wrap gap-2">
-              {allGroups.map((group) => {
-                const isSelected = selectedGroups.includes(group)
-                return (
+            <>
+              <div className="flex flex-wrap gap-2">
+                {allGroups.map((group) => {
+                  const isSelected = selectedGroups.includes(group)
+                  return (
+                    <button
+                      key={group}
+                      type="button"
+                      onClick={() => handleGroupToggle(group)}
+                      className={`px-3 py-1.5 text-xs sm:text-sm rounded-full transition-all ${
+                        isSelected
+                          ? 'bg-[hsl(var(--primary))] text-white font-medium shadow-sm'
+                          : 'bg-[hsl(var(--surface-2))] text-[hsl(var(--muted))] hover:bg-[hsl(var(--surface))] hover:text-[hsl(var(--foreground))]'
+                      }`}
+                    >
+                      {group}
+                    </button>
+                  )
+                })}
+              </div>
+              <div className="flex items-center gap-2 mt-1">
+                {selectedGroups.length === allGroups.length ? (
+                  <span className="text-xs text-[hsl(var(--muted))]">
+                    Alle grupper valgt
+                  </span>
+                ) : (
+                  <>
+                    <span className="text-xs text-[hsl(var(--muted))]">
+                      {selectedGroups.length} af {allGroups.length} {allGroups.length === 1 ? 'gruppe' : 'grupper'} valgt
+                    </span>
+                    <button
+                      type="button"
+                      onClick={() => setSelectedGroups([...allGroups])}
+                      className="text-xs text-[hsl(var(--muted))] hover:text-[hsl(var(--foreground))] transition-colors underline"
+                    >
+                      Vælg alle
+                    </button>
+                  </>
+                )}
+                {selectedGroups.length > 0 && (
                   <button
-                    key={group}
                     type="button"
-                    onClick={() => handleGroupToggle(group)}
-                    className={`px-3 py-1.5 text-xs sm:text-sm rounded-full transition-all ${
-                      isSelected
-                        ? 'bg-[hsl(var(--primary))] text-white font-medium shadow-sm'
-                        : 'bg-[hsl(var(--surface-2))] text-[hsl(var(--muted))] hover:bg-[hsl(var(--surface))] hover:text-[hsl(var(--foreground))]'
-                    }`}
+                    onClick={() => setSelectedGroups([])}
+                    className="text-xs text-[hsl(var(--muted))] hover:text-[hsl(var(--foreground))] transition-colors underline"
                   >
-                    {group}
+                    Fravælg alle
                   </button>
-                )
-              })}
-            </div>
-          )}
-          {selectedGroups.length > 0 && (
-            <div className="flex items-center gap-2 mt-1">
-              <span className="text-xs text-[hsl(var(--muted))]">
-                {selectedGroups.length} {selectedGroups.length === 1 ? 'gruppe' : 'grupper'} valgt
-              </span>
-              <button
-                type="button"
-                onClick={() => setSelectedGroups([])}
-                className="text-xs text-[hsl(var(--muted))] hover:text-[hsl(var(--foreground))] transition-colors underline"
-              >
-                Ryd valg
-              </button>
-            </div>
+                )}
+              </div>
+            </>
           )}
         </div>
       </div>
