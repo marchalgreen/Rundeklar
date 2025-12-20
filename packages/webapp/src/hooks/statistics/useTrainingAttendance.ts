@@ -12,6 +12,7 @@ import { useToast } from '../../components/ui/Toast'
 import { normalizeError } from '../../lib/errors'
 import { calculateKPIs, calculateKPIsWithDeltas, type KPIMetrics, type KPIMetricsWithDeltas } from '../../lib/statistics/kpiCalculation'
 import type { UseStatisticsFiltersReturn } from './useStatisticsFilters'
+import { logger } from '../../lib/utils/logger'
 
 export interface UseTrainingAttendanceReturn {
   // Training group attendance
@@ -92,13 +93,30 @@ export function useTrainingAttendance(
   
   // Calculate KPIs when attendance data or filters change
   useEffect(() => {
-    if (!enabled || trainingGroupAttendance.length === 0) {
+    if (!enabled) {
       setKpis({
         totalCheckIns: 0,
         totalSessions: 0,
         averageAttendance: 0,
         uniquePlayers: 0
       })
+      return
+    }
+    
+    // Don't reset KPIs if we're currently loading - wait for data to arrive
+    // This prevents race conditions where KPIs are reset to 0 while new data is being fetched
+    // Only reset if we have no data AND we're not loading (meaning loading completed with no data)
+    if (trainingGroupAttendance.length === 0) {
+      if (!attendanceLoading) {
+        // Loading completed but no data - reset KPIs
+        setKpis({
+          totalCheckIns: 0,
+          totalSessions: 0,
+          averageAttendance: 0,
+          uniquePlayers: 0
+        })
+      }
+      // If loading, keep existing KPIs to avoid flickering
       return
     }
     
@@ -128,6 +146,7 @@ export function useTrainingAttendance(
         }
       } catch (err: unknown) {
         if (!cancelled) {
+          logger.error('[useTrainingAttendance] KPI calculation failed', { error: err })
           const normalizedError = normalizeError(err)
           notify({
             variant: 'danger',
@@ -145,7 +164,7 @@ export function useTrainingAttendance(
     return () => {
       cancelled = true
     }
-  }, [enabled, trainingGroupAttendance, filters.dateRange.dateFrom, filters.dateRange.dateTo, filters.groupNames, filters.attendancePeriod, notify])
+  }, [enabled, trainingGroupAttendance, attendanceLoading, filters.dateRange.dateFrom, filters.dateRange.dateTo, filters.groupNames, filters.attendancePeriod, notify])
   
   // Load all training groups
   const loadAllGroups = useCallback(async () => {
@@ -180,6 +199,7 @@ export function useTrainingAttendance(
       )
       setTrainingGroupAttendance(attendance)
     } catch (err: unknown) {
+      logger.error('[useTrainingAttendance] loadTrainingGroupAttendance failed', { error: err })
       const normalizedError = normalizeError(err)
       notify({
         variant: 'danger',
