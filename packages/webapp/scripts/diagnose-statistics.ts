@@ -139,13 +139,60 @@ async function diagnoseStatistics() {
 
     // Count check-ins in snapshots
     // Handle case where check_ins might be null, not an array, or empty
-    const [checkInsInSnapshots] = await sql`
+    // First, let's check what types we actually have
+    const sampleSnapshots = await sql`
       SELECT 
+        id,
+        session_id,
+        jsonb_typeof(check_ins) as check_ins_type,
+        CASE 
+          WHEN check_ins IS NULL THEN 0
+          WHEN jsonb_typeof(check_ins) = 'array' THEN jsonb_array_length(check_ins)
+          WHEN jsonb_typeof(check_ins) = 'null' THEN 0
+          ELSE 0
+        END as check_ins_count
+      FROM statistics_snapshots
+      WHERE tenant_id = ${tenantId}
+      LIMIT 5
+    `
+    
+    if (sampleSnapshots.length > 0) {
+      console.log('📋 Sample snapshot check_ins types:')
+      for (const s of sampleSnapshots) {
+        // Get actual check_ins value to inspect
+        const [snapshot] = await sql`
+          SELECT check_ins, 
+                 jsonb_typeof(check_ins) as type,
+                 CASE WHEN jsonb_typeof(check_ins) = 'string' THEN LEFT(check_ins::text, 100) ELSE NULL END as string_preview
+          FROM statistics_snapshots
+          WHERE session_id = ${s.session_id} AND tenant_id = ${tenantId}
+        `
+        console.log(`   Session ${s.session_id.substring(0, 8)}...: type=${snapshot.type}, count=${s.check_ins_count}`)
+        if (snapshot.type === 'string' && snapshot.string_preview) {
+          console.log(`      Preview: ${snapshot.string_preview}...`)
+        }
+      }
+      console.log('')
+    }
+    
+    // Count check-ins in snapshots
+    // Handle both JSONB arrays and strings (legacy data)
+    // For strings, they contain JSON arrays as text, so we parse them
+    const [checkInsInSnapshots] = await sql.unsafe(
+      `SELECT 
         COALESCE(
           SUM(
             CASE 
               WHEN check_ins IS NULL THEN 0
               WHEN jsonb_typeof(check_ins) = 'array' THEN jsonb_array_length(check_ins)
+              WHEN jsonb_typeof(check_ins) = 'string' THEN 
+                -- Parse the JSONB string value (which is a JSON string containing an array)
+                -- First convert to text, then parse as JSONB
+                CASE 
+                  WHEN jsonb_typeof((check_ins #>> '{}')::jsonb) = 'array' 
+                  THEN jsonb_array_length((check_ins #>> '{}')::jsonb)
+                  ELSE 0
+                END
               WHEN jsonb_typeof(check_ins) = 'null' THEN 0
               ELSE 0
             END
@@ -153,8 +200,9 @@ async function diagnoseStatistics() {
           0
         ) as total_check_ins_in_snapshots
       FROM statistics_snapshots
-      WHERE tenant_id = ${tenantId}
-    `
+      WHERE tenant_id = $1`,
+      [tenantId]
+    )
 
     // Count sessions in snapshots
     const [sessionsInSnapshots] = await sql`

@@ -124,41 +124,71 @@ async function fixSnapshotCheckIns() {
 
     for (const snapshot of snapshotsToFix) {
       try {
-        // Get actual check-ins for this session
-        const checkIns = await sql`
+        // Get actual check-ins for this session and convert to CheckIn format (camelCase)
+        const checkInsRows = await sql`
           SELECT * FROM check_ins
           WHERE session_id = ${snapshot.session_id}
             AND tenant_id = ${tenantId}
           ORDER BY created_at
         `
+        // Convert database rows to CheckIn format (player_id -> playerId)
+        const checkIns = checkInsRows.map(row => ({
+          id: row.id,
+          sessionId: row.session_id,
+          playerId: row.player_id, // Convert snake_case to camelCase
+          maxRounds: row.max_rounds,
+          createdAt: row.created_at,
+          notes: row.notes ?? null
+        }))
 
-        // Get matches for this session
-        const matches = await sql`
+        // Get matches for this session and convert to Match format
+        const matchesRows = await sql`
           SELECT * FROM matches
           WHERE session_id = ${snapshot.session_id}
             AND tenant_id = ${tenantId}
         `
+        const matches = matchesRows.map(row => ({
+          id: row.id,
+          sessionId: row.session_id,
+          courtId: row.court_id,
+          startedAt: row.started_at,
+          endedAt: row.ended_at,
+          round: row.round
+        }))
 
-        // Get match players for matches in this session
+        // Get match players for matches in this session and convert to MatchPlayer format
         const matchPlayerIds = matches.map(m => m.id)
-        const matchPlayers = matchPlayerIds.length > 0
+        const matchPlayersRows = matchPlayerIds.length > 0
           ? await sql`
               SELECT * FROM match_players
               WHERE match_id = ANY(${matchPlayerIds})
                 AND tenant_id = ${tenantId}
             `
           : []
+        const matchPlayers = matchPlayersRows.map(row => ({
+          id: row.id,
+          matchId: row.match_id,
+          playerId: row.player_id, // Convert snake_case to camelCase
+          slot: row.slot
+        }))
 
-        // Update snapshot with correct check-ins
-        await sql`
-          UPDATE statistics_snapshots
-          SET 
-            check_ins = ${JSON.stringify(checkIns)},
-            matches = ${JSON.stringify(matches)},
-            match_players = ${JSON.stringify(matchPlayers)}
-          WHERE id = ${snapshot.snapshot_id}
-            AND tenant_id = ${tenantId}
-        `
+        // Update snapshot with correct check-ins (now in camelCase format)
+        // Use raw SQL with ::jsonb cast to ensure they're stored as JSONB arrays, not strings
+        await sql.unsafe(
+          `UPDATE statistics_snapshots
+           SET 
+             check_ins = $1::jsonb,
+             matches = $2::jsonb,
+             match_players = $3::jsonb
+           WHERE id = $4 AND tenant_id = $5`,
+          [
+            JSON.stringify(checkIns),
+            JSON.stringify(matches),
+            JSON.stringify(matchPlayers),
+            snapshot.snapshot_id,
+            tenantId
+          ]
+        )
 
         console.log(`✅ Updated snapshot for session ${snapshot.session_id.substring(0, 8)}...`)
         console.log(`   Date: ${new Date(snapshot.session_date).toLocaleDateString('da-DK')}`)
