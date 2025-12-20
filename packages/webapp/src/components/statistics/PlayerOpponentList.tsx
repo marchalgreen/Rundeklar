@@ -11,6 +11,8 @@ interface PlayerOpponentListProps {
   onPlayerClick: (playerId: string) => void
   loadingPlayerIds: Set<string>
   title: string
+  isPartners?: boolean // If true, this is a partners list. If false, opponents list.
+  onCompare?: (playerId: string) => void // Callback to open comparison view
 }
 
 /**
@@ -23,7 +25,9 @@ export const PlayerOpponentList: React.FC<PlayerOpponentListProps> = ({
   headToHeadData,
   onPlayerClick,
   loadingPlayerIds,
-  title
+  title,
+  isPartners = false,
+  onCompare
 }) => {
   const [expandedPlayerIds, setExpandedPlayerIds] = useState<Set<string>>(new Set())
 
@@ -121,11 +125,15 @@ export const PlayerOpponentList: React.FC<PlayerOpponentListProps> = ({
                           player2Name={player.names}
                           player1Wins={player1Wins}
                           player2Wins={player2Wins}
+                          showOnlyPartners={isPartners}
+                          onCompare={onCompare ? () => onCompare(player.playerId) : undefined}
                         />
                       </div>
                     ) : (
                       <div className="p-3 text-center text-xs sm:text-sm text-[hsl(var(--muted))]">
-                        Ingen head-to-head kampresultater tilgængelig
+                        {isPartners 
+                          ? 'Ingen kampe spillet sammen'
+                          : 'Ingen kampe mod hinanden'}
                       </div>
                     )}
                   </div>

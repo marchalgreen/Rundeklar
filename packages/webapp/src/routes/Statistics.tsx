@@ -866,6 +866,12 @@ const StatisticsPage = () => {
                 onPlayerClick={(playerId) => playerStatistics.loadHeadToHead(selectedPlayerId, playerId)}
                 loadingPlayerIds={playerStatistics.headToHeadLoading}
                 title="Top 5 makkere"
+                isPartners={true}
+                onCompare={(playerId) => {
+                  setComparisonPlayerId(playerId)
+                  setComparisonSearch('')
+                  setShowComparisonSearch(false)
+                }}
               />
 
               {/* Top Opponents Section */}
@@ -877,6 +883,12 @@ const StatisticsPage = () => {
                 onPlayerClick={(playerId) => playerStatistics.loadHeadToHead(selectedPlayerId, playerId)}
                 loadingPlayerIds={playerStatistics.headToHeadLoading}
                 title="Top 5 modstandere"
+                isPartners={false}
+                onCompare={(playerId) => {
+                  setComparisonPlayerId(playerId)
+                  setComparisonSearch('')
+                  setShowComparisonSearch(false)
+                }}
               />
             </div>
           )}
