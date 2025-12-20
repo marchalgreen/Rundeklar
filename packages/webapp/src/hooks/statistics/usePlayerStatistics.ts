@@ -129,7 +129,12 @@ export function usePlayerStatistics(): UsePlayerStatisticsReturn {
       const data = await statsApi.getPlayerHeadToHead(playerId1, playerId2)
       setHeadToHeadData(prev => {
         const newMap = new Map(prev)
-        newMap.set(key, data)
+        // Map headToHeadMatches to matches for component compatibility
+        newMap.set(key, {
+          matches: data.headToHeadMatches,
+          player1Wins: data.player1Wins,
+          player2Wins: data.player2Wins
+        })
         return newMap
       })
     } catch (err: unknown) {
