@@ -1610,9 +1610,15 @@ export const deleteMatchPlayer = async (id: string): Promise<void> => {
  * Gets all statistics snapshots from Postgres (uses cache if available).
  */
 export const getStatisticsSnapshots = async (): Promise<StatisticsSnapshot[]> => {
-  // Check cache first
-  if (tableCaches.statistics) {
+  // Check cache first - but don't use empty arrays as they might be stale
+  // Only use cache if it has actual data (length > 0)
+  if (tableCaches.statistics && tableCaches.statistics.length > 0) {
     return tableCaches.statistics
+  }
+  
+  // If cache exists but is empty, clear it and query fresh
+  if (tableCaches.statistics && tableCaches.statistics.length === 0) {
+    tableCaches.statistics = null
   }
 
   const sql = getPostgres()
@@ -1623,31 +1629,47 @@ export const getStatisticsSnapshots = async (): Promise<StatisticsSnapshot[]> =>
   // For demo tenant: also include sessions with NULL isolation_id (seeded data)
   // This allows seeded data to be visible alongside user-created data
   let snapshots
-  if (isolationId) {
-    // Demo tenant: include both current isolation_id AND NULL isolation_id (seeded data)
-    snapshots = await sql`
-      SELECT ss.* FROM statistics_snapshots ss
-      INNER JOIN training_sessions ts ON ss.session_id = ts.id
-      WHERE ss.tenant_id = ${tenantId} 
-        AND (ts.isolation_id = ${isolationId} OR ts.isolation_id IS NULL)
-      ORDER BY ss.session_date DESC
-    `
-  } else {
-    // Production tenants: only NULL isolation_id
-    snapshots = await sql`
-      SELECT ss.* FROM statistics_snapshots ss
-      INNER JOIN training_sessions ts ON ss.session_id = ts.id
-      WHERE ss.tenant_id = ${tenantId} AND (ts.isolation_id IS NULL OR ts.isolation_id = '')
-      ORDER BY ss.session_date DESC
-    `
+  try {
+    if (isolationId) {
+      // Demo tenant: include both current isolation_id AND NULL isolation_id (seeded data)
+      snapshots = await sql`
+        SELECT ss.* FROM statistics_snapshots ss
+        INNER JOIN training_sessions ts ON ss.session_id = ts.id
+        WHERE ss.tenant_id = ${tenantId} 
+          AND (ts.isolation_id = ${isolationId} OR ts.isolation_id IS NULL)
+        ORDER BY ss.session_date DESC
+      `
+    } else {
+      // Production tenants: only NULL isolation_id
+      snapshots = await sql`
+        SELECT ss.* FROM statistics_snapshots ss
+        INNER JOIN training_sessions ts ON ss.session_id = ts.id
+        WHERE ss.tenant_id = ${tenantId} AND (ts.isolation_id IS NULL OR ts.isolation_id = '')
+        ORDER BY ss.session_date DESC
+      `
+    }
+  } catch (error) {
+    logger.error('[getStatisticsSnapshots] Query failed', {
+      error,
+      tenantId,
+      isolationId
+    })
+    throw error
   }
   
   const converted = snapshots.map(rowToStatisticsSnapshot)
   
-  // Update cache
-  tableCaches.statistics = converted
-  if (cachedState) {
-    cachedState.statistics = converted
+  // Only cache if we got results - don't cache empty arrays as they might be stale
+  // This prevents race conditions where an empty cache from a failed query
+  // prevents subsequent successful queries
+  if (converted.length > 0) {
+    tableCaches.statistics = converted
+    if (cachedState) {
+      cachedState.statistics = converted
+    }
+  } else {
+    // Don't cache empty arrays - leave cache as null so next call will retry
+    tableCaches.statistics = null
   }
   
   return converted
