@@ -17,7 +17,8 @@ import {
   KPICards, 
   StatisticsInsights,
   RecentMatches, 
-  HeadToHeadResults 
+  HeadToHeadResults,
+  PlayerOpponentList
 } from '../components/statistics'
 import { BarChart, LineChart } from '../components/charts'
 import { EChartsBarChart } from '../components/charts/EChartsBarChart'
@@ -108,7 +109,9 @@ const StatisticsPage = () => {
       setComparisonPlayerId(null)
       playerComparison.clearComparison()
     }
-  }, [viewMode, playerStatistics, playerComparison])
+    // Only depend on viewMode, not hook objects to avoid infinite loops
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [viewMode])
 
   if (loading) {
     return (
@@ -138,7 +141,7 @@ const StatisticsPage = () => {
             </button>
             <div className="flex-1 min-w-0">
               <h1 className="text-lg sm:text-xl font-semibold text-[hsl(var(--foreground))]">
-                {viewMode === 'training' ? 'Træning & fremmøde' : 'Individuel Statistik'}
+                {viewMode === 'training' ? 'Træning & fremmøde' : 'Individuel statistik'}
               </h1>
               <p className="text-xs sm:text-sm md:text-base text-[hsl(var(--muted))] mt-1">
                 {viewMode === 'training' 
@@ -674,7 +677,7 @@ const StatisticsPage = () => {
 
           {/* Statistics Display */}
           {selectedPlayer && (
-        <div className="space-y-4 sm:space-y-6">
+        <div className="mt-4 sm:mt-6 space-y-4 sm:space-y-6">
           {playerStatistics.loading ? (
             <>
               {/* KPI Skeletons */}
@@ -779,35 +782,55 @@ const StatisticsPage = () => {
             )}
           </div>
 
-          {/* Win/Loss Trend Chart */}
+          {/* Win/Loss by Season KPI Cards */}
           {playerStatistics.statistics.matchesWithResults > 0 && playerStatistics.statistics.winsBySeason && Object.keys(playerStatistics.statistics.winsBySeason).length > 0 && (
-            <div className="card-glass-active border-hair rounded-lg p-3 sm:p-4 md:p-5 shadow-sm">
-              <h3 className="text-sm sm:text-base font-semibold text-[hsl(var(--foreground))] mb-3 sm:mb-4">
+            <div className="space-y-3 sm:space-y-4">
+              <h3 className="text-sm sm:text-base font-semibold text-[hsl(var(--foreground))]">
                 Sejre/Nederlag pr. sæson
               </h3>
-              <BarChart
-                data={Object.keys(playerStatistics.statistics.winsBySeason)
+              <div className="grid gap-3 sm:gap-4 md:grid-cols-2 xl:grid-cols-3">
+                {Object.keys(playerStatistics.statistics.winsBySeason)
                   .sort()
-                  .map((season) => ({
-                    name: season,
-                    Sejre: (playerStatistics.statistics.winsBySeason?.[season]) || 0,
-                    Nederlag: (playerStatistics.statistics.lossesBySeason?.[season]) || 0
-                  }))}
-                bars={[
-                  { dataKey: 'Sejre', name: 'Sejre', color: 'hsl(var(--success))' },
-                  { dataKey: 'Nederlag', name: 'Nederlag', color: 'hsl(var(--danger))' }
-                ]}
-                xAxisLabel="Sæson"
-                yAxisLabel="Antal"
-                height={250}
-                showLegend={true}
-              />
+                  .map((season) => {
+                    const wins = playerStatistics.statistics.winsBySeason?.[season] || 0
+                    const losses = playerStatistics.statistics.lossesBySeason?.[season] || 0
+                    const total = wins + losses
+                    const winRate = total > 0 ? ((wins / total) * 100).toFixed(1) : '0.0'
+                    
+                    return (
+                      <div key={season} className="card-glass-active border-hair rounded-lg p-3 sm:p-4 md:p-5 shadow-sm">
+                        <div className="flex flex-col justify-between gap-1">
+                          <span className="text-xs sm:text-sm text-[hsl(var(--muted))]">{season}</span>
+                          <div className="flex items-baseline gap-2 sm:gap-3 mt-1">
+                            <div className="flex-1">
+                              <span className="text-lg sm:text-xl font-semibold text-[hsl(var(--success))]">{wins}</span>
+                              <span className="text-xs sm:text-sm text-[hsl(var(--muted))] ml-1">sejre</span>
+                            </div>
+                            <div className="flex-1">
+                              <span className="text-lg sm:text-xl font-semibold text-[hsl(var(--danger))]">{losses}</span>
+                              <span className="text-xs sm:text-sm text-[hsl(var(--muted))] ml-1">nederlag</span>
+                            </div>
+                          </div>
+                          <span className="text-xs sm:text-sm text-[hsl(var(--muted))] mt-1">
+                            {total} kampe • {winRate}% win rate
+                          </span>
+                        </div>
+                      </div>
+                    )
+                  })}
+              </div>
             </div>
           )}
 
           {/* Recent Matches */}
-          {playerStatistics.statistics.recentMatches && playerStatistics.statistics.recentMatches.length > 0 && (
-            <RecentMatches matches={playerStatistics.statistics.recentMatches} playerName={selectedPlayer.name} />
+          {playerStatistics.statistics.recentMatches !== undefined && (
+            <RecentMatches 
+              matches={playerStatistics.statistics.recentMatches || []} 
+              playerName={selectedPlayer.name}
+              allMatches={playerStatistics.allMatches}
+              onLoadAll={() => playerStatistics.loadAllMatches(selectedPlayerId!)}
+              loadingAll={playerStatistics.allMatchesLoading}
+            />
           )}
 
           {/* Check-ins by Season */}
@@ -832,65 +855,31 @@ const StatisticsPage = () => {
           )}
 
           {/* Top Partners and Opponents Section - Side by Side */}
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 sm:gap-5 md:gap-6">
-            {/* Top Partners Section */}
-            <div className="card-glass-active border-hair rounded-lg p-3 sm:p-4 md:p-5 shadow-sm">
-              <div className="space-y-2 sm:space-y-3">
-                <h2 className="text-sm sm:text-base font-semibold text-[hsl(var(--foreground))]">Top 5 makkere</h2>
-                {playerStatistics.statistics.partners.length === 0 ? (
-                  <p className="text-xs sm:text-sm text-[hsl(var(--muted))]">Ingen partnerdata tilgængelig</p>
-                ) : (
-                  <div className="space-y-1.5 sm:space-y-2">
-                    {playerStatistics.statistics.partners.map((partner, index) => (
-                      <div
-                        key={partner.playerId}
-                        className="flex items-center justify-between rounded-md bg-[hsl(var(--surface))] border-hair px-2 sm:px-3 py-1.5 sm:py-2"
-                      >
-                        <div className="flex items-center gap-2 sm:gap-3 min-w-0 flex-1">
-                          <div className="h-5 w-5 sm:h-6 sm:w-6 grid place-items-center rounded-full bg-[hsl(var(--surface-2))] text-[hsl(var(--muted))] border-hair text-xs font-semibold flex-shrink-0">
-                            {index + 1}
-                          </div>
-                          <span className="text-xs sm:text-sm font-medium text-[hsl(var(--foreground))] truncate">{partner.names}</span>
-                        </div>
-                        <span className="rounded-full bg-[hsl(var(--surface-2))] text-[hsl(var(--muted))] border-hair px-1.5 sm:px-2 py-0.5 sm:py-1 text-xs flex-shrink-0 ml-1 sm:ml-2">
-                          {partner.count} {partner.count === 1 ? 'gang' : 'gange'}
-                        </span>
-                      </div>
-                    ))}
-                  </div>
-                )}
-              </div>
-            </div>
+          {selectedPlayerId && (
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 sm:gap-5 md:gap-6">
+              {/* Top Partners Section */}
+              <PlayerOpponentList
+                players={playerStatistics.statistics.partners}
+                currentPlayerId={selectedPlayerId}
+                currentPlayerName={selectedPlayer.name}
+                headToHeadData={playerStatistics.headToHeadData}
+                onPlayerClick={(playerId) => playerStatistics.loadHeadToHead(selectedPlayerId, playerId)}
+                loadingPlayerIds={playerStatistics.headToHeadLoading}
+                title="Top 5 makkere"
+              />
 
-            {/* Top Opponents Section */}
-            <div className="card-glass-active border-hair rounded-lg p-3 sm:p-4 md:p-5 shadow-sm">
-              <div className="space-y-2 sm:space-y-3">
-                <h2 className="text-sm sm:text-base font-semibold text-[hsl(var(--foreground))]">Top 5 modstandere</h2>
-                {playerStatistics.statistics.opponents.length === 0 ? (
-                  <p className="text-xs sm:text-sm text-[hsl(var(--muted))]">Ingen modstanderdata tilgængelig</p>
-                ) : (
-                  <div className="space-y-1.5 sm:space-y-2">
-                    {playerStatistics.statistics.opponents.map((opponent, index) => (
-                      <div
-                        key={opponent.playerId}
-                        className="flex items-center justify-between rounded-md bg-[hsl(var(--surface))] border-hair px-2 sm:px-3 py-1.5 sm:py-2"
-                      >
-                        <div className="flex items-center gap-2 sm:gap-3 min-w-0 flex-1">
-                          <div className="h-5 w-5 sm:h-6 sm:w-6 grid place-items-center rounded-full bg-[hsl(var(--surface-2))] text-[hsl(var(--muted))] border-hair text-xs font-semibold flex-shrink-0">
-                            {index + 1}
-                          </div>
-                          <span className="text-xs sm:text-sm font-medium text-[hsl(var(--foreground))] truncate">{opponent.names}</span>
-                        </div>
-                        <span className="rounded-full bg-[hsl(var(--surface-2))] text-[hsl(var(--muted))] border-hair px-1.5 sm:px-2 py-0.5 sm:py-1 text-xs flex-shrink-0 ml-1 sm:ml-2">
-                          {opponent.count} {opponent.count === 1 ? 'gang' : 'gange'}
-                        </span>
-                      </div>
-                    ))}
-                  </div>
-                )}
-              </div>
+              {/* Top Opponents Section */}
+              <PlayerOpponentList
+                players={playerStatistics.statistics.opponents}
+                currentPlayerId={selectedPlayerId}
+                currentPlayerName={selectedPlayer.name}
+                headToHeadData={playerStatistics.headToHeadData}
+                onPlayerClick={(playerId) => playerStatistics.loadHeadToHead(selectedPlayerId, playerId)}
+                loadingPlayerIds={playerStatistics.headToHeadLoading}
+                title="Top 5 modstandere"
+              />
             </div>
-          </div>
+          )}
             </>
           ) : null}
           </div>
