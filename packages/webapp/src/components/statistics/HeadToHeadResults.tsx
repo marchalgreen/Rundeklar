@@ -113,9 +113,30 @@ export const HeadToHeadResults: React.FC<HeadToHeadResultsProps> = ({
                     <Target className="w-4 h-4 sm:w-5 sm:h-5 text-[hsl(var(--muted))] flex-shrink-0" />
                   )}
                   <div className="flex flex-col min-w-0 flex-1">
-                    <span className="text-xs sm:text-sm font-medium text-[hsl(var(--foreground))]">
-                      {result.player1Won ? player1Name : player2Name} vandt
-                    </span>
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <span className="text-xs sm:text-sm font-medium text-[hsl(var(--foreground))]">
+                        {result.player1Won ? player1Name : player2Name} vandt
+                      </span>
+                      {/* Show 2v2 match details */}
+                      {result.partnerNames && result.partnerNames.length > 0 && (
+                        <>
+                          <span className="text-[hsl(var(--muted))]">•</span>
+                          <Users className="w-3 h-3 text-[hsl(var(--primary))]" />
+                          <span className="text-xs sm:text-sm text-[hsl(var(--foreground))]">
+                            Med {result.partnerNames.join(', ')}
+                          </span>
+                        </>
+                      )}
+                      {result.opponentNamesSeparate && result.opponentNamesSeparate.length > 0 && (
+                        <>
+                          <span className="text-[hsl(var(--muted))]">•</span>
+                          <Target className="w-3 h-3 text-[hsl(var(--muted))]" />
+                          <span className="text-xs sm:text-sm text-[hsl(var(--foreground))]">
+                            Mod {result.opponentNamesSeparate.join(', ')}
+                          </span>
+                        </>
+                      )}
+                    </div>
                     <span className="text-xs text-[hsl(var(--muted))] mt-0.5">
                       {formatDate(result.date, false)} • {formatScore(result.scoreData, result.sport)}
                     </span>

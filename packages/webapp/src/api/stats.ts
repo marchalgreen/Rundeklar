@@ -13,7 +13,8 @@ import type {
   WeekdayAttendance,
   PlayerCheckInLongTail,
   WeekdayAttendanceOverTime,
-  TrainingDayComparison
+  TrainingDayComparison,
+  Player
 } from '@rundeklar/common'
 import { createId, getStateCopy, getStatisticsSnapshots, createStatisticsSnapshot, createSession, createCheckIn, getMatches, getMatchPlayers, getMatchResults, getMatchResultsBySession, invalidateCache, type DatabaseState } from './postgres'
 import { logger } from '../lib/utils/logger'
@@ -426,6 +427,12 @@ const getPlayerComparison = async (
     sessionsMap.set(s.id, { date: s.date })
   })
 
+  // Create a map of players by ID for name lookup
+  const playerMap = new Map<string, Player>()
+  state.players.forEach((p) => {
+    playerMap.set(p.id, p)
+  })
+
   statistics.forEach((stat) => {
     // Group matchPlayers by matchId
     const matchGroups = new Map<string, MatchPlayer[]>()
@@ -473,6 +480,73 @@ const getPlayerComparison = async (
               player1WonThisMatch = matchResult.winnerTeam === player1Team
             }
 
+            // Calculate partner and opponent names for 2v2 matches
+            let partnerNames: string[] | undefined = undefined
+            let opponentNamesSeparate: string[] | undefined = undefined
+            let opponentNames: string[] | undefined = undefined
+
+            // Check if this is a 2v2 match (more than 2 players total)
+            const totalPlayers = team1.length + team2.length
+            if (totalPlayers > 2) {
+              if (sameTeam) {
+                // They played together - get their partners and opponents
+                const player1TeamMembers = player1InTeam1 ? team1 : team2
+                const otherTeamMembers = player1InTeam1 ? team2 : team1
+                
+                // Partner names (excluding player1 and player2 themselves)
+                partnerNames = player1TeamMembers
+                  .filter((pid) => pid !== playerId1 && pid !== playerId2)
+                  .map((pid) => {
+                    const player = playerMap.get(pid)
+                    return player?.name || 'Ukendt spiller'
+                  })
+                  .filter(name => name !== 'Ukendt spiller')
+
+                // Opponent names
+                opponentNames = otherTeamMembers
+                  .map((pid) => {
+                    const player = playerMap.get(pid)
+                    return player?.name || 'Ukendt spiller'
+                  })
+                  .filter(name => name !== 'Ukendt spiller')
+              } else {
+                // They played against each other - get their partners and opponents
+                const player1TeamMembers = player1InTeam1 ? team1 : team2
+                const player2TeamMembers = player2InTeam1 ? team1 : team2
+                
+                // Partner names for player1 (excluding player1 themselves)
+                const player1Partners = player1TeamMembers
+                  .filter((pid) => pid !== playerId1)
+                  .map((pid) => {
+                    const player = playerMap.get(pid)
+                    return player?.name || 'Ukendt spiller'
+                  })
+                  .filter(name => name !== 'Ukendt spiller')
+
+                // Partner names for player2 (excluding player2 themselves)
+                const player2Partners = player2TeamMembers
+                  .filter((pid) => pid !== playerId2)
+                  .map((pid) => {
+                    const player = playerMap.get(pid)
+                    return player?.name || 'Ukendt spiller'
+                  })
+                  .filter(name => name !== 'Ukendt spiller')
+
+                // Opponent names (the other team - player2's team)
+                opponentNamesSeparate = player2TeamMembers
+                  .map((pid) => {
+                    const player = playerMap.get(pid)
+                    return player?.name || 'Ukendt spiller'
+                  })
+                  .filter(name => name !== 'Ukendt spiller')
+
+                // For opponent matches, show player1's partners
+                if (player1Partners.length > 0) {
+                  partnerNames = player1Partners
+                }
+              }
+            }
+
             headToHeadMatches.push({
               matchId,
               date: session.date,
@@ -482,7 +556,10 @@ const getPlayerComparison = async (
               player2Team,
               scoreData: matchResult.scoreData,
               sport: matchResult.sport,
-              wasPartner: sameTeam
+              wasPartner: sameTeam,
+              opponentNames,
+              partnerNames,
+              opponentNamesSeparate
             })
 
             // Count wins for head-to-head (only when playing against each other)
@@ -592,17 +669,62 @@ const getPlayerHeadToHead = async (
               player1WonThisMatch = matchResult.winnerTeam === player1Team
             }
 
-            // For partner matches, get opponent names
+            // Calculate partner and opponent names for 2v2 matches
+            let partnerNames: string[] | undefined = undefined
+            let opponentNamesSeparate: string[] | undefined = undefined
             let opponentNames: string[] | undefined = undefined
-            if (sameTeam) {
-              // They played together - get opponents from the other team
-              const opponentTeam = player1InTeam1 ? team2 : team1
-              opponentNames = opponentTeam
-                .map((pid) => {
-                  const player = playerMap.get(pid)
-                  return player?.name || 'Ukendt spiller'
-                })
-                .filter(name => name !== 'Ukendt spiller')
+
+            // Check if this is a 2v2 match (more than 2 players total)
+            const totalPlayers = team1.length + team2.length
+            if (totalPlayers > 2) {
+              if (sameTeam) {
+                // They played together - get their partners and opponents
+                const player1TeamMembers = player1InTeam1 ? team1 : team2
+                const otherTeamMembers = player1InTeam1 ? team2 : team1
+                
+                // Partner names (excluding player1 and player2 themselves)
+                partnerNames = player1TeamMembers
+                  .filter((pid) => pid !== playerId1 && pid !== playerId2)
+                  .map((pid) => {
+                    const player = playerMap.get(pid)
+                    return player?.name || 'Ukendt spiller'
+                  })
+                  .filter(name => name !== 'Ukendt spiller')
+
+                // Opponent names
+                opponentNames = otherTeamMembers
+                  .map((pid) => {
+                    const player = playerMap.get(pid)
+                    return player?.name || 'Ukendt spiller'
+                  })
+                  .filter(name => name !== 'Ukendt spiller')
+              } else {
+                // They played against each other - get their partners and opponents
+                const player1TeamMembers = player1InTeam1 ? team1 : team2
+                const player2TeamMembers = player2InTeam1 ? team1 : team2
+                
+                // Partner names for player1 (excluding player1 themselves)
+                const player1Partners = player1TeamMembers
+                  .filter((pid) => pid !== playerId1)
+                  .map((pid) => {
+                    const player = playerMap.get(pid)
+                    return player?.name || 'Ukendt spiller'
+                  })
+                  .filter(name => name !== 'Ukendt spiller')
+
+                // Opponent names (the other team - player2's team)
+                opponentNamesSeparate = player2TeamMembers
+                  .map((pid) => {
+                    const player = playerMap.get(pid)
+                    return player?.name || 'Ukendt spiller'
+                  })
+                  .filter(name => name !== 'Ukendt spiller')
+
+                // For opponent matches, show player1's partners
+                if (player1Partners.length > 0) {
+                  partnerNames = player1Partners
+                }
+              }
             }
 
             headToHeadMatches.push({
@@ -615,7 +737,9 @@ const getPlayerHeadToHead = async (
               scoreData: matchResult.scoreData,
               sport: matchResult.sport,
               wasPartner: sameTeam,
-              opponentNames
+              opponentNames,
+              partnerNames,
+              opponentNamesSeparate
             })
 
             // Count wins for head-to-head (only when playing against each other)
