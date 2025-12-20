@@ -114,12 +114,13 @@ export function useTrainingAttendance(
         )
         
         // Calculate deltas if we have date range
-        // Pass groupNames to ensure same filtering logic is applied
+        // Pass groupNames and attendancePeriod to ensure same filtering logic is applied
         const withDeltas = await calculateKPIsWithDeltas(
           calculated,
           filters.dateRange.dateFrom,
           filters.dateRange.dateTo,
-          filters.groupNames
+          filters.groupNames,
+          filters.attendancePeriod
         )
         
         if (!cancelled) {
@@ -144,7 +145,7 @@ export function useTrainingAttendance(
     return () => {
       cancelled = true
     }
-  }, [enabled, trainingGroupAttendance, filters.dateRange.dateFrom, filters.dateRange.dateTo, notify])
+  }, [enabled, trainingGroupAttendance, filters.dateRange.dateFrom, filters.dateRange.dateTo, filters.groupNames, filters.attendancePeriod, notify])
   
   // Load all training groups
   const loadAllGroups = useCallback(async () => {
@@ -158,12 +159,15 @@ export function useTrainingAttendance(
         })
       })
       const groups = Array.from(groupsSet).sort()
-      filters.setAllGroups(groups)
+      // Only update if groups have changed to avoid infinite loops
+      if (JSON.stringify(groups) !== JSON.stringify(filters.allGroups)) {
+        filters.setAllGroups(groups)
+      }
     } catch (err: unknown) {
       // Silently fail - groups will just be empty
       // Don't use console.error per guardrails
     }
-  }, [filters])
+  }, [filters.allGroups, filters.setAllGroups])
   
   // Load training group attendance
   const loadTrainingGroupAttendance = useCallback(async () => {
@@ -313,12 +317,13 @@ export function useTrainingAttendance(
     loadTrainingDayComparison
   ])
   
-  // Load groups when enabled
+  // Load groups when enabled (only once, not on every render)
   useEffect(() => {
-    if (enabled) {
+    if (enabled && filters.allGroups.length === 0) {
       void loadAllGroups()
     }
-  }, [enabled, loadAllGroups])
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [enabled]) // Only depend on enabled, not loadAllGroups to avoid infinite loops
   
   return {
     trainingGroupAttendance,
