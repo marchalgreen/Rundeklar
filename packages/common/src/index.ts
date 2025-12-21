@@ -15,6 +15,7 @@ export type Player = {
   active: boolean
   preferredDoublesPartners?: string[] | null
   preferredMixedPartners?: string[] | null
+  badmintonplayerId?: string | null
   createdAt: string
 }
 
@@ -101,11 +102,12 @@ export type PlayerCreateInput = {
   active?: boolean
   preferredDoublesPartners?: string[]
   preferredMixedPartners?: string[]
+  badmintonplayerId?: string
 }
 
 export type PlayerUpdateInput = {
   id: string
-  patch: Partial<Pick<Player, 'name' | 'alias' | 'level' | 'levelSingle' | 'levelDouble' | 'levelMix' | 'gender' | 'primaryCategory' | 'trainingGroups' | 'active' | 'preferredDoublesPartners' | 'preferredMixedPartners'>>
+  patch: Partial<Pick<Player, 'name' | 'alias' | 'level' | 'levelSingle' | 'levelDouble' | 'levelMix' | 'gender' | 'primaryCategory' | 'trainingGroups' | 'active' | 'preferredDoublesPartners' | 'preferredMixedPartners' | 'badmintonplayerId'>>
 }
 
 export type MatchMovePayload = {

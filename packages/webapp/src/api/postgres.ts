@@ -188,6 +188,7 @@ const rowToPlayer = (row: any): Player => ({
   active: row.active,
   preferredDoublesPartners: row.preferred_doubles_partners || [],
   preferredMixedPartners: row.preferred_mixed_partners || [],
+  badmintonplayerId: row.badmintonplayer_id ?? null,
   createdAt: row.created_at
 })
 
@@ -613,7 +614,7 @@ export const createPlayer = async (player: Omit<Player, 'id' | 'createdAt'>): Pr
     INSERT INTO players (
       name, alias, level_single, level_double, level_mix, gender, 
       primary_category, training_group, active, 
-      preferred_doubles_partners, preferred_mixed_partners, tenant_id
+      preferred_doubles_partners, preferred_mixed_partners, badmintonplayer_id, tenant_id
     )
     VALUES (
       ${player.name},
@@ -627,6 +628,7 @@ export const createPlayer = async (player: Omit<Player, 'id' | 'createdAt'>): Pr
       ${player.active ?? true},
       ${playerAny.preferredDoublesPartners ?? []},
       ${playerAny.preferredMixedPartners ?? []},
+      ${playerAny.badmintonplayerId ?? null},
       ${tenantId}
     )
     RETURNING *
@@ -668,6 +670,7 @@ export const updatePlayer = async (id: string, updates: PlayerUpdateInput['patch
   if (updates.active !== undefined) updateData.active = updates.active
   if (updatesAny.preferredDoublesPartners !== undefined) updateData.preferred_doubles_partners = updatesAny.preferredDoublesPartners ?? []
   if (updatesAny.preferredMixedPartners !== undefined) updateData.preferred_mixed_partners = updatesAny.preferredMixedPartners ?? []
+  if (updatesAny.badmintonplayerId !== undefined) updateData.badmintonplayer_id = updatesAny.badmintonplayerId ?? null
 
   const tenantId = getTenantId()
 

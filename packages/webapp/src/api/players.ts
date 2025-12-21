@@ -30,7 +30,8 @@ const playerCreateSchema = z.object({
   trainingGroups: z.array(z.string().min(1)).optional(),
   active: z.boolean().optional(),
   preferredDoublesPartners: z.array(z.string()).optional(),
-  preferredMixedPartners: z.array(z.string()).optional()
+  preferredMixedPartners: z.array(z.string()).optional(),
+  badmintonplayerId: z.string().optional()
 })
 
 /** Zod schema for player update input validation. */
@@ -49,7 +50,8 @@ const playerUpdateSchema = z.object({
       trainingGroups: z.array(z.string()).nullable().optional(),
       active: z.boolean().optional(),
       preferredDoublesPartners: z.array(z.string()).nullable().optional(),
-      preferredMixedPartners: z.array(z.string()).nullable().optional()
+      preferredMixedPartners: z.array(z.string()).nullable().optional(),
+      badmintonplayerId: z.string().nullable().optional()
     })
     .refine((value) => Object.keys(value).length > 0, 'patch must update mindst ét felt')
 })
@@ -98,7 +100,8 @@ const createPlayer = async (input: PlayerCreateInput): Promise<Player> => {
       trainingGroups: parsed.trainingGroups ?? [],
       active: parsed.active ?? true,
       preferredDoublesPartners: parsed.preferredDoublesPartners ?? null,
-      preferredMixedPartners: parsed.preferredMixedPartners ?? null
+      preferredMixedPartners: parsed.preferredMixedPartners ?? null,
+      badmintonplayerId: parsed.badmintonplayerId ?? null
     } as Omit<Player, 'id' | 'createdAt'>)
     return normalisePlayer(created)
   } catch (error) {
@@ -138,6 +141,7 @@ const updatePlayer = async (input: PlayerUpdateInput): Promise<Player> => {
     if (parsed.patch.active !== undefined) updateData.active = parsed.patch.active
     if (parsed.patch.preferredDoublesPartners !== undefined) updateData.preferredDoublesPartners = parsed.patch.preferredDoublesPartners
     if (parsed.patch.preferredMixedPartners !== undefined) updateData.preferredMixedPartners = parsed.patch.preferredMixedPartners
+    if (parsed.patch.badmintonplayerId !== undefined) updateData.badmintonplayerId = parsed.patch.badmintonplayerId
 
     const updated = await updatePlayerInDb(parsed.id, updateData)
     return normalisePlayer(updated)
