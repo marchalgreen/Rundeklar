@@ -254,6 +254,54 @@ export type TrainingDayComparison = {
   }
 }
 
+export type MonthlyAttendanceTrend = {
+  month: string // "2024-01"
+  year: number
+  monthName: string // "Januar 2024"
+  checkInCount: number
+  averageAttendance: number
+  uniquePlayers: number
+  sessions: number
+}
+
+export type GroupAttendanceOverTime = {
+  groupName: string
+  month: string // "2024-01"
+  year: number
+  monthName: string // "Januar 2024"
+  averageAttendance: number
+  checkInCount: number
+  uniquePlayers: number
+  sessions: number
+}
+
+export type PeriodComparison = {
+  current: {
+    checkInCount: number
+    totalSessions: number
+    averageAttendance: number
+    uniquePlayers: number
+  }
+  comparison: {
+    checkInCount: number
+    totalSessions: number
+    averageAttendance: number
+    uniquePlayers: number
+  }
+  deltas: {
+    checkInCount: number
+    totalSessions: number
+    averageAttendance: number
+    uniquePlayers: number
+  }
+  percentageDeltas: {
+    checkInCount: number
+    totalSessions: number
+    averageAttendance: number
+    uniquePlayers: number
+  }
+}
+
 export type TenantConfig = {
   id: string
   name: string

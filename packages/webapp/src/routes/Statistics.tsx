@@ -18,7 +18,10 @@ import {
   StatisticsInsights,
   RecentMatches, 
   HeadToHeadResults,
-  PlayerOpponentList
+  PlayerOpponentList,
+  MonthlyTrendChart,
+  GroupTrendsChart,
+  PeriodComparisonChart
 } from '../components/statistics'
 import { BarChart, LineChart } from '../components/charts'
 import { EChartsBarChart } from '../components/charts/EChartsBarChart'
@@ -167,7 +170,7 @@ const StatisticsPage = () => {
             {/* Training Group Attendance - Split into two charts to avoid mixing units */}
             <div className="space-y-4 sm:space-y-6">
               {/* Average Attendance per Group - Using ECharts */}
-              <div className="card-glass-active border-hair rounded-lg p-3 sm:p-4 md:p-5 shadow-sm">
+              <div className="rounded-[28px] bg-[hsl(var(--surface)/0.9)] ring-1 ring-[hsl(var(--line)/0.16)] shadow-[0_30px_60px_hsl(var(--accent-blue)/0.12)] backdrop-blur-xl p-3 sm:p-4 md:p-5 transition-all motion-reduce:transition-none">
                 <h3 className="text-sm sm:text-base font-semibold text-[hsl(var(--foreground))] mb-3 sm:mb-4">
                   Gennemsnitligt fremmøde pr. træningsgruppe
                 </h3>
@@ -191,18 +194,23 @@ const StatisticsPage = () => {
                     showValueLabels={true}
                   />
                 ) : (
-                  <p className="text-xs sm:text-sm text-[hsl(var(--muted))]">Ingen fremmødedata tilgængelig</p>
+                  <div className="flex items-center justify-center py-8" style={{ minHeight: 300 }}>
+                    <p className="text-sm text-[hsl(var(--foreground)/0.6)]">Ingen fremmødedata tilgængelig</p>
+                  </div>
                 )}
               </div>
 
               {/* Total Check-ins and Unique Players per Group - Using ECharts */}
-              <div className="card-glass-active border-hair rounded-lg p-3 sm:p-4 md:p-5 shadow-sm">
+              <div className="rounded-[28px] bg-[hsl(var(--surface)/0.9)] ring-1 ring-[hsl(var(--line)/0.16)] shadow-[0_30px_60px_hsl(var(--accent-blue)/0.12)] backdrop-blur-xl p-3 sm:p-4 md:p-5 transition-all motion-reduce:transition-none">
                 <h3 className="text-sm sm:text-base font-semibold text-[hsl(var(--foreground))] mb-3 sm:mb-4">
                   Total indtjekninger og unikke spillere pr. træningsgruppe
                 </h3>
                 {trainingAttendance.attendanceLoading ? (
-                  <div className="flex items-center justify-center py-8">
-                    <p className="text-xs sm:text-sm text-[hsl(var(--muted))]">Indlæser fremmøde...</p>
+                  <div className="flex items-center justify-center" style={{ height: 300 }}>
+                    <div className="space-y-2 w-full px-4">
+                      <div className="h-3 w-40 bg-[hsl(var(--surface-2))] rounded animate-pulse mx-auto" />
+                      <div className="h-64 bg-[hsl(var(--surface-2))] rounded animate-pulse" />
+                    </div>
                   </div>
                 ) : trainingAttendance.trainingGroupAttendance.length > 0 ? (
                   <EChartsBarChart
@@ -222,7 +230,9 @@ const StatisticsPage = () => {
                     showValueLabels={true}
                   />
                 ) : (
-                  <p className="text-xs sm:text-sm text-[hsl(var(--muted))]">Ingen fremmødedata tilgængelig</p>
+                  <div className="flex items-center justify-center py-8" style={{ minHeight: 300 }}>
+                    <p className="text-sm text-[hsl(var(--foreground)/0.6)]">Ingen fremmødedata tilgængelig</p>
+                  </div>
                 )}
               </div>
             </div>
@@ -230,13 +240,16 @@ const StatisticsPage = () => {
             {/* Weekday Attendance - Split into two charts to avoid mixing units */}
             <div className="space-y-4 sm:space-y-6">
               {/* Average Attendance per Weekday - Using ECharts for enhanced visualization */}
-              <div className="card-glass-active border-hair rounded-lg p-3 sm:p-4 md:p-5 shadow-sm">
+              <div className="rounded-[28px] bg-[hsl(var(--surface)/0.9)] ring-1 ring-[hsl(var(--line)/0.16)] shadow-[0_30px_60px_hsl(var(--accent-blue)/0.12)] backdrop-blur-xl p-3 sm:p-4 md:p-5 transition-all motion-reduce:transition-none">
                 <h3 className="text-sm sm:text-base font-semibold text-[hsl(var(--foreground))] mb-3 sm:mb-4">
                   Gennemsnitligt fremmøde pr. ugedag
                 </h3>
                 {trainingAttendance.weekdayLoading ? (
-                  <div className="flex items-center justify-center py-8">
-                    <p className="text-xs sm:text-sm text-[hsl(var(--muted))]">Indlæser ugedagsanalyse...</p>
+                  <div className="flex items-center justify-center" style={{ height: 300 }}>
+                    <div className="space-y-2 w-full px-4">
+                      <div className="h-3 w-40 bg-[hsl(var(--surface-2))] rounded animate-pulse mx-auto" />
+                      <div className="h-64 bg-[hsl(var(--surface-2))] rounded animate-pulse" />
+                    </div>
                   </div>
                 ) : trainingAttendance.weekdayAttendance.length > 0 ? (
                   <EChartsBarChart
@@ -254,18 +267,23 @@ const StatisticsPage = () => {
                     showValueLabels={true}
                   />
                 ) : (
-                  <p className="text-xs sm:text-sm text-[hsl(var(--muted))]">Ingen ugedagsdata tilgængelig</p>
+                  <div className="flex items-center justify-center py-8" style={{ minHeight: 300 }}>
+                    <p className="text-sm text-[hsl(var(--foreground)/0.6)]">Ingen ugedagsdata tilgængelig</p>
+                  </div>
                 )}
               </div>
 
               {/* Total Check-ins per Weekday */}
-              <div className="card-glass-active border-hair rounded-lg p-3 sm:p-4 md:p-5 shadow-sm">
+              <div className="rounded-[28px] bg-[hsl(var(--surface)/0.9)] ring-1 ring-[hsl(var(--line)/0.16)] shadow-[0_30px_60px_hsl(var(--accent-blue)/0.12)] backdrop-blur-xl p-3 sm:p-4 md:p-5 transition-all motion-reduce:transition-none">
                 <h3 className="text-sm sm:text-base font-semibold text-[hsl(var(--foreground))] mb-3 sm:mb-4">
                   Total indtjekninger pr. ugedag
                 </h3>
                 {trainingAttendance.weekdayLoading ? (
-                  <div className="flex items-center justify-center py-8">
-                    <p className="text-xs sm:text-sm text-[hsl(var(--muted))]">Indlæser ugedagsanalyse...</p>
+                  <div className="flex items-center justify-center" style={{ height: 300 }}>
+                    <div className="space-y-2 w-full px-4">
+                      <div className="h-3 w-40 bg-[hsl(var(--surface-2))] rounded animate-pulse mx-auto" />
+                      <div className="h-64 bg-[hsl(var(--surface-2))] rounded animate-pulse" />
+                    </div>
                   </div>
                 ) : trainingAttendance.weekdayAttendance.length > 0 ? (
                   <EChartsBarChart
@@ -283,19 +301,27 @@ const StatisticsPage = () => {
                     showValueLabels={true}
                   />
                 ) : (
-                  <p className="text-xs sm:text-sm text-[hsl(var(--muted))]">Ingen ugedagsdata tilgængelig</p>
+                  <div className="flex items-center justify-center py-8" style={{ minHeight: 300 }}>
+                    <p className="text-sm text-[hsl(var(--foreground)/0.6)]">Ingen ugedagsdata tilgængelig</p>
+                  </div>
                 )}
               </div>
             </div>
 
             {/* Training Day 1 vs Training Day 2 Comparison */}
-            <div className="card-glass-active border-hair rounded-lg p-3 sm:p-4 md:p-5 shadow-sm">
+            <div className="rounded-[28px] bg-[hsl(var(--surface)/0.9)] ring-1 ring-[hsl(var(--line)/0.16)] shadow-[0_30px_60px_hsl(var(--accent-blue)/0.12)] backdrop-blur-xl p-3 sm:p-4 md:p-5 transition-all motion-reduce:transition-none">
               <h3 className="text-sm sm:text-base font-semibold text-[hsl(var(--foreground))] mb-3 sm:mb-4">
                 Træningsdag 1 vs. Træningsdag 2
               </h3>
               {trainingAttendance.comparisonLoading ? (
-                <div className="flex items-center justify-center py-8">
-                  <p className="text-xs sm:text-sm text-[hsl(var(--muted))]">Indlæser sammenligning...</p>
+                <div className="flex items-center justify-center" style={{ minHeight: 200 }}>
+                  <div className="space-y-2 w-full px-4">
+                    <div className="h-3 w-40 bg-[hsl(var(--surface-2))] rounded animate-pulse mx-auto" />
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <div className="h-32 bg-[hsl(var(--surface-2))] rounded animate-pulse" />
+                      <div className="h-32 bg-[hsl(var(--surface-2))] rounded animate-pulse" />
+                    </div>
+                  </div>
                 </div>
               ) : trainingAttendance.trainingDayComparison ? (
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -341,18 +367,23 @@ const StatisticsPage = () => {
                   </div>
                 </div>
               ) : (
-                <p className="text-xs sm:text-sm text-[hsl(var(--muted))]">Ikke nok data til sammenligning (kræver mindst 2 ugedage med data)</p>
+                <div className="flex items-center justify-center py-8" style={{ minHeight: 200 }}>
+                  <p className="text-sm text-[hsl(var(--foreground)/0.6)]">Ikke nok data til sammenligning (kræver mindst 2 ugedage med data)</p>
+                </div>
               )}
             </div>
 
             {/* Attendance Over Time per Weekday Line Chart */}
-            <div className="card-glass-active border-hair rounded-lg p-3 sm:p-4 md:p-5 shadow-sm">
+            <div className="rounded-[28px] bg-[hsl(var(--surface)/0.9)] ring-1 ring-[hsl(var(--line)/0.16)] shadow-[0_30px_60px_hsl(var(--accent-blue)/0.12)] backdrop-blur-xl p-3 sm:p-4 md:p-5 transition-all motion-reduce:transition-none">
               <h3 className="text-sm sm:text-base font-semibold text-[hsl(var(--foreground))] mb-3 sm:mb-4">
                 fremmøde over tid pr. ugedag
               </h3>
               {trainingAttendance.attendanceOverTimeLoading ? (
-                <div className="flex items-center justify-center py-8">
-                  <p className="text-xs sm:text-sm text-[hsl(var(--muted))]">Indlæser tidsdata...</p>
+                <div className="flex items-center justify-center" style={{ height: 300 }}>
+                  <div className="space-y-2 w-full px-4">
+                    <div className="h-3 w-40 bg-[hsl(var(--surface-2))] rounded animate-pulse mx-auto" />
+                    <div className="h-64 bg-[hsl(var(--surface-2))] rounded animate-pulse" />
+                  </div>
                 </div>
               ) : trainingAttendance.weekdayAttendanceOverTime.length > 0 ? (
                 <LineChart
@@ -387,7 +418,9 @@ const StatisticsPage = () => {
                   showLegend={true}
                 />
               ) : (
-                <p className="text-xs sm:text-sm text-[hsl(var(--muted))]">Ingen tidsdata tilgængelig</p>
+                <div className="flex items-center justify-center py-8" style={{ minHeight: 300 }}>
+                  <p className="text-sm text-[hsl(var(--foreground)/0.6)]">Ingen tidsdata tilgængelig</p>
+                </div>
               )}
             </div>
           </div>
@@ -395,7 +428,7 @@ const StatisticsPage = () => {
           {/* Tables Section */}
           <div className="space-y-4 sm:space-y-6">
             {/* Player Check-In Long-Tail View */}
-            <div className="card-glass-active border-hair rounded-lg p-3 sm:p-4 md:p-5 shadow-sm">
+            <div className="rounded-[28px] bg-[hsl(var(--surface)/0.9)] ring-1 ring-[hsl(var(--line)/0.16)] shadow-[0_30px_60px_hsl(var(--accent-blue)/0.12)] backdrop-blur-xl p-3 sm:p-4 md:p-5 transition-all motion-reduce:transition-none">
               <h3 className="text-sm sm:text-base font-semibold text-[hsl(var(--foreground))] mb-3 sm:mb-4">
                 Spillere pr. indtjekninger
               </h3>
@@ -403,8 +436,11 @@ const StatisticsPage = () => {
                 Oversigt over antal indtjekninger pr. spiller (sorteret efter mest aktive)
               </p>
               {trainingAttendance.longTailLoading ? (
-                <div className="flex items-center justify-center py-8">
-                  <p className="text-xs sm:text-sm text-[hsl(var(--muted))]">Indlæser spillerdata...</p>
+                <div className="flex items-center justify-center" style={{ height: 400 }}>
+                  <div className="space-y-2 w-full px-4">
+                    <div className="h-3 w-40 bg-[hsl(var(--surface-2))] rounded animate-pulse mx-auto" />
+                    <div className="h-96 bg-[hsl(var(--surface-2))] rounded animate-pulse" />
+                  </div>
                 </div>
               ) : trainingAttendance.playerCheckInLongTail.length > 0 ? (
                 <div className="space-y-2">
@@ -429,9 +465,54 @@ const StatisticsPage = () => {
                   )}
                 </div>
               ) : (
-                <p className="text-xs sm:text-sm text-[hsl(var(--muted))]">Ingen spillerdata tilgængelig</p>
+                <div className="flex items-center justify-center py-8" style={{ minHeight: 400 }}>
+                  <p className="text-sm text-[hsl(var(--foreground)/0.6)]">Ingen spillerdata tilgængelig</p>
+                </div>
               )}
             </div>
+          </div>
+
+          {/* Monthly Trends Section */}
+          <div className="space-y-4 sm:space-y-6">
+            {/* Monthly Attendance Trend */}
+            <div className="rounded-[28px] bg-[hsl(var(--surface)/0.9)] ring-1 ring-[hsl(var(--line)/0.16)] shadow-[0_30px_60px_hsl(var(--accent-blue)/0.12)] backdrop-blur-xl p-3 sm:p-4 md:p-5 transition-all motion-reduce:transition-none">
+              <h3 className="text-sm sm:text-base font-semibold text-[hsl(var(--foreground))] mb-3 sm:mb-4">
+                Månedlig fremmøde trend
+              </h3>
+              <MonthlyTrendChart
+                data={trainingAttendance.monthlyAttendanceTrends}
+                loading={trainingAttendance.monthlyTrendsLoading}
+                height={300}
+              />
+            </div>
+
+            {/* Group Trends Over Time */}
+            {trainingAttendance.groupAttendanceOverTime.length > 0 && (
+              <div className="rounded-[28px] bg-[hsl(var(--surface)/0.9)] ring-1 ring-[hsl(var(--line)/0.16)] shadow-[0_30px_60px_hsl(var(--accent-blue)/0.12)] backdrop-blur-xl p-3 sm:p-4 md:p-5 transition-all motion-reduce:transition-none">
+                <h3 className="text-sm sm:text-base font-semibold text-[hsl(var(--foreground))] mb-3 sm:mb-4">
+                  Gruppetrends over tid
+                </h3>
+                <GroupTrendsChart
+                  data={trainingAttendance.groupAttendanceOverTime}
+                  loading={trainingAttendance.groupTrendsLoading}
+                  height={300}
+                />
+              </div>
+            )}
+
+            {/* Period Comparison */}
+            {trainingAttendance.periodComparison && (
+              <div className="rounded-[28px] bg-[hsl(var(--surface)/0.9)] ring-1 ring-[hsl(var(--line)/0.16)] shadow-[0_30px_60px_hsl(var(--accent-blue)/0.12)] backdrop-blur-xl p-3 sm:p-4 md:p-5 transition-all motion-reduce:transition-none">
+                <h3 className="text-sm sm:text-base font-semibold text-[hsl(var(--foreground))] mb-3 sm:mb-4">
+                  Periodesammenligning
+                </h3>
+                <PeriodComparisonChart
+                  data={trainingAttendance.periodComparison}
+                  loading={trainingAttendance.periodComparisonLoading}
+                  height={300}
+                />
+              </div>
+            )}
           </div>
 
           {/* Insights & Analysis Section */}

@@ -5,7 +5,7 @@
  */
 
 import { useCallback, useEffect, useState, useMemo } from 'react'
-import type { TrainingGroupAttendance, WeekdayAttendance, PlayerCheckInLongTail, WeekdayAttendanceOverTime, TrainingDayComparison } from '@rundeklar/common'
+import type { TrainingGroupAttendance, WeekdayAttendance, PlayerCheckInLongTail, WeekdayAttendanceOverTime, TrainingDayComparison, MonthlyAttendanceTrend, GroupAttendanceOverTime, PeriodComparison } from '@rundeklar/common'
 import statsApi from '../../api/stats'
 import api from '../../api'
 import { useToast } from '../../components/ui/Toast'
@@ -34,6 +34,18 @@ export interface UseTrainingAttendanceReturn {
   // Training day comparison
   trainingDayComparison: TrainingDayComparison | null
   comparisonLoading: boolean
+  
+  // Monthly trends
+  monthlyAttendanceTrends: MonthlyAttendanceTrend[]
+  monthlyTrendsLoading: boolean
+  
+  // Group trends over time
+  groupAttendanceOverTime: GroupAttendanceOverTime[]
+  groupTrendsLoading: boolean
+  
+  // Period comparison
+  periodComparison: PeriodComparison | null
+  periodComparisonLoading: boolean
   
   // KPIs
   kpis: KPIMetricsWithDeltas
@@ -82,6 +94,18 @@ export function useTrainingAttendance(
   // Training day comparison state
   const [trainingDayComparison, setTrainingDayComparison] = useState<TrainingDayComparison | null>(null)
   const [comparisonLoading, setComparisonLoading] = useState(false)
+  
+  // Monthly trends state
+  const [monthlyAttendanceTrends, setMonthlyAttendanceTrends] = useState<MonthlyAttendanceTrend[]>([])
+  const [monthlyTrendsLoading, setMonthlyTrendsLoading] = useState(false)
+  
+  // Group trends over time state
+  const [groupAttendanceOverTime, setGroupAttendanceOverTime] = useState<GroupAttendanceOverTime[]>([])
+  const [groupTrendsLoading, setGroupTrendsLoading] = useState(false)
+  
+  // Period comparison state
+  const [periodComparison, setPeriodComparison] = useState<PeriodComparison | null>(null)
+  const [periodComparisonLoading, setPeriodComparisonLoading] = useState(false)
   
   // KPI state - calculated from training group attendance and statistics snapshots
   const [kpis, setKpis] = useState<KPIMetricsWithDeltas>({
@@ -299,6 +323,79 @@ export function useTrainingAttendance(
       setComparisonLoading(false)
     }
   }, [filters.dateRange.dateFrom, filters.dateRange.dateTo, filters.groupNames, notify])
+
+  // Load monthly attendance trends
+  const loadMonthlyAttendanceTrends = useCallback(async () => {
+    setMonthlyTrendsLoading(true)
+    try {
+      const trends = await statsApi.getMonthlyAttendanceTrends(
+        filters.dateRange.dateFrom,
+        filters.dateRange.dateTo,
+        filters.groupNames
+      )
+      setMonthlyAttendanceTrends(trends)
+    } catch (err: unknown) {
+      const normalizedError = normalizeError(err)
+      notify({
+        variant: 'danger',
+        title: 'Kunne ikke hente månedlige trends',
+        description: normalizedError.message
+      })
+    } finally {
+      setMonthlyTrendsLoading(false)
+    }
+  }, [filters.dateRange.dateFrom, filters.dateRange.dateTo, filters.groupNames, notify])
+
+  // Load group attendance over time
+  const loadGroupAttendanceOverTime = useCallback(async () => {
+    setGroupTrendsLoading(true)
+    try {
+      const trends = await statsApi.getGroupAttendanceOverTime(
+        filters.dateRange.dateFrom,
+        filters.dateRange.dateTo,
+        filters.groupNames
+      )
+      setGroupAttendanceOverTime(trends)
+    } catch (err: unknown) {
+      const normalizedError = normalizeError(err)
+      notify({
+        variant: 'danger',
+        title: 'Kunne ikke hente gruppetrends',
+        description: normalizedError.message
+      })
+    } finally {
+      setGroupTrendsLoading(false)
+    }
+  }, [filters.dateRange.dateFrom, filters.dateRange.dateTo, filters.groupNames, notify])
+
+  // Load period comparison (only if comparison period is set)
+  const loadPeriodComparison = useCallback(async () => {
+    if (!filters.comparisonDateRange.dateFrom || !filters.comparisonDateRange.dateTo) {
+      setPeriodComparison(null)
+      return
+    }
+
+    setPeriodComparisonLoading(true)
+    try {
+      const comparison = await statsApi.getPeriodComparison(
+        filters.dateRange.dateFrom || '',
+        filters.dateRange.dateTo || '',
+        filters.comparisonDateRange.dateFrom,
+        filters.comparisonDateRange.dateTo,
+        filters.groupNames
+      )
+      setPeriodComparison(comparison)
+    } catch (err: unknown) {
+      const normalizedError = normalizeError(err)
+      notify({
+        variant: 'danger',
+        title: 'Kunne ikke hente periodesammenligning',
+        description: normalizedError.message
+      })
+    } finally {
+      setPeriodComparisonLoading(false)
+    }
+  }, [filters.dateRange.dateFrom, filters.dateRange.dateTo, filters.comparisonDateRange.dateFrom, filters.comparisonDateRange.dateTo, filters.groupNames, notify])
   
   // Refetch all data
   const refetch = useCallback(async () => {
@@ -309,7 +406,10 @@ export function useTrainingAttendance(
       loadWeekdayAttendance(),
       loadPlayerCheckInLongTail(),
       loadWeekdayAttendanceOverTime(),
-      loadTrainingDayComparison()
+      loadTrainingDayComparison(),
+      loadMonthlyAttendanceTrends(),
+      loadGroupAttendanceOverTime(),
+      loadPeriodComparison()
     ])
   }, [
     enabled,
@@ -317,7 +417,10 @@ export function useTrainingAttendance(
     loadWeekdayAttendance,
     loadPlayerCheckInLongTail,
     loadWeekdayAttendanceOverTime,
-    loadTrainingDayComparison
+    loadTrainingDayComparison,
+    loadMonthlyAttendanceTrends,
+    loadGroupAttendanceOverTime,
+    loadPeriodComparison
   ])
   
   // Load data when enabled and filters change
@@ -329,6 +432,9 @@ export function useTrainingAttendance(
       void loadPlayerCheckInLongTail()
       void loadWeekdayAttendanceOverTime()
       void loadTrainingDayComparison()
+      void loadMonthlyAttendanceTrends()
+      void loadGroupAttendanceOverTime()
+      void loadPeriodComparison()
     }
     // Only depend on filter values, not callbacks - callbacks are stable and don't need to trigger re-runs
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -336,7 +442,9 @@ export function useTrainingAttendance(
     enabled,
     filters.dateRange.dateFrom,
     filters.dateRange.dateTo,
-    filters.groupNames
+    filters.groupNames,
+    filters.comparisonDateRange.dateFrom,
+    filters.comparisonDateRange.dateTo
   ])
   
   // Load groups when enabled (only once, not on every render)
@@ -358,6 +466,12 @@ export function useTrainingAttendance(
     attendanceOverTimeLoading,
     trainingDayComparison,
     comparisonLoading,
+    monthlyAttendanceTrends,
+    monthlyTrendsLoading,
+    groupAttendanceOverTime,
+    groupTrendsLoading,
+    periodComparison,
+    periodComparisonLoading,
     kpis,
     kpisLoading,
     loadAllGroups,

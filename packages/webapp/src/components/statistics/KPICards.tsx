@@ -1,6 +1,7 @@
 import React from 'react'
 import { Users, Calendar, Activity, User, TrendingUp, TrendingDown } from 'lucide-react'
 import type { KPIMetricsWithDeltas } from '../../lib/statistics/kpiCalculation'
+import { AnimatedNumber } from '../ui/AnimatedNumber'
 
 interface KPICardsProps {
   kpis: KPIMetricsWithDeltas
@@ -38,25 +39,28 @@ export const KPICards: React.FC<KPICardsProps> = ({ kpis, loading = false }) => 
   
   return (
     <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
-      <div className="card-glass-active border-hair rounded-lg p-3 sm:p-4 shadow-sm">
+      <div className="rounded-[28px] bg-[hsl(var(--surface)/0.9)] ring-1 ring-[hsl(var(--line)/0.16)] shadow-[0_30px_60px_hsl(var(--accent-blue)/0.12)] backdrop-blur-xl p-3 sm:p-4 transition-all motion-reduce:transition-none hover:shadow-[0_30px_60px_hsl(var(--accent-blue)/0.16)]">
         <div className="flex items-center gap-3">
-          <div className="flex items-center justify-center w-10 h-10 rounded-full bg-[hsl(var(--primary)/.1)] text-[hsl(var(--primary))]">
+          <div className="flex items-center justify-center w-10 h-10 rounded-full bg-[hsl(var(--primary)/0.12)] text-[hsl(var(--primary))] motion-safe:transition-all motion-safe:duration-200">
             <Users className="w-5 h-5" />
           </div>
           <div className="flex flex-col flex-1 min-w-0">
             <span className="text-xs sm:text-sm text-[hsl(var(--muted))]">Total indtjekninger</span>
             <div className="flex items-baseline gap-2">
-              <span className="text-lg sm:text-xl font-semibold text-[hsl(var(--foreground))]">
-                {loading && kpis.totalCheckIns === 0 ? (
-                  <span className="text-xs sm:text-sm text-[hsl(var(--muted))]">Indlæser...</span>
-                ) : (
-                  kpis.totalCheckIns
-                )}
-              </span>
+              {loading && kpis.totalCheckIns === 0 ? (
+                <span className="text-xs sm:text-sm text-[hsl(var(--muted))]">Indlæser...</span>
+              ) : (
+                <AnimatedNumber
+                  value={kpis.totalCheckIns}
+                  duration={1500}
+                  decimals={0}
+                  className="text-lg sm:text-xl font-semibold text-[hsl(var(--foreground))] tabular-nums"
+                />
+              )}
               {checkInDelta && !loading && (
-                <div className={`flex items-center gap-1 ${checkInDelta.color}`} title={kpis.previousPeriod ? `vs forrige periode (${new Date(kpis.previousPeriod.dateFrom).toLocaleDateString('da-DK')} - ${new Date(kpis.previousPeriod.dateTo).toLocaleDateString('da-DK')})` : ''}>
+                <div className={`flex items-center gap-1 ${checkInDelta.color} motion-safe:transition-all motion-safe:duration-200`} title={kpis.previousPeriod ? `vs forrige periode (${new Date(kpis.previousPeriod.dateFrom).toLocaleDateString('da-DK')} - ${new Date(kpis.previousPeriod.dateTo).toLocaleDateString('da-DK')})` : ''}>
                   {checkInDelta.icon}
-                  <span className="text-xs font-medium">{checkInDelta.text}</span>
+                  <span className="text-xs font-medium tabular-nums">{checkInDelta.text}</span>
                 </div>
               )}
             </div>
@@ -66,25 +70,28 @@ export const KPICards: React.FC<KPICardsProps> = ({ kpis, loading = false }) => 
           </div>
         </div>
       </div>
-      <div className="card-glass-active border-hair rounded-lg p-3 sm:p-4 shadow-sm">
+      <div className="rounded-[28px] bg-[hsl(var(--surface)/0.9)] ring-1 ring-[hsl(var(--line)/0.16)] shadow-[0_30px_60px_hsl(var(--accent-blue)/0.12)] backdrop-blur-xl p-3 sm:p-4 transition-all motion-reduce:transition-none hover:shadow-[0_30px_60px_hsl(var(--accent-blue)/0.16)]">
         <div className="flex items-center gap-3">
-          <div className="flex items-center justify-center w-10 h-10 rounded-full bg-[hsl(var(--accent)/.1)] text-[hsl(var(--accent))]">
+          <div className="flex items-center justify-center w-10 h-10 rounded-full bg-[hsl(var(--accent)/0.12)] text-[hsl(var(--accent))] motion-safe:transition-all motion-safe:duration-200">
             <Calendar className="w-5 h-5" />
           </div>
           <div className="flex flex-col flex-1 min-w-0">
             <span className="text-xs sm:text-sm text-[hsl(var(--muted))]">Træningssessioner</span>
             <div className="flex items-baseline gap-2">
-              <span className="text-lg sm:text-xl font-semibold text-[hsl(var(--foreground))]">
-                {loading && kpis.totalSessions === 0 ? (
-                  <span className="text-xs sm:text-sm text-[hsl(var(--muted))]">Indlæser...</span>
-                ) : (
-                  kpis.totalSessions
-                )}
-              </span>
+              {loading && kpis.totalSessions === 0 ? (
+                <span className="text-xs sm:text-sm text-[hsl(var(--muted))]">Indlæser...</span>
+              ) : (
+                <AnimatedNumber
+                  value={kpis.totalSessions}
+                  duration={1500}
+                  decimals={0}
+                  className="text-lg sm:text-xl font-semibold text-[hsl(var(--foreground))] tabular-nums"
+                />
+              )}
               {sessionsDelta && !loading && (
-                <div className={`flex items-center gap-1 ${sessionsDelta.color}`} title={kpis.previousPeriod ? `vs forrige periode (${new Date(kpis.previousPeriod.dateFrom).toLocaleDateString('da-DK')} - ${new Date(kpis.previousPeriod.dateTo).toLocaleDateString('da-DK')})` : ''}>
+                <div className={`flex items-center gap-1 ${sessionsDelta.color} motion-safe:transition-all motion-safe:duration-200`} title={kpis.previousPeriod ? `vs forrige periode (${new Date(kpis.previousPeriod.dateFrom).toLocaleDateString('da-DK')} - ${new Date(kpis.previousPeriod.dateTo).toLocaleDateString('da-DK')})` : ''}>
                   {sessionsDelta.icon}
-                  <span className="text-xs font-medium">{sessionsDelta.text}</span>
+                  <span className="text-xs font-medium tabular-nums">{sessionsDelta.text}</span>
                 </div>
               )}
             </div>
@@ -94,25 +101,28 @@ export const KPICards: React.FC<KPICardsProps> = ({ kpis, loading = false }) => 
           </div>
         </div>
       </div>
-      <div className="card-glass-active border-hair rounded-lg p-3 sm:p-4 shadow-sm">
+      <div className="rounded-[28px] bg-[hsl(var(--surface)/0.9)] ring-1 ring-[hsl(var(--line)/0.16)] shadow-[0_30px_60px_hsl(var(--accent-blue)/0.12)] backdrop-blur-xl p-3 sm:p-4 transition-all motion-reduce:transition-none hover:shadow-[0_30px_60px_hsl(var(--accent-blue)/0.16)]">
         <div className="flex items-center gap-3">
-          <div className="flex items-center justify-center w-10 h-10 rounded-full bg-[hsl(var(--success)/.1)] text-[hsl(var(--success))]">
+          <div className="flex items-center justify-center w-10 h-10 rounded-full bg-[hsl(var(--success)/0.12)] text-[hsl(var(--success))] motion-safe:transition-all motion-safe:duration-200">
             <Activity className="w-5 h-5" />
           </div>
           <div className="flex flex-col flex-1 min-w-0">
             <span className="text-xs sm:text-sm text-[hsl(var(--muted))]">Gennemsnit pr. session</span>
             <div className="flex items-baseline gap-2">
-              <span className="text-lg sm:text-xl font-semibold text-[hsl(var(--foreground))]">
-                {loading && kpis.averageAttendance === 0 ? (
-                  <span className="text-xs sm:text-sm text-[hsl(var(--muted))]">Indlæser...</span>
-                ) : (
-                  kpis.averageAttendance.toFixed(1)
-                )}
-              </span>
+              {loading && kpis.averageAttendance === 0 ? (
+                <span className="text-xs sm:text-sm text-[hsl(var(--muted))]">Indlæser...</span>
+              ) : (
+                <AnimatedNumber
+                  value={kpis.averageAttendance}
+                  duration={1500}
+                  decimals={1}
+                  className="text-lg sm:text-xl font-semibold text-[hsl(var(--foreground))] tabular-nums"
+                />
+              )}
               {attendanceDelta && !loading && (
-                <div className={`flex items-center gap-1 ${attendanceDelta.color}`} title={kpis.previousPeriod ? `vs forrige periode (${new Date(kpis.previousPeriod.dateFrom).toLocaleDateString('da-DK')} - ${new Date(kpis.previousPeriod.dateTo).toLocaleDateString('da-DK')})` : ''}>
+                <div className={`flex items-center gap-1 ${attendanceDelta.color} motion-safe:transition-all motion-safe:duration-200`} title={kpis.previousPeriod ? `vs forrige periode (${new Date(kpis.previousPeriod.dateFrom).toLocaleDateString('da-DK')} - ${new Date(kpis.previousPeriod.dateTo).toLocaleDateString('da-DK')})` : ''}>
                   {attendanceDelta.icon}
-                  <span className="text-xs font-medium">{attendanceDelta.text}</span>
+                  <span className="text-xs font-medium tabular-nums">{attendanceDelta.text}</span>
                 </div>
               )}
             </div>
@@ -122,25 +132,28 @@ export const KPICards: React.FC<KPICardsProps> = ({ kpis, loading = false }) => 
           </div>
         </div>
       </div>
-      <div className="card-glass-active border-hair rounded-lg p-3 sm:p-4 shadow-sm">
+      <div className="rounded-[28px] bg-[hsl(var(--surface)/0.9)] ring-1 ring-[hsl(var(--line)/0.16)] shadow-[0_30px_60px_hsl(var(--accent-blue)/0.12)] backdrop-blur-xl p-3 sm:p-4 transition-all motion-reduce:transition-none hover:shadow-[0_30px_60px_hsl(var(--accent-blue)/0.16)]">
         <div className="flex items-center gap-3">
-          <div className="flex items-center justify-center w-10 h-10 rounded-full bg-[hsl(var(--warning)/.1)] text-[hsl(var(--warning))]">
+          <div className="flex items-center justify-center w-10 h-10 rounded-full bg-[hsl(var(--warning)/0.12)] text-[hsl(var(--warning))] motion-safe:transition-all motion-safe:duration-200">
             <User className="w-5 h-5" />
           </div>
           <div className="flex flex-col flex-1 min-w-0">
             <span className="text-xs sm:text-sm text-[hsl(var(--muted))]">Unikke spillere</span>
             <div className="flex items-baseline gap-2">
-              <span className="text-lg sm:text-xl font-semibold text-[hsl(var(--foreground))]">
-                {loading && kpis.uniquePlayers === 0 ? (
-                  <span className="text-xs sm:text-sm text-[hsl(var(--muted))]">Indlæser...</span>
-                ) : (
-                  kpis.uniquePlayers
-                )}
-              </span>
+              {loading && kpis.uniquePlayers === 0 ? (
+                <span className="text-xs sm:text-sm text-[hsl(var(--muted))]">Indlæser...</span>
+              ) : (
+                <AnimatedNumber
+                  value={kpis.uniquePlayers}
+                  duration={1500}
+                  decimals={0}
+                  className="text-lg sm:text-xl font-semibold text-[hsl(var(--foreground))] tabular-nums"
+                />
+              )}
               {playersDelta && !loading && (
-                <div className={`flex items-center gap-1 ${playersDelta.color}`} title={kpis.previousPeriod ? `vs forrige periode (${new Date(kpis.previousPeriod.dateFrom).toLocaleDateString('da-DK')} - ${new Date(kpis.previousPeriod.dateTo).toLocaleDateString('da-DK')})` : ''}>
+                <div className={`flex items-center gap-1 ${playersDelta.color} motion-safe:transition-all motion-safe:duration-200`} title={kpis.previousPeriod ? `vs forrige periode (${new Date(kpis.previousPeriod.dateFrom).toLocaleDateString('da-DK')} - ${new Date(kpis.previousPeriod.dateTo).toLocaleDateString('da-DK')})` : ''}>
                   {playersDelta.icon}
-                  <span className="text-xs font-medium">{playersDelta.text}</span>
+                  <span className="text-xs font-medium tabular-nums">{playersDelta.text}</span>
                 </div>
               )}
             </div>

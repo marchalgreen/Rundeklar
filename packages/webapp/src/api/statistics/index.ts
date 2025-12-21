@@ -27,7 +27,10 @@ export {
   getWeekdayAttendance,
   getPlayerCheckInLongTail,
   getWeekdayAttendanceOverTime,
-  getTrainingDayComparison
+  getTrainingDayComparison,
+  getMonthlyAttendanceTrends,
+  getGroupAttendanceOverTime,
+  getPeriodComparison
 } from './attendance'
 
 // Snapshot management

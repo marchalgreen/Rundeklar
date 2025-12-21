@@ -1,6 +1,38 @@
-import React, { useMemo } from 'react'
+import React, { useMemo, useEffect, useState } from 'react'
 import ReactECharts from 'echarts-for-react'
 import type { EChartsOption } from 'echarts'
+
+/**
+ * Gets computed CSS variable value as a color string.
+ * @param cssVar - CSS variable name (e.g., '--primary')
+ * @returns Computed color value or fallback
+ */
+const getCSSVariableColor = (cssVar: string): string => {
+  if (typeof window === 'undefined') {
+    // Fallback for SSR
+    return '#8884d8'
+  }
+  
+  const value = getComputedStyle(document.documentElement)
+    .getPropertyValue(cssVar)
+    .trim()
+  
+  if (!value) {
+    return '#8884d8' // Fallback
+  }
+  
+  // If it's already a full HSL value with hsl() wrapper, return it
+  if (value.includes('hsl(') || value.includes('#')) {
+    return value
+  }
+  
+  // If it's HSL values without hsl() wrapper (e.g., "206 88% 52%"), wrap it
+  if (/^\d+\s+\d+%\s+\d+%/.test(value)) {
+    return `hsl(${value})`
+  }
+  
+  return value
+}
 
 export interface EChartsBarChartData {
   name: string
@@ -40,22 +72,57 @@ export const EChartsBarChart: React.FC<EChartsBarChartProps> = ({
   showGrid = true,
   showValueLabels = false
 }) => {
+  // Get computed colors from CSS variables
+  const [chartColors, setChartColors] = useState<string[]>([])
+  
+  useEffect(() => {
+    // Define chart color palette - using primary/accent colors
+    // CSS variables return values like "206 88% 52%" which we wrap in hsl()
+    const colorPalette = [
+      getCSSVariableColor('--primary'),
+      getCSSVariableColor('--success'),
+      getCSSVariableColor('--warning'),
+      getCSSVariableColor('--cat-single'),
+      getCSSVariableColor('--cat-double')
+    ]
+    setChartColors(colorPalette)
+  }, [])
+
   const textColor = 'hsl(var(--foreground))'
-  const mutedColor = 'hsl(var(--muted))'
-  const gridColor = 'hsl(var(--line)/.12)'
+  const mutedColor = 'hsl(var(--foreground)/0.6)'
+  const gridColor = 'hsl(var(--line)/0.16)'
   const surfaceColor = 'hsl(var(--surface))'
   const borderColor = 'hsl(var(--border))'
 
   const option: EChartsOption = useMemo(() => {
     const hasManyItems = data.length > 10
-    const series = bars.map((bar, index) => ({
-      name: bar.name || bar.dataKey,
-      type: 'bar' as const,
-      data: data.map(item => item[bar.dataKey] as number),
-      itemStyle: {
-        color: bar.color || `hsl(var(--chart-${(index % 5) + 1}))`,
-        borderRadius: [4, 4, 0, 0]
-      },
+    const series = bars.map((bar, index) => {
+      // Use provided color, or get from computed chart colors, or fallback
+      let barColor = bar.color
+      if (!barColor) {
+        if (chartColors.length > 0) {
+          barColor = chartColors[index % chartColors.length]
+        } else {
+          // Fallback palette if chartColors not loaded yet
+          const fallbackColors = [
+            'hsl(206, 88%, 52%)', // primary blue
+            'hsl(158, 58%, 42%)', // success green
+            'hsl(38, 92%, 52%)',  // warning orange
+            'hsl(258, 65%, 58%)', // purple
+            'hsl(195, 70%, 52%)'  // cyan
+          ]
+          barColor = fallbackColors[index % fallbackColors.length]
+        }
+      }
+      
+      return {
+        name: bar.name || bar.dataKey,
+        type: 'bar' as const,
+        data: data.map(item => item[bar.dataKey] as number),
+        itemStyle: {
+          color: barColor,
+          borderRadius: [4, 4, 0, 0]
+        },
       label: showValueLabels ? {
         show: true,
         position: 'top' as const,
@@ -76,9 +143,13 @@ export const EChartsBarChart: React.FC<EChartsBarChartProps> = ({
           shadowColor: 'rgba(0, 0, 0, 0.3)'
         }
       }
-    }))
+    }
+    })
 
     return {
+      animation: true,
+      animationDuration: 1200,
+      animationEasing: 'cubicOut',
       tooltip: {
         trigger: 'axis',
         axisPointer: {
@@ -87,10 +158,13 @@ export const EChartsBarChart: React.FC<EChartsBarChartProps> = ({
         backgroundColor: surfaceColor,
         borderColor: borderColor,
         borderWidth: 1,
+        borderRadius: 12,
+        boxShadow: '0 4px 12px hsl(var(--accent-blue)/0.12)',
         textStyle: {
           color: textColor,
-          fontSize: 12
+          fontSize: 11
         },
+        animationDuration: 200,
         formatter: (params: any) => {
           if (!Array.isArray(params)) return ''
           let result = `<div style="margin-bottom: 4px; font-weight: 600;">${params[0].axisValue}</div>`
@@ -107,10 +181,11 @@ export const EChartsBarChart: React.FC<EChartsBarChartProps> = ({
         show: true,
         top: 0,
         textStyle: {
-          color: textColor,
-          fontSize: 12
+          color: mutedColor,
+          fontSize: 11
         },
-        itemGap: 20
+        itemGap: 20,
+        iconSize: 12
       } : {
         show: false
       },
@@ -125,8 +200,8 @@ export const EChartsBarChart: React.FC<EChartsBarChartProps> = ({
         type: 'category',
         data: data.map(item => item.name),
         axisLabel: {
-          color: textColor,
-          fontSize: 12,
+          color: mutedColor,
+          fontSize: 11,
           rotate: hasManyItems ? 45 : 0, // Rotate labels if many items to prevent overlap
           interval: 0, // Show all labels
           formatter: (value: string) => {
@@ -135,9 +210,10 @@ export const EChartsBarChart: React.FC<EChartsBarChartProps> = ({
           }
         },
         axisLine: {
-          lineStyle: {
-            color: mutedColor
-          }
+          show: false
+        },
+        axisTick: {
+          show: false
         },
         name: xAxisLabel,
         nameLocation: 'middle',
@@ -150,18 +226,21 @@ export const EChartsBarChart: React.FC<EChartsBarChartProps> = ({
       yAxis: {
         type: 'value',
         axisLabel: {
-          color: textColor,
-          fontSize: 12
+          color: mutedColor,
+          fontSize: 11
         },
         axisLine: {
-          lineStyle: {
-            color: mutedColor
-          }
+          show: false
+        },
+        axisTick: {
+          show: false
         },
         splitLine: showGrid ? {
+          show: true,
           lineStyle: {
             color: gridColor,
-            type: 'dashed'
+            type: 'dashed',
+            width: 1
           }
         } : {
           show: false
@@ -176,10 +255,10 @@ export const EChartsBarChart: React.FC<EChartsBarChartProps> = ({
       },
       series
     }
-  }, [data, bars, xAxisLabel, yAxisLabel, showLegend, showGrid, showValueLabels, textColor, mutedColor, gridColor, surfaceColor, borderColor])
+  }, [data, bars, xAxisLabel, yAxisLabel, showLegend, showGrid, showValueLabels, textColor, mutedColor, gridColor, surfaceColor, borderColor, chartColors])
 
   return (
-    <div style={{ width: '100%', height }}>
+    <div style={{ width: '100%', height }} className="motion-safe:transition-all motion-safe:duration-200">
       <ReactECharts
         option={option}
         style={{ height: '100%', width: '100%' }}

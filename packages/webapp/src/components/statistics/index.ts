@@ -5,4 +5,7 @@ export { StatisticsLanding } from './StatisticsLanding'
 export { StatisticsFilters } from './StatisticsFilters'
 export { KPICards } from './KPICards'
 export { StatisticsInsights } from './StatisticsInsights'
+export { MonthlyTrendChart } from './MonthlyTrendChart'
+export { GroupTrendsChart } from './GroupTrendsChart'
+export { PeriodComparisonChart } from './PeriodComparisonChart'
 

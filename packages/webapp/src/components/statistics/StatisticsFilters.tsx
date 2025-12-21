@@ -20,6 +20,14 @@ export const StatisticsFilters: React.FC<StatisticsFiltersProps> = ({ filters })
     setCustomDateFrom,
     customDateTo,
     setCustomDateTo,
+    enableComparison,
+    setEnableComparison,
+    comparisonPeriod,
+    setComparisonPeriod,
+    comparisonDateFrom,
+    setComparisonDateFrom,
+    comparisonDateTo,
+    setComparisonDateTo,
     selectedGroups,
     setSelectedGroups,
     allGroups
@@ -34,7 +42,7 @@ export const StatisticsFilters: React.FC<StatisticsFiltersProps> = ({ filters })
   }
   
   return (
-    <div className="card-glass-active border-hair rounded-lg p-3 sm:p-4 md:p-5 shadow-sm">
+    <div className="rounded-[28px] bg-[hsl(var(--surface)/0.9)] ring-1 ring-[hsl(var(--line)/0.16)] shadow-[0_30px_60px_hsl(var(--accent-blue)/0.12)] backdrop-blur-xl p-3 sm:p-4 md:p-5 transition-all motion-reduce:transition-none">
       <div className="flex flex-col gap-4">
         <h3 className="text-sm sm:text-base font-semibold text-[hsl(var(--foreground))]">
           Filtre
@@ -120,6 +128,86 @@ export const StatisticsFilters: React.FC<StatisticsFiltersProps> = ({ filters })
                 placeholder="Til dato"
                 className="px-2 py-1 text-xs rounded bg-[hsl(var(--surface))] border-hair"
               />
+            </div>
+          )}
+        </div>
+
+        {/* Period Comparison Toggle */}
+        <div className="flex flex-col gap-2">
+          <div className="flex items-center gap-2">
+            <input
+              type="checkbox"
+              id="enableComparison"
+              checked={enableComparison}
+              onChange={(e) => setEnableComparison(e.target.checked)}
+              className="w-4 h-4 rounded border-hair text-[hsl(var(--primary))] focus:ring-focus"
+            />
+            <label htmlFor="enableComparison" className="text-xs sm:text-sm font-medium text-[hsl(var(--foreground))] cursor-pointer">
+              Sammenlign med anden periode
+            </label>
+          </div>
+          
+          {enableComparison && (
+            <div className="ml-6 mt-2 space-y-3">
+              <div className="flex flex-col gap-2">
+                <label className="text-xs sm:text-sm font-medium text-[hsl(var(--foreground))]">
+                  Sammenligningsperiode
+                </label>
+                <div className="flex flex-wrap items-center gap-2">
+                  <button
+                    type="button"
+                    onClick={() => setComparisonPeriod('last30days')}
+                    className={`px-2 sm:px-3 py-1 text-xs rounded transition-colors ${
+                      comparisonPeriod === 'last30days'
+                        ? 'bg-[hsl(var(--accent))] text-white'
+                        : 'bg-[hsl(var(--surface-2))] text-[hsl(var(--muted))] hover:bg-[hsl(var(--surface))]'
+                    }`}
+                  >
+                    Sidste 30 dage
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setComparisonPeriod('last7days')}
+                    className={`px-2 sm:px-3 py-1 text-xs rounded transition-colors ${
+                      comparisonPeriod === 'last7days'
+                        ? 'bg-[hsl(var(--accent))] text-white'
+                        : 'bg-[hsl(var(--surface-2))] text-[hsl(var(--muted))] hover:bg-[hsl(var(--surface))]'
+                    }`}
+                  >
+                    Sidste 7 dage
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setComparisonPeriod('custom')}
+                    className={`px-2 sm:px-3 py-1 text-xs rounded transition-colors ${
+                      comparisonPeriod === 'custom'
+                        ? 'bg-[hsl(var(--accent))] text-white'
+                        : 'bg-[hsl(var(--surface-2))] text-[hsl(var(--muted))] hover:bg-[hsl(var(--surface))]'
+                    }`}
+                  >
+                    Tilpasset
+                  </button>
+                </div>
+                
+                {comparisonPeriod === 'custom' && (
+                  <div className="mt-2 flex flex-col sm:flex-row gap-2">
+                    <input
+                      type="date"
+                      value={comparisonDateFrom}
+                      onChange={(e) => setComparisonDateFrom(e.target.value)}
+                      placeholder="Fra dato"
+                      className="px-2 py-1 text-xs rounded bg-[hsl(var(--surface))] border-hair"
+                    />
+                    <input
+                      type="date"
+                      value={comparisonDateTo}
+                      onChange={(e) => setComparisonDateTo(e.target.value)}
+                      placeholder="Til dato"
+                      className="px-2 py-1 text-xs rounded bg-[hsl(var(--surface))] border-hair"
+                    />
+                  </div>
+                )}
+              </div>
             </div>
           )}
         </div>

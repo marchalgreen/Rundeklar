@@ -29,6 +29,9 @@ export {
   getPlayerCheckInLongTail,
   getWeekdayAttendanceOverTime,
   getTrainingDayComparison,
+  getMonthlyAttendanceTrends,
+  getGroupAttendanceOverTime,
+  getPeriodComparison,
   // Snapshot management
   snapshotSession,
   getAllSeasons,
@@ -60,7 +63,10 @@ import {
   getWeekdayAttendance,
   getPlayerCheckInLongTail,
   getWeekdayAttendanceOverTime,
-  getTrainingDayComparison
+  getTrainingDayComparison,
+  getMonthlyAttendanceTrends,
+  getGroupAttendanceOverTime,
+  getPeriodComparison
 } from './statistics'
 
 const statsApi = {
@@ -80,7 +86,10 @@ const statsApi = {
   getWeekdayAttendance,
   getPlayerCheckInLongTail,
   getWeekdayAttendanceOverTime,
-  getTrainingDayComparison
+  getTrainingDayComparison,
+  getMonthlyAttendanceTrends,
+  getGroupAttendanceOverTime,
+  getPeriodComparison
 }
 
 export default statsApi

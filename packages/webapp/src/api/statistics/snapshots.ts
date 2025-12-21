@@ -157,3 +157,4 @@ export const getSessionHistory = async (filters?: StatisticsFilters): Promise<St
   return snapshots.sort((a, b) => b.sessionDate.localeCompare(a.sessionDate))
 }
 
+
