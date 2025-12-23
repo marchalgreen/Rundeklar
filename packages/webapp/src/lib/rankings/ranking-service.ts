@@ -138,13 +138,32 @@ export async function updatePlayerRankings(
       }
 
       if (!ranking) {
-        result.skipped++
-        notFoundPlayers.push({
-          name: player.name,
-          id: player.id,
-          badmintonplayerId
-        })
-        continue
+        // Player not found in ranking lists - try individual scraper as fallback
+        logger.info(`[Ranking Service] Player ${player.name} (${badmintonplayerId}) not found in ranking lists, trying individual scraper...`)
+        try {
+          const individualRanking = await scrapeRankings([badmintonplayerId])
+          if (individualRanking.length > 0 && individualRanking[0]) {
+            ranking = individualRanking[0]
+            logger.info(`[Ranking Service] ✅ Found ${player.name} via individual scraper`)
+          } else {
+            result.skipped++
+            notFoundPlayers.push({
+              name: player.name,
+              id: player.id,
+              badmintonplayerId
+            })
+            continue
+          }
+        } catch (error) {
+          logger.warn(`[Ranking Service] Failed to scrape individual profile for ${player.name} (${badmintonplayerId})`, error)
+          result.skipped++
+          notFoundPlayers.push({
+            name: player.name,
+            id: player.id,
+            badmintonplayerId
+          })
+          continue
+        }
       }
 
       // Validate that at least 1 ranking exists (relaxed from 2 to allow partial updates)
