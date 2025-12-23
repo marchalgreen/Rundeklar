@@ -268,6 +268,8 @@ export type TenantConfig = {
   }
   deleted?: boolean // Soft delete flag
   deletedAt?: string // Deletion timestamp
+  // BadmintonPlayer.dk integration
+  badmintonplayerRankingListUrl?: string // Full URL to ranking list (e.g., "https://badmintonplayer.dk/DBF/Ranglister/#287,2025,,0,,,1148,0,,,,15,,,,0,,,,,,")
 }
 
 export type RendererApi = {
