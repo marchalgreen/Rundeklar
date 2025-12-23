@@ -7,6 +7,7 @@
 
 import * as cheerio from 'cheerio'
 import pLimit from 'p-limit'
+import { chromium } from 'playwright'
 import { logger } from '../utils/logger'
 
 export type RankingData = {
@@ -73,24 +74,32 @@ async function scrapePlayerRankings(
     // Note: The site uses hash-based routing (#25886)
     const playerUrl = `${baseUrl}/DBF/Spiller/VisSpiller/#${numericId}`
     
-    // Fetch player page with polite headers
-    const response = await fetch(playerUrl, {
-      headers: {
-        'User-Agent': 'RundeklarRankingBot/1.0 (+https://rundeklar.dk)',
-        'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
-        'Accept-Language': 'da-DK,da;q=0.9,en;q=0.8'
-      }
-    })
-
-    if (!response.ok) {
-      if (response.status === 404) {
-        logger.warn(`[BadmintonPlayer Scraper] Player ${badmintonplayerId} not found (404)`)
-        return null
-      }
-      throw new Error(`HTTP ${response.status}: ${response.statusText}`)
+    // Use Playwright to load the page (needed for hash-based routing)
+    const browser = await chromium.launch({ headless: true })
+    let html: string
+    
+    try {
+      const context = await browser.newContext({
+        userAgent: 'RundeklarRankingBot/1.0 (+https://rundeklar.dk)'
+      })
+      const page = await context.newPage()
+      
+      // Navigate to base URL first, then to hash URL
+      const baseUrlOnly = playerUrl.split('#')[0]
+      await page.goto(baseUrlOnly, { waitUntil: 'networkidle', timeout: 30000 })
+      
+      // Navigate to hash URL to trigger JavaScript routing
+      await page.goto(playerUrl, { waitUntil: 'networkidle', timeout: 30000 })
+      
+      // Wait for content to load
+      await page.waitForSelector('table, .ranking, [id*="ranking"]', { timeout: 10000 }).catch(() => {})
+      await page.waitForTimeout(2000) // Extra wait for AJAX
+      
+      html = await page.content()
+    } finally {
+      await browser.close()
     }
-
-    const html = await response.text()
+    
     const $ = cheerio.load(html)
 
     // Try to extract official BadmintonID from the page if we only had numeric ID
