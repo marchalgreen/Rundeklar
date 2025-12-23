@@ -26,6 +26,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
   try {
     // Get tenantId from query params (for manual calls) or process all tenants (for cron)
+    // Vercel cron jobs will call without tenantId, which triggers update for all tenants
     const tenantId = req.query.tenantId as string | undefined
 
     const sql = getPostgresClient(getDatabaseUrl())
