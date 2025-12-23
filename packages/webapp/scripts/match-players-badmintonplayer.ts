@@ -13,9 +13,46 @@
  *   --min-confidence: Minimum confidence level to update (default: medium)
  */
 
+import { readFileSync, existsSync } from 'fs'
+import { join, dirname } from 'path'
+import { fileURLToPath } from 'url'
 import { getPostgresClient, getDatabaseUrl } from '../api/auth/db-helper.js'
 import { getAllTenantConfigs, getTenantConfig } from '../src/lib/admin/tenant-utils.js'
-import { matchPlayer } from '../src/lib/rankings/player-matcher.js'
+import { matchPlayer, matchAllPlayersFromRankingList } from '../src/lib/rankings/player-matcher.js'
+
+const __filename = fileURLToPath(import.meta.url)
+const __dirname = dirname(__filename)
+
+// Load environment variables from .env.local
+function loadEnv() {
+  const envPath = join(__dirname, '../.env.local')
+  const env: Record<string, string> = {}
+  
+  if (existsSync(envPath)) {
+    const content = readFileSync(envPath, 'utf-8')
+    const lines = content.split('\n')
+    for (const line of lines) {
+      const trimmed = line.trim()
+      if (trimmed && !trimmed.startsWith('#')) {
+        const equalIndex = trimmed.indexOf('=')
+        if (equalIndex > 0) {
+          const key = trimmed.substring(0, equalIndex).trim()
+          const value = trimmed.substring(equalIndex + 1).trim().replace(/^["']|["']$/g, '')
+          if (key && value) {
+            env[key] = value
+          }
+        }
+      }
+    }
+  }
+  
+  // Also check process.env (for Vercel/CI environments)
+  return { ...process.env, ...env }
+}
+
+// Load environment variables
+const env = loadEnv()
+Object.assign(process.env, env)
 
 interface Player {
   id: string
@@ -77,77 +114,212 @@ async function matchPlayersForTenant(
       errors: [] as Array<{ playerName: string; error: string }>
     }
 
-    // Get club name from tenant config (might be in config.name or elsewhere)
+    // Get club name and ranking list URL from tenant config
     const clubName = config.name
+    const rankingListUrl = (config as any).badmintonplayerRankingListUrl
 
-    // Match each player
-    for (let i = 0; i < players.length; i++) {
-      const player = players[i]
-      console.log(`[${i + 1}/${players.length}] Matching: ${player.name}`)
+    // If ranking list URL is available, use bulk matching (more efficient)
+    if (rankingListUrl) {
+      console.log(`📋 Using ranking list URL: ${rankingListUrl}`)
+      console.log('🔄 Fetching all players from ranking list...')
+      console.log('')
 
       try {
-        const match = await matchPlayer(player.id, player.name, clubName)
+        // Match all players at once using ranking list
+        const matches = await matchAllPlayersFromRankingList(
+          players.map(p => ({ id: p.id, name: p.name })),
+          rankingListUrl
+        )
 
-        if (!match) {
-          results.skipped++
-          console.log(`   ⏭️  No match found`)
-          continue
-        }
+        // Process matches
+        for (let i = 0; i < matches.length; i++) {
+          const match = matches[i]
+          const player = players[i]
+          
+          console.log(`[${i + 1}/${matches.length}] ${player.name}`)
 
-        if (!match.badmintonplayerId) {
-          results.skipped++
-          console.log(`   ⏭️  No ID found (confidence: ${match.confidence})`)
-          continue
-        }
-
-        // Check confidence level
-        const confidenceLevels = { low: 1, medium: 2, high: 3 }
-        const minLevel = confidenceLevels[options.minConfidence]
-        const matchLevel = confidenceLevels[match.confidence]
-
-        if (matchLevel < minLevel) {
-          results.skipped++
-          console.log(`   ⏭️  Confidence too low: ${match.confidence} (min: ${options.minConfidence})`)
-          console.log(`      Matched name: ${match.matchedName || 'N/A'}`)
-          continue
-        }
-
-        results.matched++
-
-        if (options.dryRun) {
-          console.log(`   ✅ Would update: ${match.badmintonplayerId}`)
-          console.log(`      Confidence: ${match.confidence}`)
-          console.log(`      Matched name: ${match.matchedName || 'N/A'}`)
-          if (match.club) {
-            console.log(`      Club: ${match.club}`)
+          if (!match.badmintonplayerId) {
+            results.skipped++
+            console.log(`   ⏭️  No match found (confidence: ${match.confidence})`)
+            console.log('')
+            continue
           }
-        } else {
-          // Update player
-          await sql`
-            UPDATE players
-            SET badmintonplayer_id = ${match.badmintonplayerId}
-            WHERE id = ${player.id}
-              AND tenant_id = ${tenantId}
-          `
 
-          results.updated++
-          console.log(`   ✅ Updated: ${match.badmintonplayerId}`)
-          console.log(`      Confidence: ${match.confidence}`)
-          console.log(`      Matched name: ${match.matchedName || 'N/A'}`)
-        }
+          // Check confidence level
+          const confidenceLevels = { low: 1, medium: 2, high: 3 }
+          const minLevel = confidenceLevels[options.minConfidence]
+          const matchLevel = confidenceLevels[match.confidence]
 
-        // Add delay between requests to be polite
-        if (i < players.length - 1) {
-          await new Promise(resolve => setTimeout(resolve, 500))
+          if (matchLevel < minLevel) {
+            results.skipped++
+            console.log(`   ⏭️  Confidence too low: ${match.confidence} (min: ${options.minConfidence})`)
+            console.log(`      Matched name: ${match.matchedName || 'N/A'}`)
+            console.log('')
+            continue
+          }
+
+          results.matched++
+
+          if (options.dryRun) {
+            console.log(`   ✅ Would update: ${match.badmintonplayerId}`)
+            console.log(`      Confidence: ${match.confidence}`)
+            console.log(`      Matched name: ${match.matchedName || 'N/A'}`)
+            if (match.single !== null || match.double !== null || match.mix !== null) {
+              console.log(`      Rankings would also be updated`)
+            }
+          } else {
+            // Update player with ID and optionally rankings if available
+            const hasRankings = match.single !== null || match.double !== null || match.mix !== null
+            
+            if (hasRankings) {
+              // Update both ID and rankings
+              await sql`
+                UPDATE players
+                SET 
+                  badmintonplayer_id = ${match.badmintonplayerId},
+                  level_single = ${match.single ?? null},
+                  level_double = ${match.double ?? null},
+                  level_mix = ${match.mix ?? null}
+                WHERE id = ${player.id}
+                  AND tenant_id = ${tenantId}
+              `
+              console.log(`   ✅ Updated: ${match.badmintonplayerId} (with rankings)`)
+              console.log(`      Confidence: ${match.confidence}`)
+              console.log(`      Matched name: ${match.matchedName || 'N/A'}`)
+              if (match.single !== null) console.log(`      Single: ${match.single}`)
+              if (match.double !== null) console.log(`      Double: ${match.double}`)
+              if (match.mix !== null) console.log(`      Mix: ${match.mix}`)
+            } else {
+              // Update only ID
+              await sql`
+                UPDATE players
+                SET badmintonplayer_id = ${match.badmintonplayerId}
+                WHERE id = ${player.id}
+                  AND tenant_id = ${tenantId}
+              `
+              console.log(`   ✅ Updated: ${match.badmintonplayerId}`)
+              console.log(`      Confidence: ${match.confidence}`)
+              console.log(`      Matched name: ${match.matchedName || 'N/A'}`)
+            }
+
+            results.updated++
+          }
+          console.log('')
         }
       } catch (error) {
+        console.error(`   ❌ Error during bulk matching:`, error)
         results.failed++
-        const errorMessage = error instanceof Error ? error.message : 'Unknown error'
-        results.errors.push({ playerName: player.name, error: errorMessage })
-        console.log(`   ❌ Error: ${errorMessage}`)
+        // Fall back to individual matching
+        console.log('   Falling back to individual matching...')
+        console.log('')
       }
-
+    } else {
+      console.log('⚠️  No ranking list URL found in tenant config')
+      console.log('   Add "badmintonplayerRankingListUrl" to tenant config for better matching')
+      console.log('   Falling back to individual player search...')
       console.log('')
+    }
+
+    // If bulk matching failed or wasn't available, match individually
+    if (results.matched === 0 && results.updated === 0) {
+      // Match each player individually
+      for (let i = 0; i < players.length; i++) {
+        const player = players[i]
+        console.log(`[${i + 1}/${players.length}] Matching: ${player.name}`)
+
+        try {
+          const match = await matchPlayer(player.id, player.name, clubName, rankingListUrl)
+
+          if (!match) {
+            results.skipped++
+            console.log(`   ⏭️  No match found`)
+            console.log('')
+            continue
+          }
+
+          if (!match.badmintonplayerId) {
+            results.skipped++
+            console.log(`   ⏭️  No ID found (confidence: ${match.confidence})`)
+            console.log('')
+            continue
+          }
+
+          // Check confidence level
+          const confidenceLevels = { low: 1, medium: 2, high: 3 }
+          const minLevel = confidenceLevels[options.minConfidence]
+          const matchLevel = confidenceLevels[match.confidence]
+
+          if (matchLevel < minLevel) {
+            results.skipped++
+            console.log(`   ⏭️  Confidence too low: ${match.confidence} (min: ${options.minConfidence})`)
+            console.log(`      Matched name: ${match.matchedName || 'N/A'}`)
+            console.log('')
+            continue
+          }
+
+          results.matched++
+
+          if (options.dryRun) {
+            console.log(`   ✅ Would update: ${match.badmintonplayerId}`)
+            console.log(`      Confidence: ${match.confidence}`)
+            console.log(`      Matched name: ${match.matchedName || 'N/A'}`)
+            if (match.club) {
+              console.log(`      Club: ${match.club}`)
+            }
+            if (match.single !== null || match.double !== null || match.mix !== null) {
+              console.log(`      Rankings would also be updated`)
+            }
+          } else {
+            // Update player with ID and optionally rankings if available
+            const hasRankings = match.single !== null || match.double !== null || match.mix !== null
+            
+            if (hasRankings) {
+              // Update both ID and rankings
+              await sql`
+                UPDATE players
+                SET 
+                  badmintonplayer_id = ${match.badmintonplayerId},
+                  level_single = ${match.single ?? null},
+                  level_double = ${match.double ?? null},
+                  level_mix = ${match.mix ?? null}
+                WHERE id = ${player.id}
+                  AND tenant_id = ${tenantId}
+              `
+              console.log(`   ✅ Updated: ${match.badmintonplayerId} (with rankings)`)
+              console.log(`      Confidence: ${match.confidence}`)
+              console.log(`      Matched name: ${match.matchedName || 'N/A'}`)
+              if (match.single !== null) console.log(`      Single: ${match.single}`)
+              if (match.double !== null) console.log(`      Double: ${match.double}`)
+              if (match.mix !== null) console.log(`      Mix: ${match.mix}`)
+            } else {
+              // Update only ID
+              await sql`
+                UPDATE players
+                SET badmintonplayer_id = ${match.badmintonplayerId}
+                WHERE id = ${player.id}
+                  AND tenant_id = ${tenantId}
+              `
+              console.log(`   ✅ Updated: ${match.badmintonplayerId}`)
+              console.log(`      Confidence: ${match.confidence}`)
+              console.log(`      Matched name: ${match.matchedName || 'N/A'}`)
+            }
+
+            results.updated++
+          }
+
+          // Add delay between requests to be polite
+          if (i < players.length - 1) {
+            await new Promise(resolve => setTimeout(resolve, 500))
+          }
+        } catch (error) {
+          results.failed++
+          const errorMessage = error instanceof Error ? error.message : 'Unknown error'
+          results.errors.push({ playerName: player.name, error: errorMessage })
+          console.log(`   ❌ Error: ${errorMessage}`)
+        }
+
+        console.log('')
+      }
     }
 
     // Summary
