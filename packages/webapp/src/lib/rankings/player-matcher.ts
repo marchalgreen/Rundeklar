@@ -32,6 +32,8 @@ const DEFAULT_DELAY_MS = 500 // 500ms delay between requests (polite scraping)
 function normalizeName(name: string): string {
   return name
     .toLowerCase()
+    // Remove parenthesized content like "(EU)", "(Udl.)", etc. first
+    .replace(/\s*\([^)]*\)\s*/g, '')
     .normalize('NFD')
     .replace(/[\u0300-\u036f]/g, '') // Remove accents
     .replace(/[^a-z0-9\s]/g, '') // Remove special characters

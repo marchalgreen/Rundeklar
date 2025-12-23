@@ -7,8 +7,10 @@
 import type { RankingData } from './badmintonplayer-scraper'
 import { discoverBadmintonPlayerApi } from './badmintonplayer-api'
 import { scrapeRankings } from './badmintonplayer-scraper'
+import { scrapeAllRankingLists } from './ranking-list-scraper'
 import { logger } from '../utils/logger'
 import type postgres from 'postgres'
+import type { TenantConfig } from '@rundeklar/common'
 
 export type UpdateResult = {
   updated: number
@@ -22,11 +24,13 @@ export type UpdateResult = {
  * 
  * @param sql - Postgres client instance
  * @param tenantId - Tenant ID for database queries
+ * @param tenantConfig - Optional tenant config (for ranking list URLs)
  * @returns Update result statistics
  */
 export async function updatePlayerRankings(
   sql: ReturnType<typeof postgres>,
-  tenantId: string
+  tenantId: string,
+  tenantConfig?: TenantConfig
 ): Promise<UpdateResult> {
   const result: UpdateResult = {
     updated: 0,
@@ -55,15 +59,52 @@ export async function updatePlayerRankings(
     // Try to use API first, fall back to scraping
     const apiClient = await discoverBadmintonPlayerApi()
     let rankingData: RankingData[]
+    let scrapedPlayersCount = 0
+    let playersWithRankings = 0
 
     if (apiClient) {
       logger.info('[Ranking Service] Using API client')
       const badmintonplayerIds = players.map((p: any) => p.badmintonplayer_id)
       rankingData = await apiClient.getRankings(badmintonplayerIds)
+      scrapedPlayersCount = rankingData.length
+      playersWithRankings = rankingData.filter(r => r.single !== null || r.double !== null || r.mix !== null).length
+    } else if (tenantConfig?.badmintonplayerRankingLists) {
+      // Use fast ranking list scraping (scrapes 6 lists instead of 63 individual profiles)
+      logger.info('[Ranking Service] Using fast ranking list scraper (6 lists)')
+      const rankingLists = tenantConfig.badmintonplayerRankingLists as any
+      const combinedData = await scrapeAllRankingLists({
+        singleHerre: rankingLists.singleHerre,
+        doubleHerre: rankingLists.doubleHerre,
+        mixHerre: rankingLists.mixHerre,
+        mixDame: rankingLists.mixDame,
+        doubleDame: rankingLists.doubleDame,
+        singleDame: rankingLists.singleDame
+      })
+      
+      scrapedPlayersCount = combinedData.size
+      playersWithRankings = Array.from(combinedData.values()).filter(p => 
+        p.single !== null || p.double !== null || p.mix !== null
+      ).length
+      
+      // Convert Map to RankingData array
+      rankingData = Array.from(combinedData.values()).map(player => ({
+        badmintonplayerId: player.officialId || player.numericId,
+        numericId: player.numericId,
+        single: player.single ?? null,
+        double: player.double ?? null,
+        mix: player.mix ?? null
+      }))
+      
+      logger.info(`[Ranking Service] 📊 Scraped ${scrapedPlayersCount} unique players from ranking lists`)
+      logger.info(`[Ranking Service] 📊 ${playersWithRankings} players have ranking data (${scrapedPlayersCount - playersWithRankings} without rankings)`)
     } else {
-      logger.info('[Ranking Service] Using web scraper (API not available)')
+      logger.info('[Ranking Service] Using individual player scraper (slower, fallback)')
       const badmintonplayerIds = players.map((p: any) => p.badmintonplayer_id)
       rankingData = await scrapeRankings(badmintonplayerIds)
+      scrapedPlayersCount = rankingData.length
+      playersWithRankings = rankingData.filter(r => r.single !== null || r.double !== null || r.mix !== null).length
+      logger.info(`[Ranking Service] 📊 Scraped ${scrapedPlayersCount} players`)
+      logger.info(`[Ranking Service] 📊 ${playersWithRankings} players have ranking data`)
     }
 
     // Create a map for quick lookup (support both official BadmintonID and numeric ID)
@@ -77,8 +118,15 @@ export async function updatePlayerRankings(
       }
     })
 
+    // Track players not found for better logging
+    const notFoundPlayers: Array<{ name: string; id: string; badmintonplayerId: string }> = []
+    const playersWithoutRankings: Array<{ name: string; id: string; badmintonplayerId: string }> = []
+
     // Update each player
-    for (const player of players) {
+    for (let i = 0; i < players.length; i++) {
+      const player = players[i]
+      const progress = ((i + 1) / players.length * 100).toFixed(1)
+      
       const badmintonplayerId = player.badmintonplayer_id
       // Try to find ranking by the stored ID (could be official BadmintonID or numeric ID)
       let ranking = rankingMap.get(badmintonplayerId)
@@ -91,7 +139,11 @@ export async function updatePlayerRankings(
 
       if (!ranking) {
         result.skipped++
-        logger.warn(`[Ranking Service] No ranking data found for player ${player.name} (${badmintonplayerId})`)
+        notFoundPlayers.push({
+          name: player.name,
+          id: player.id,
+          badmintonplayerId
+        })
         continue
       }
 
@@ -99,7 +151,11 @@ export async function updatePlayerRankings(
       const rankingsCount = [ranking.single, ranking.double, ranking.mix].filter(r => r !== null).length
       if (rankingsCount < 1) {
         result.skipped++
-        logger.warn(`[Ranking Service] Player ${player.name} has no rankings, skipping update`)
+        playersWithoutRankings.push({
+          name: player.name,
+          id: player.id,
+          badmintonplayerId
+        })
         continue
       }
 
@@ -116,7 +172,16 @@ export async function updatePlayerRankings(
         `
 
         result.updated++
-        logger.info(`[Ranking Service] Updated rankings for player ${player.name}`)
+        const rankingsStr = [
+          ranking.single ? `Single: ${ranking.single}` : null,
+          ranking.double ? `Double: ${ranking.double}` : null,
+          ranking.mix ? `Mix: ${ranking.mix}` : null
+        ].filter(Boolean).join(', ')
+        
+        // Log every 10th player or important updates
+        if (result.updated % 10 === 0 || i === players.length - 1) {
+          logger.info(`[Ranking Service] [${i + 1}/${players.length}] (${progress}%) ✅ Updated ${player.name}: ${rankingsStr}`)
+        }
       } catch (error) {
         result.failed++
         const errorMessage = error instanceof Error ? error.message : 'Unknown error'
@@ -124,11 +189,34 @@ export async function updatePlayerRankings(
           playerId: player.id,
           error: errorMessage
         })
-        logger.error(`[Ranking Service] Failed to update player ${player.name}`, error)
+        logger.error(`[Ranking Service] ❌ Failed to update player ${player.name} (ID: ${badmintonplayerId})`, error)
       }
     }
 
-    logger.info(`[Ranking Service] Update complete: ${result.updated} updated, ${result.failed} failed, ${result.skipped} skipped`)
+    // Summary logging
+    logger.info('')
+    logger.info(`[Ranking Service] 📊 Update Summary:`)
+    logger.info(`   ✅ Updated: ${result.updated} players`)
+    logger.info(`   ❌ Failed: ${result.failed} players`)
+    logger.info(`   ⏭️  Skipped: ${result.skipped} players`)
+    
+    if (notFoundPlayers.length > 0) {
+      logger.info('')
+      logger.info(`[Ranking Service] ⚠️  Players not found in scraped data (${notFoundPlayers.length}):`)
+      notFoundPlayers.forEach(p => {
+        logger.info(`   - ${p.name} (BadmintonPlayer ID: ${p.badmintonplayerId})`)
+      })
+    }
+    
+    if (playersWithoutRankings.length > 0) {
+      logger.info('')
+      logger.info(`[Ranking Service] ⚠️  Players found but without ranking data (${playersWithoutRankings.length}):`)
+      playersWithoutRankings.forEach(p => {
+        logger.info(`   - ${p.name} (BadmintonPlayer ID: ${p.badmintonplayerId})`)
+      })
+    }
+    
+    logger.info('')
     return result
   } catch (error) {
     logger.error('[Ranking Service] Fatal error during ranking update', error)

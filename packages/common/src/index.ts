@@ -270,6 +270,14 @@ export type TenantConfig = {
   deletedAt?: string // Deletion timestamp
   // BadmintonPlayer.dk integration
   badmintonplayerRankingListUrl?: string // Full URL to ranking list (e.g., "https://badmintonplayer.dk/DBF/Ranglister/#287,2025,,0,,,1148,0,,,,15,,,,0,,,,,,")
+  badmintonplayerRankingLists?: {
+    singleHerre?: string // Single Herre ranking list URL
+    doubleHerre?: string // Double Herre ranking list URL
+    mixHerre?: string // Mix Herre ranking list URL
+    mixDame?: string // Mix Dame ranking list URL
+    doubleDame?: string // Double Dame ranking list URL
+    singleDame?: string // Single Dame ranking list URL
+  }
 }
 
 export type RendererApi = {

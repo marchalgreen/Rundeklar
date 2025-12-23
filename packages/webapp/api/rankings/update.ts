@@ -8,7 +8,7 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node'
 import { getPostgresClient, getDatabaseUrl } from '../auth/db-helper.js'
 import { updatePlayerRankings } from '../../src/lib/rankings/ranking-service.js'
-import { getAllTenantConfigs } from '../../src/lib/admin/tenant-utils.js'
+import { getAllTenantConfigs, getTenantConfig } from '../../src/lib/admin/tenant-utils.js'
 import { logger } from '../../src/lib/utils/logger.js'
 import { setCorsHeaders } from '../../src/lib/utils/cors.js'
 
@@ -33,7 +33,8 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     if (tenantId) {
       // Update single tenant
       logger.info(`[Ranking Update API] Updating rankings for tenant: ${tenantId}`)
-      const result = await updatePlayerRankings(sql, tenantId)
+      const tenantConfig = await getTenantConfig(tenantId)
+      const result = await updatePlayerRankings(sql, tenantId, tenantConfig || undefined)
 
       return res.status(200).json({
         success: true,
@@ -48,7 +49,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
       for (const tenant of tenants) {
         try {
-          const result = await updatePlayerRankings(sql, tenant.id)
+          const result = await updatePlayerRankings(sql, tenant.id, tenant)
           results.push({ tenantId: tenant.id, result })
         } catch (error) {
           logger.error(`[Ranking Update API] Failed to update tenant ${tenant.id}`, error)

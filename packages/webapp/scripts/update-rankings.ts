@@ -68,14 +68,24 @@ async function updateRankings(tenantId?: string) {
       }
       console.log(`✅ Found tenant: "${config.name}"`)
       console.log('')
+      console.log('🔄 Starting ranking update...')
+      if (config.badmintonplayerRankingLists) {
+        console.log('   Using fast ranking list scraper (6 lists)')
+      } else {
+        console.log('   (This may take several minutes as it scrapes each player individually)')
+      }
+      console.log('')
 
-      const result = await updatePlayerRankings(sql, tenantId)
+      const startTime = Date.now()
+      const result = await updatePlayerRankings(sql, tenantId, config)
+      const duration = ((Date.now() - startTime) / 1000).toFixed(1)
 
       console.log('')
       console.log('📊 Results:')
       console.log(`   ✅ Updated: ${result.updated}`)
       console.log(`   ❌ Failed: ${result.failed}`)
       console.log(`   ⏭️  Skipped: ${result.skipped}`)
+      console.log(`   ⏱️  Duration: ${duration}s`)
       if (result.errors.length > 0) {
         console.log('')
         console.log('⚠️  Errors:')
@@ -98,7 +108,7 @@ async function updateRankings(tenantId?: string) {
       for (const tenant of tenants) {
         console.log(`🔄 Processing tenant: "${tenant.name}" (${tenant.id})`)
         try {
-          const result = await updatePlayerRankings(sql, tenant.id)
+          const result = await updatePlayerRankings(sql, tenant.id, tenant)
           results.push({ tenantId: tenant.id, tenantName: tenant.name, result })
           console.log(`   ✅ Updated: ${result.updated}, Failed: ${result.failed}, Skipped: ${result.skipped}`)
         } catch (error) {
