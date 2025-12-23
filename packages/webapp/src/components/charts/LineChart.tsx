@@ -13,6 +13,7 @@ export interface LineChartProps {
     name?: string
     color?: string
     strokeWidth?: number
+    strokeDasharray?: string
   }>
   xAxisLabel?: string
   yAxisLabel?: string
@@ -112,6 +113,7 @@ export const LineChart: React.FC<LineChartProps> = ({
                   name={line.name || line.dataKey}
                   stroke={color}
                   strokeWidth={line.strokeWidth || 3}
+                  strokeDasharray={line.strokeDasharray}
                   dot={{ r: 5, fill: color, strokeWidth: 2, stroke: surfaceColor }}
                   activeDot={{ r: 8, strokeWidth: 3, stroke: surfaceColor, fill: color }}
                   connectNulls={false}
