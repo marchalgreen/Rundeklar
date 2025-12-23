@@ -96,6 +96,15 @@ async function scrapePlayerRankings(
       await page.waitForTimeout(2000) // Extra wait for AJAX
       
       html = await page.content()
+      
+      // Debug: Save HTML to file for inspection (only when DEBUG_SCRAPER env var is set)
+      if (process.env.DEBUG_SCRAPER) {
+        const fs = await import('fs')
+        const path = await import('path')
+        const debugPath = path.join(process.cwd(), `scraper-debug-${numericId}.html`)
+        fs.writeFileSync(debugPath, html, 'utf-8')
+        logger.info(`[BadmintonPlayer Scraper] Saved HTML to ${debugPath}`)
+      }
     } finally {
       await browser.close()
     }
@@ -114,46 +123,84 @@ async function scrapePlayerRankings(
     }
 
     // Extract ranking data from HTML
-    // The page structure needs to be inspected, but common patterns:
-    // - Tables with ranking data
-    // - Divs with ranking information
-    // - Text content containing "Rangliste Single", "Rangliste Double", "Rangliste Mix"
+    // HTML structure: Table with class "GridView" containing rows with:
+    // - "Rangliste Single" link in first cell, point value in 4th cell (td with text-align:right)
+    // - "Rangliste Double" link in first cell, point value in 4th cell
+    // - "Rangliste Mix" link in first cell, point value in 4th cell
     
-    // Look for ranking values - try multiple selector patterns
-    // Pattern 1: Look for text containing "Rangliste Single/Double/Mix" followed by numbers
-    const singleMatch = html.match(/Rangliste\s+Single[:\s]+([\d.,]+)/i) || 
-                       html.match(/Single[:\s]+([\d.,]+)/i)
-    const doubleMatch = html.match(/Rangliste\s+Double[:\s]+([\d.,]+)/i) || 
-                       html.match(/Double[:\s]+([\d.,]+)/i)
-    const mixMatch = html.match(/Rangliste\s+Mix[:\s]+([\d.,]+)/i) || 
-                    html.match(/Mix[:\s]+([\d.,]+)/i)
+    let single: number | null = null
+    let double: number | null = null
+    let mix: number | null = null
     
-    // Pattern 2: Look for data attributes or class names
-    const singleText = singleMatch?.[1] || 
-                      $('[data-ranking="single"], .ranking-single, .rangliste-single, td:contains("Single")').first().text().trim()
-    const doubleText = doubleMatch?.[1] || 
-                      $('[data-ranking="double"], .ranking-double, .rangliste-double, td:contains("Double")').first().text().trim()
-    const mixText = mixMatch?.[1] || 
-                   $('[data-ranking="mix"], .ranking-mix, .rangliste-mix, td:contains("Mix")').first().text().trim()
-
-    // Parse ranking values (remove non-numeric characters, handle decimals)
-    const parseRanking = (text: string): number | null => {
-      if (!text) return null
-      // Extract numbers (handle formats like "2.500", "2500", "2,500")
-      const cleaned = text.replace(/[^\d,.]/g, '').replace(',', '.')
-      const parsed = parseFloat(cleaned)
-      return isNaN(parsed) ? null : Math.round(parsed)
+    // Find the ranking table
+    const rankingTable = $('table.GridView').first()
+    
+    if (rankingTable.length > 0) {
+      // Find rows containing ranking links
+      rankingTable.find('tr').each((_, row) => {
+        const $row = $(row)
+        const firstCellText = $row.find('td').first().text().trim()
+        
+        // Check if this row contains a ranking type
+        if (firstCellText.includes('Rangliste Single') || firstCellText.includes('Single')) {
+          // Get the point value from the 4th cell (index 3, 0-based)
+          const cells = $row.find('td')
+          if (cells.length >= 4) {
+            const pointCell = $(cells[3])
+            const pointText = pointCell.text().trim()
+            const pointMatch = pointText.match(/(\d{3,5})/)
+            if (pointMatch) {
+              single = parseInt(pointMatch[1], 10)
+            }
+          }
+        } else if (firstCellText.includes('Rangliste Double') || firstCellText.includes('Double')) {
+          const cells = $row.find('td')
+          if (cells.length >= 4) {
+            const pointCell = $(cells[3])
+            const pointText = pointCell.text().trim()
+            const pointMatch = pointText.match(/(\d{3,5})/)
+            if (pointMatch) {
+              double = parseInt(pointMatch[1], 10)
+            }
+          }
+        } else if (firstCellText.includes('Rangliste Mix') || firstCellText.includes('Mix')) {
+          const cells = $row.find('td')
+          if (cells.length >= 4) {
+            const pointCell = $(cells[3])
+            const pointText = pointCell.text().trim()
+            const pointMatch = pointText.match(/(\d{3,5})/)
+            if (pointMatch) {
+              mix = parseInt(pointMatch[1], 10)
+            }
+          }
+        }
+      })
+    }
+    
+    // Fallback: Try regex patterns if table parsing didn't work
+    if (!single && !double && !mix) {
+      const singleMatch = html.match(/Rangliste\s+Single[^>]*>([^<]*<[^>]*>)*([\d]{3,5})/i) || 
+                         html.match(/Single[^>]*>([^<]*<[^>]*>)*([\d]{3,5})/i)
+      const doubleMatch = html.match(/Rangliste\s+Double[^>]*>([^<]*<[^>]*>)*([\d]{3,5})/i) || 
+                         html.match(/Double[^>]*>([^<]*<[^>]*>)*([\d]{3,5})/i)
+      const mixMatch = html.match(/Rangliste\s+Mix[^>]*>([^<]*<[^>]*>)*([\d]{3,5})/i) || 
+                      html.match(/Mix[^>]*>([^<]*<[^>]*>)*([\d]{3,5})/i)
+      
+      if (singleMatch && singleMatch[2]) single = parseInt(singleMatch[2], 10)
+      if (doubleMatch && doubleMatch[2]) double = parseInt(doubleMatch[2], 10)
+      if (mixMatch && mixMatch[2]) mix = parseInt(mixMatch[2], 10)
     }
 
-    const single = parseRanking(singleText)
-    const double = parseRanking(doubleText)
-    const mix = parseRanking(mixText)
-
-    // Validate that at least 2 of the 3 rankings exist
+    // Validate that at least 1 ranking exists
     const rankingsCount = [single, double, mix].filter(r => r !== null).length
+    if (rankingsCount === 0) {
+      logger.warn(`[BadmintonPlayer Scraper] Player ${badmintonplayerId} has no rankings found`)
+      // Return null if no rankings found
+      return null
+    }
+    
     if (rankingsCount < 2) {
-      logger.warn(`[BadmintonPlayer Scraper] Player ${badmintonplayerId} has less than 2 rankings (found ${rankingsCount})`)
-      // Still return the data, but log a warning
+      logger.warn(`[BadmintonPlayer Scraper] Player ${badmintonplayerId} has less than 2 rankings (found ${rankingsCount}), but will still return data`)
     }
 
     return {
@@ -204,9 +251,19 @@ export async function scrapeRankings(
         await new Promise(resolve => setTimeout(resolve, delayMs))
       }
 
+      // Progress logging
+      const progress = ((index + 1) / badmintonplayerIds.length * 100).toFixed(1)
+      logger.info(`[BadmintonPlayer Scraper] [${index + 1}/${badmintonplayerIds.length}] (${progress}%) Scraping player ${id}...`)
+      
+      const startTime = Date.now()
       const data = await scrapePlayerRankings(id, baseUrl)
+      const duration = Date.now() - startTime
+      
       if (data) {
         results.push(data)
+        logger.info(`[BadmintonPlayer Scraper] [${index + 1}/${badmintonplayerIds.length}] ✅ Successfully scraped ${id} (${duration}ms)`)
+      } else {
+        logger.warn(`[BadmintonPlayer Scraper] [${index + 1}/${badmintonplayerIds.length}] ⚠️  No data found for ${id} (${duration}ms)`)
       }
       return data
     })
