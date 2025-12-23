@@ -8,9 +8,46 @@
  * If tenant-id is not provided, it will update all tenants.
  */
 
+import { readFileSync, existsSync } from 'fs'
+import { join, dirname } from 'path'
+import { fileURLToPath } from 'url'
 import { getPostgresClient, getDatabaseUrl } from '../api/auth/db-helper.js'
 import { updatePlayerRankings } from '../src/lib/rankings/ranking-service.js'
 import { getAllTenantConfigs, getTenantConfig } from '../src/lib/admin/tenant-utils.js'
+
+const __filename = fileURLToPath(import.meta.url)
+const __dirname = dirname(__filename)
+
+// Load environment variables from .env.local
+function loadEnv() {
+  const envPath = join(__dirname, '../.env.local')
+  const env: Record<string, string> = {}
+  
+  if (existsSync(envPath)) {
+    const content = readFileSync(envPath, 'utf-8')
+    const lines = content.split('\n')
+    for (const line of lines) {
+      const trimmed = line.trim()
+      if (trimmed && !trimmed.startsWith('#')) {
+        const equalIndex = trimmed.indexOf('=')
+        if (equalIndex > 0) {
+          const key = trimmed.substring(0, equalIndex).trim()
+          const value = trimmed.substring(equalIndex + 1).trim().replace(/^["']|["']$/g, '')
+          if (key && value) {
+            env[key] = value
+          }
+        }
+      }
+    }
+  }
+  
+  // Also check process.env (for Vercel/CI environments)
+  return { ...process.env, ...env }
+}
+
+// Load environment variables
+const env = loadEnv()
+Object.assign(process.env, env)
 
 async function updateRankings(tenantId?: string) {
   console.log('')
