@@ -11,18 +11,17 @@ import {
   usePlayerStatistics, 
   usePlayerComparison 
 } from '../hooks/statistics'
-import { 
-  StatisticsLanding, 
-  StatisticsFilters, 
-  KPICards, 
-  StatisticsInsights,
-  RecentMatches, 
-  HeadToHeadResults,
-  PlayerOpponentList,
-  MonthlyTrendChart,
-  GroupTrendsChart,
-  PeriodComparisonChart
-} from '../components/statistics'
+import {
+          StatisticsLanding,
+          StatisticsFilters,
+          KPICards,
+          StatisticsInsights,
+          RecentMatches,
+          HeadToHeadResults,
+          PlayerOpponentList,
+          GroupTrendsChart,
+          PeriodComparisonChart
+        } from '../components/statistics'
 import { BarChart, LineChart } from '../components/charts'
 import { EChartsBarChart } from '../components/charts/EChartsBarChart'
 import { formatDate } from '../lib/formatting'
@@ -165,7 +164,34 @@ const StatisticsPage = () => {
           {/* KPI Cards Section */}
           <KPICards kpis={trainingAttendance.kpis} loading={trainingAttendance.kpisLoading || trainingAttendance.attendanceLoading} />
 
-          {/* Charts Section */}
+          {/* Period Comparison - Show early if active */}
+          {trainingAttendance.periodComparison && (
+            <div className="rounded-[28px] bg-[hsl(var(--surface)/0.9)] ring-1 ring-[hsl(var(--line)/0.16)] shadow-[0_30px_60px_hsl(var(--accent-blue)/0.12)] backdrop-blur-xl p-3 sm:p-4 md:p-5 transition-all motion-reduce:transition-none">
+              <h3 className="text-sm sm:text-base font-semibold text-[hsl(var(--foreground))] mb-3 sm:mb-4">
+                Periodesammenligning
+              </h3>
+              <PeriodComparisonChart
+                data={trainingAttendance.periodComparison}
+                loading={trainingAttendance.periodComparisonLoading}
+                height={300}
+              />
+            </div>
+          )}
+
+          {/* Group Trends Over Time - Main time-based visualization */}
+          <div className="rounded-[28px] bg-[hsl(var(--surface)/0.9)] ring-1 ring-[hsl(var(--line)/0.16)] shadow-[0_30px_60px_hsl(var(--accent-blue)/0.12)] backdrop-blur-xl p-3 sm:p-4 md:p-5 transition-all motion-reduce:transition-none">
+            <h3 className="text-sm sm:text-base font-semibold text-[hsl(var(--foreground))] mb-3 sm:mb-4">
+              Gruppetrends over tid
+            </h3>
+            <GroupTrendsChart
+              data={trainingAttendance.groupAttendanceOverTime}
+              comparisonData={trainingAttendance.comparisonGroupAttendanceOverTime}
+              loading={trainingAttendance.groupTrendsLoading || trainingAttendance.comparisonGroupTrendsLoading}
+              height={300}
+            />
+          </div>
+
+          {/* Current Status Section - Snapshot visualizations */}
           <div className="space-y-4 sm:space-y-6">
             {/* Training Group Attendance - Split into two charts to avoid mixing units */}
             <div className="space-y-4 sm:space-y-6">
@@ -303,56 +329,6 @@ const StatisticsPage = () => {
               )}
             </div>
 
-            {/* Attendance Over Time per Weekday Line Chart */}
-            <div className="rounded-[28px] bg-[hsl(var(--surface)/0.9)] ring-1 ring-[hsl(var(--line)/0.16)] shadow-[0_30px_60px_hsl(var(--accent-blue)/0.12)] backdrop-blur-xl p-3 sm:p-4 md:p-5 transition-all motion-reduce:transition-none">
-              <h3 className="text-sm sm:text-base font-semibold text-[hsl(var(--foreground))] mb-3 sm:mb-4">
-                fremmøde over tid pr. ugedag
-              </h3>
-              {trainingAttendance.attendanceOverTimeLoading ? (
-                <div className="flex items-center justify-center" style={{ height: 300 }}>
-                  <div className="space-y-2 w-full px-4">
-                    <div className="h-3 w-40 bg-[hsl(var(--surface-2))] rounded animate-pulse mx-auto" />
-                    <div className="h-64 bg-[hsl(var(--surface-2))] rounded animate-pulse" />
-                  </div>
-                </div>
-              ) : trainingAttendance.weekdayAttendanceOverTime.length > 0 ? (
-                <LineChart
-                  data={(() => {
-                    // Group by date and create lines for each weekday
-                    // Only include dates that have actual attendance data
-                    const dateMap = new Map<string, Record<string, number>>()
-                    trainingAttendance.weekdayAttendanceOverTime.forEach((item) => {
-                      // Only include items with actual attendance (not 0)
-                      if (item.averageAttendance <= 0) return
-                      
-                      if (!dateMap.has(item.date)) {
-                        dateMap.set(item.date, {})
-                      }
-                      dateMap.get(item.date)![item.weekdayName] = item.averageAttendance
-                    })
-                    return Array.from(dateMap.entries())
-                      .sort(([a], [b]) => a.localeCompare(b))
-                      .map(([date, values]) => ({
-                        name: formatDate(date, false),
-                        ...values
-                      }))
-                  })()}
-                  lines={trainingAttendance.weekdayAttendance.map((day) => ({
-                    dataKey: day.weekdayName,
-                    name: day.weekdayName,
-                    color: `hsl(var(--chart-${(day.weekday % 5) + 1}))`
-                  }))}
-                  xAxisLabel="Dato"
-                  yAxisLabel="Gennemsnitligt fremmøde"
-                  height={300}
-                  showLegend={true}
-                />
-              ) : (
-                <div className="flex items-center justify-center py-8" style={{ minHeight: 300 }}>
-                  <p className="text-sm text-[hsl(var(--foreground)/0.6)]">Ingen tidsdata tilgængelig</p>
-                </div>
-              )}
-            </div>
           </div>
 
           {/* Tables Section */}
@@ -402,48 +378,6 @@ const StatisticsPage = () => {
             </div>
           </div>
 
-          {/* Monthly Trends Section */}
-          <div className="space-y-4 sm:space-y-6">
-            {/* Monthly Attendance Trend */}
-            <div className="rounded-[28px] bg-[hsl(var(--surface)/0.9)] ring-1 ring-[hsl(var(--line)/0.16)] shadow-[0_30px_60px_hsl(var(--accent-blue)/0.12)] backdrop-blur-xl p-3 sm:p-4 md:p-5 transition-all motion-reduce:transition-none">
-              <h3 className="text-sm sm:text-base font-semibold text-[hsl(var(--foreground))] mb-3 sm:mb-4">
-                Månedlig fremmøde trend
-              </h3>
-              <MonthlyTrendChart
-                data={trainingAttendance.monthlyAttendanceTrends}
-                loading={trainingAttendance.monthlyTrendsLoading}
-                height={300}
-              />
-            </div>
-
-            {/* Group Trends Over Time */}
-            {trainingAttendance.groupAttendanceOverTime.length > 0 && (
-              <div className="rounded-[28px] bg-[hsl(var(--surface)/0.9)] ring-1 ring-[hsl(var(--line)/0.16)] shadow-[0_30px_60px_hsl(var(--accent-blue)/0.12)] backdrop-blur-xl p-3 sm:p-4 md:p-5 transition-all motion-reduce:transition-none">
-                <h3 className="text-sm sm:text-base font-semibold text-[hsl(var(--foreground))] mb-3 sm:mb-4">
-                  Gruppetrends over tid
-                </h3>
-                <GroupTrendsChart
-                  data={trainingAttendance.groupAttendanceOverTime}
-                  loading={trainingAttendance.groupTrendsLoading}
-                  height={300}
-                />
-              </div>
-            )}
-
-            {/* Period Comparison */}
-            {trainingAttendance.periodComparison && (
-              <div className="rounded-[28px] bg-[hsl(var(--surface)/0.9)] ring-1 ring-[hsl(var(--line)/0.16)] shadow-[0_30px_60px_hsl(var(--accent-blue)/0.12)] backdrop-blur-xl p-3 sm:p-4 md:p-5 transition-all motion-reduce:transition-none">
-                <h3 className="text-sm sm:text-base font-semibold text-[hsl(var(--foreground))] mb-3 sm:mb-4">
-                  Periodesammenligning
-                </h3>
-                <PeriodComparisonChart
-                  data={trainingAttendance.periodComparison}
-                  loading={trainingAttendance.periodComparisonLoading}
-                  height={300}
-                />
-              </div>
-            )}
-          </div>
 
           {/* Insights & Analysis Section */}
           <StatisticsInsights

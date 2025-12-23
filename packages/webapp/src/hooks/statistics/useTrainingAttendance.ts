@@ -43,6 +43,10 @@ export interface UseTrainingAttendanceReturn {
   groupAttendanceOverTime: GroupAttendanceOverTime[]
   groupTrendsLoading: boolean
   
+  // Comparison group trends over time
+  comparisonGroupAttendanceOverTime: GroupAttendanceOverTime[]
+  comparisonGroupTrendsLoading: boolean
+  
   // Period comparison
   periodComparison: PeriodComparison | null
   periodComparisonLoading: boolean
@@ -102,6 +106,10 @@ export function useTrainingAttendance(
   // Group trends over time state
   const [groupAttendanceOverTime, setGroupAttendanceOverTime] = useState<GroupAttendanceOverTime[]>([])
   const [groupTrendsLoading, setGroupTrendsLoading] = useState(false)
+  
+  // Comparison group trends over time state
+  const [comparisonGroupAttendanceOverTime, setComparisonGroupAttendanceOverTime] = useState<GroupAttendanceOverTime[]>([])
+  const [comparisonGroupTrendsLoading, setComparisonGroupTrendsLoading] = useState(false)
   
   // Period comparison state
   const [periodComparison, setPeriodComparison] = useState<PeriodComparison | null>(null)
@@ -367,6 +375,33 @@ export function useTrainingAttendance(
       setGroupTrendsLoading(false)
     }
   }, [filters.dateRange.dateFrom, filters.dateRange.dateTo, filters.groupNames, notify])
+  
+  // Load comparison group attendance over time (if comparison is enabled)
+  const loadComparisonGroupAttendanceOverTime = useCallback(async () => {
+    if (!filters.comparisonDateRange.dateFrom || !filters.comparisonDateRange.dateTo) {
+      setComparisonGroupAttendanceOverTime([])
+      return
+    }
+    
+    setComparisonGroupTrendsLoading(true)
+    try {
+      const comparisonTrends = await statsApi.getGroupAttendanceOverTime(
+        filters.comparisonDateRange.dateFrom,
+        filters.comparisonDateRange.dateTo,
+        filters.groupNames
+      )
+      setComparisonGroupAttendanceOverTime(comparisonTrends)
+    } catch (err: unknown) {
+      const normalizedError = normalizeError(err)
+      notify({
+        variant: 'danger',
+        title: 'Kunne ikke hente sammenligningsgruppetrends',
+        description: normalizedError.message
+      })
+    } finally {
+      setComparisonGroupTrendsLoading(false)
+    }
+  }, [filters.comparisonDateRange.dateFrom, filters.comparisonDateRange.dateTo, filters.groupNames, notify])
 
   // Load period comparison (only if comparison period is set)
   const loadPeriodComparison = useCallback(async () => {
@@ -409,6 +444,7 @@ export function useTrainingAttendance(
       loadTrainingDayComparison(),
       loadMonthlyAttendanceTrends(),
       loadGroupAttendanceOverTime(),
+      loadComparisonGroupAttendanceOverTime(),
       loadPeriodComparison()
     ])
   }, [
@@ -420,6 +456,7 @@ export function useTrainingAttendance(
     loadTrainingDayComparison,
     loadMonthlyAttendanceTrends,
     loadGroupAttendanceOverTime,
+    loadComparisonGroupAttendanceOverTime,
     loadPeriodComparison
   ])
   
@@ -434,6 +471,7 @@ export function useTrainingAttendance(
       void loadTrainingDayComparison()
       void loadMonthlyAttendanceTrends()
       void loadGroupAttendanceOverTime()
+      void loadComparisonGroupAttendanceOverTime()
       void loadPeriodComparison()
     }
     // Only depend on filter values, not callbacks - callbacks are stable and don't need to trigger re-runs
@@ -444,7 +482,8 @@ export function useTrainingAttendance(
     filters.dateRange.dateTo,
     filters.groupNames,
     filters.comparisonDateRange.dateFrom,
-    filters.comparisonDateRange.dateTo
+    filters.comparisonDateRange.dateTo,
+    filters.enableComparison
   ])
   
   // Load groups when enabled (only once, not on every render)
@@ -470,6 +509,8 @@ export function useTrainingAttendance(
     monthlyTrendsLoading,
     groupAttendanceOverTime,
     groupTrendsLoading,
+    comparisonGroupAttendanceOverTime,
+    comparisonGroupTrendsLoading,
     periodComparison,
     periodComparisonLoading,
     kpis,
