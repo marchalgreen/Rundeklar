@@ -18,15 +18,9 @@ export interface UseStatisticsFiltersReturn {
   customDateTo: string
   setCustomDateTo: (date: string) => void
   
-  // Comparison period state
+  // Comparison period state (automatic: same period last year)
   enableComparison: boolean
   setEnableComparison: (enable: boolean) => void
-  comparisonPeriod: AttendancePeriod
-  setComparisonPeriod: (period: AttendancePeriod) => void
-  comparisonDateFrom: string
-  setComparisonDateFrom: (date: string) => void
-  comparisonDateTo: string
-  setComparisonDateTo: (date: string) => void
   
   // Group filter state
   selectedGroups: string[]
@@ -38,6 +32,7 @@ export interface UseStatisticsFiltersReturn {
   dateRange: { dateFrom?: string; dateTo?: string }
   comparisonDateRange: { dateFrom?: string; dateTo?: string }
   groupNames: string[] | undefined
+  isComparisonDisabled: boolean
 }
 
 /**
@@ -62,9 +57,6 @@ export function useStatisticsFilters(): UseStatisticsFiltersReturn {
   const [customDateFrom, setCustomDateFrom] = useState<string>('')
   const [customDateTo, setCustomDateTo] = useState<string>('')
   const [enableComparison, setEnableComparison] = useState<boolean>(false)
-  const [comparisonPeriod, setComparisonPeriod] = useState<AttendancePeriod>('last30days')
-  const [comparisonDateFrom, setComparisonDateFrom] = useState<string>('')
-  const [comparisonDateTo, setComparisonDateTo] = useState<string>('')
   const [selectedGroups, setSelectedGroups] = useState<string[]>([])
   const [allGroups, setAllGroups] = useState<string[]>([])
   
@@ -84,17 +76,39 @@ export function useStatisticsFilters(): UseStatisticsFiltersReturn {
     })
   }, [attendancePeriod, customDateFrom, customDateTo])
   
-  // Calculate comparison date range
+  // Calculate comparison date range - automatically same period last year
   const comparisonDateRange = useMemo(() => {
     if (!enableComparison) {
       return { dateFrom: undefined, dateTo: undefined }
     }
-    return calculateDateRange({
-      period: comparisonPeriod,
-      customDateFrom: comparisonDateFrom,
-      customDateTo: comparisonDateTo
+    
+    // Get current period dates
+    const currentRange = calculateDateRange({
+      period: attendancePeriod,
+      customDateFrom,
+      customDateTo
     })
-  }, [enableComparison, comparisonPeriod, comparisonDateFrom, comparisonDateTo])
+    
+    if (!currentRange.dateFrom || !currentRange.dateTo) {
+      return { dateFrom: undefined, dateTo: undefined }
+    }
+    
+    // Calculate same period last year
+    const currentFrom = new Date(currentRange.dateFrom)
+    const currentTo = new Date(currentRange.dateTo)
+    
+    // Subtract one year
+    const lastYearFrom = new Date(currentFrom)
+    lastYearFrom.setFullYear(currentFrom.getFullYear() - 1)
+    
+    const lastYearTo = new Date(currentTo)
+    lastYearTo.setFullYear(currentTo.getFullYear() - 1)
+    
+    return {
+      dateFrom: lastYearFrom.toISOString().split('T')[0],
+      dateTo: lastYearTo.toISOString().split('T')[0]
+    }
+  }, [enableComparison, attendancePeriod, customDateFrom, customDateTo])
   
   // Get group names for filtering (undefined if all groups are selected, meaning no filter)
   const groupNames = useMemo(() => {
@@ -105,6 +119,35 @@ export function useStatisticsFilters(): UseStatisticsFiltersReturn {
     return selectedGroups.length > 0 ? selectedGroups : undefined
   }, [selectedGroups, allGroups])
   
+  // Check if comparison should be disabled
+  const isComparisonDisabled = useMemo(() => {
+    // Disable if "Alle sæsoner" is selected
+    if (attendancePeriod === 'allSeasons') {
+      return true
+    }
+    
+    // Disable if custom period is more than 1 year
+    if (attendancePeriod === 'custom' && customDateFrom && customDateTo) {
+      const from = new Date(customDateFrom)
+      const to = new Date(customDateTo)
+      const diffTime = Math.abs(to.getTime() - from.getTime())
+      const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24))
+      // More than 365 days
+      if (diffDays > 365) {
+        return true
+      }
+    }
+    
+    return false
+  }, [attendancePeriod, customDateFrom, customDateTo])
+  
+  // Auto-disable comparison if it becomes invalid
+  useEffect(() => {
+    if (isComparisonDisabled && enableComparison) {
+      setEnableComparison(false)
+    }
+  }, [isComparisonDisabled, enableComparison])
+  
   return {
     attendancePeriod,
     setAttendancePeriod,
@@ -114,19 +157,14 @@ export function useStatisticsFilters(): UseStatisticsFiltersReturn {
     setCustomDateTo,
     enableComparison,
     setEnableComparison,
-    comparisonPeriod,
-    setComparisonPeriod,
-    comparisonDateFrom,
-    setComparisonDateFrom,
-    comparisonDateTo,
-    setComparisonDateTo,
     selectedGroups,
     setSelectedGroups,
     allGroups,
     setAllGroups,
     dateRange,
     comparisonDateRange,
-    groupNames
+    groupNames,
+    isComparisonDisabled
   }
 }
 
