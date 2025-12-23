@@ -1,5 +1,5 @@
 import React from 'react'
-import { LineChart as RechartsLineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend } from 'recharts'
+import { LineChart as RechartsLineChart, Line, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend } from 'recharts'
 
 export interface LineChartData {
   name: string
@@ -87,22 +87,41 @@ export const LineChart: React.FC<LineChartProps> = ({
               formatter={(value) => <span style={{ fontSize: 11, color: mutedColor }}>{value}</span>}
             />
           )}
-          {lines.map((line, index) => (
-            <Line
-              key={line.dataKey}
-              type="monotone"
-              dataKey={line.dataKey}
-              name={line.name || line.dataKey}
-              stroke={line.color || `hsl(var(--chart-${(index % 5) + 1}))`}
-              strokeWidth={line.strokeWidth || 2}
-              dot={{ r: 4, fill: line.color || `hsl(var(--chart-${(index % 5) + 1}))` }}
-              activeDot={{ r: 6, strokeWidth: 2 }}
-              connectNulls={false}
-              animationDuration={1200}
-              animationBegin={index * 50}
-              isAnimationActive={true}
-            />
-          ))}
+          {lines.map((line, index) => {
+            const color = line.color || `hsl(var(--chart-${(index % 5) + 1}))`
+            const gradientId = `gradient-${line.dataKey}-${index}`
+            return (
+              <React.Fragment key={line.dataKey}>
+                <defs>
+                  <linearGradient id={gradientId} x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="0%" stopColor={color} stopOpacity={0.3} />
+                    <stop offset="100%" stopColor={color} stopOpacity={0.05} />
+                  </linearGradient>
+                </defs>
+                <Area
+                  type="monotone"
+                  dataKey={line.dataKey}
+                  stroke="none"
+                  fill={`url(#${gradientId})`}
+                  animationDuration={1200}
+                  animationBegin={index * 50}
+                />
+                <Line
+                  type="monotone"
+                  dataKey={line.dataKey}
+                  name={line.name || line.dataKey}
+                  stroke={color}
+                  strokeWidth={line.strokeWidth || 3}
+                  dot={{ r: 5, fill: color, strokeWidth: 2, stroke: surfaceColor }}
+                  activeDot={{ r: 8, strokeWidth: 3, stroke: surfaceColor, fill: color }}
+                  connectNulls={false}
+                  animationDuration={1200}
+                  animationBegin={index * 50}
+                  isAnimationActive={true}
+                />
+              </React.Fragment>
+            )
+          })}
         </RechartsLineChart>
       </ResponsiveContainer>
     </div>

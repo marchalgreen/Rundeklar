@@ -34,6 +34,50 @@ const getCSSVariableColor = (cssVar: string): string => {
   return value
 }
 
+/**
+ * Creates a gradient color object for ECharts from an HSL color.
+ * @param hslColor - HSL color string (e.g., "hsl(206, 88%, 52%)")
+ * @returns ECharts gradient object
+ */
+const createGradient = (hslColor: string): any => {
+  // Extract HSL values - handle both formats: "hsl(206, 88%, 52%)" and "206 88% 52%"
+  let hslMatch = hslColor.match(/hsl\((\d+),\s*(\d+)%,\s*(\d+)%\)/)
+  
+  // If no match, try format without hsl() wrapper
+  if (!hslMatch) {
+    hslMatch = hslColor.match(/(\d+)\s+(\d+)%\s+(\d+)%/)
+  }
+  
+  if (!hslMatch) {
+    // Fallback to solid color if parsing fails
+    return hslColor
+  }
+  
+  const [, h, s, l] = hslMatch
+  const hue = parseInt(h)
+  const saturation = parseInt(s)
+  const lightness = parseInt(l)
+  
+  // Create more dramatic gradient from lighter to darker
+  const lightColor = `hsl(${hue}, ${saturation}%, ${Math.min(lightness + 20, 95)}%)`
+  const darkColor = `hsl(${hue}, ${Math.min(saturation + 15, 100)}%, ${Math.max(lightness - 20, 5)}%)`
+  
+  const gradient = {
+    type: 'linear' as const,
+    x: 0,
+    y: 0,
+    x2: 0,
+    y2: 1,
+    colorStops: [
+      { offset: 0, color: lightColor },
+      { offset: 1, color: darkColor }
+    ],
+    global: false
+  }
+  
+  return gradient
+}
+
 export interface EChartsBarChartData {
   name: string
   [key: string]: string | number
@@ -96,6 +140,39 @@ export const EChartsBarChart: React.FC<EChartsBarChartProps> = ({
 
   const option: EChartsOption = useMemo(() => {
     const hasManyItems = data.length > 10
+    
+    // Helper to resolve CSS variable colors to actual HSL values
+    const resolveColor = (color: string | undefined): string => {
+      if (!color) {
+        if (chartColors.length > 0) {
+          return chartColors[0]
+        }
+        return 'hsl(206, 88%, 52%)' // fallback
+      }
+      
+      // If it's a CSS variable reference like "hsl(var(--primary))", resolve it
+      if (color.includes('var(--')) {
+        // Extract the CSS variable name
+        const varMatch = color.match(/var\(--([^)]+)\)/)
+        if (varMatch) {
+          const cssVarName = `--${varMatch[1]}`
+          const resolved = getCSSVariableColor(cssVarName)
+          // getCSSVariableColor returns HSL format, so use it directly
+          return resolved
+        }
+      }
+      
+      // If it's already a valid HSL color, return as-is
+      if (color.match(/^hsl\(/)) {
+        return color
+      }
+      
+      return color
+    }
+    
+    // Create gradient functions for each bar
+    const gradientFunctions: Record<string, any> = {}
+    
     const series = bars.map((bar, index) => {
       // Use provided color, or get from computed chart colors, or fallback
       let barColor = bar.color
@@ -115,13 +192,27 @@ export const EChartsBarChart: React.FC<EChartsBarChartProps> = ({
         }
       }
       
+      // Resolve CSS variables to actual colors
+      const resolvedColor = resolveColor(barColor)
+      
+      // Create unique gradient ID for this series
+      const gradientId = `gradient-${bar.dataKey}-${index}`
+      
+      // Store gradient function
+      gradientFunctions[gradientId] = (params: any) => {
+        return createGradient(resolvedColor)
+      }
+      
       return {
         name: bar.name || bar.dataKey,
         type: 'bar' as const,
         data: data.map(item => item[bar.dataKey] as number),
         itemStyle: {
-          color: barColor,
-          borderRadius: [4, 4, 0, 0]
+          color: (params: any) => createGradient(resolvedColor),
+          borderRadius: [6, 6, 0, 0],
+          shadowBlur: 8,
+          shadowColor: 'rgba(0, 0, 0, 0.15)',
+          shadowOffsetY: 2
         },
       label: showValueLabels ? {
         show: true,
@@ -137,11 +228,14 @@ export const EChartsBarChart: React.FC<EChartsBarChartProps> = ({
       },
       emphasis: {
         itemStyle: {
-          shadowBlur: 10,
+          shadowBlur: 16,
           shadowOffsetX: 0,
-          shadowOffsetY: 0,
-          shadowColor: 'rgba(0, 0, 0, 0.3)'
-        }
+          shadowOffsetY: 4,
+          shadowColor: 'rgba(0, 0, 0, 0.25)',
+          borderWidth: 2,
+          borderColor: resolvedColor
+        },
+        focus: 'series' as const
       }
     }
     })
@@ -153,25 +247,31 @@ export const EChartsBarChart: React.FC<EChartsBarChartProps> = ({
       tooltip: {
         trigger: 'axis',
         axisPointer: {
-          type: 'shadow'
+          type: 'shadow',
+          shadowStyle: {
+            color: 'rgba(0, 0, 0, 0.08)'
+          }
         },
         backgroundColor: surfaceColor,
         borderColor: borderColor,
         borderWidth: 1,
-        borderRadius: 12,
-        boxShadow: '0 4px 12px hsl(var(--accent-blue)/0.12)',
+        borderRadius: 16,
+        padding: [12, 16],
+        boxShadow: '0 8px 24px rgba(0, 0, 0, 0.12), 0 2px 8px rgba(0, 0, 0, 0.08)',
         textStyle: {
           color: textColor,
-          fontSize: 11
+          fontSize: 12,
+          fontWeight: 500
         },
         animationDuration: 200,
         formatter: (params: any) => {
           if (!Array.isArray(params)) return ''
-          let result = `<div style="margin-bottom: 4px; font-weight: 600;">${params[0].axisValue}</div>`
+          let result = `<div style="margin-bottom: 8px; font-weight: 600; font-size: 13px; color: ${textColor};">${params[0].axisValue}</div>`
           params.forEach((param: any) => {
-            result += `<div style="margin: 2px 0;">
-              <span style="display: inline-block; width: 10px; height: 10px; background: ${param.color}; border-radius: 2px; margin-right: 6px;"></span>
-              ${param.seriesName}: <strong>${param.value}</strong>
+            result += `<div style="margin: 4px 0; display: flex; align-items: center;">
+              <span style="display: inline-block; width: 12px; height: 12px; background: ${param.color}; border-radius: 3px; margin-right: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1);"></span>
+              <span style="color: ${mutedColor}; margin-right: 8px;">${param.seriesName}:</span>
+              <strong style="color: ${textColor}; font-size: 13px;">${param.value}</strong>
             </div>`
           })
           return result
@@ -240,7 +340,8 @@ export const EChartsBarChart: React.FC<EChartsBarChartProps> = ({
           lineStyle: {
             color: gridColor,
             type: 'dashed',
-            width: 1
+            width: 1,
+            opacity: 0.6
           }
         } : {
           show: false
