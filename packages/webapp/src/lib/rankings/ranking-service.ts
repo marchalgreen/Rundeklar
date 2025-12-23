@@ -95,11 +95,11 @@ export async function updatePlayerRankings(
         continue
       }
 
-      // Validate that at least 2 of the 3 rankings exist
+      // Validate that at least 1 ranking exists (relaxed from 2 to allow partial updates)
       const rankingsCount = [ranking.single, ranking.double, ranking.mix].filter(r => r !== null).length
-      if (rankingsCount < 2) {
+      if (rankingsCount < 1) {
         result.skipped++
-        logger.warn(`[Ranking Service] Player ${player.name} has less than 2 rankings, skipping update`)
+        logger.warn(`[Ranking Service] Player ${player.name} has no rankings, skipping update`)
         continue
       }
 
