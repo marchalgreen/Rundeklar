@@ -48,29 +48,55 @@ pnpm --filter webapp exec tsx scripts/match-players-badmintonplayer.ts herlev-hj
 
 ## Nuværende Status
 
-**⚠️ Funktionen er delvist implementeret:**
+**✅ Funktionen er implementeret:**
 
 - ✅ Grundstruktur og matching-logik er på plads
 - ✅ Script til at køre matching er oprettet
-- ⚠️ `getPlayersFromClub()` funktionen skal implementeres baseret på faktisk klub-side struktur
-- ⚠️ Klub-ID skal findes manuelt første gang
+- ✅ `getPlayersFromRankingList()` funktionen er implementeret
+- ✅ Ranking list URL er tilføjet til Herlev Hjorten tenant config
+- ⚠️ HTML parsing skal testes og justeres baseret på faktisk side-struktur
+
+## Ranking List URL
+
+Ranking list URL'en er nu tilføjet til tenant config:
+```json
+{
+  "badmintonplayerRankingListUrl": "https://badmintonplayer.dk/DBF/Ranglister/#287,2025,,0,,,1148,0,,,,15,,,,0,,,,,,"
+}
+```
+
+URL'en ser ud til at være "levende" og indeholder parametre om:
+- Klub-ID (fx `287`)
+- Sæson/år (fx `2025`)
+- Andre filtre/parametre
+
+### Vigtigt om Ranking Data
+
+**Ranking-listen viser IKKE ranking pointene:**
+- Tallet i parenteserne (fx "(246)", "(324)") er spillerens **placering** på ranglisten i Danmark, IKKE ranking pointene
+- Ranking-listen viser kun én ranking-type ad gangen (Single, Double eller Mix)
+- `<td class="points"></td>` kolonnerne er tomme i ranking-listen
+- **For at få ranking pointene** skal man scrape individuelle spillerprofiler
+
+**Ranking pointene skal hentes fra individuelle spillerprofiler:**
+- Brug `update-rankings.ts` scriptet til at hente alle tre ranking-typer (Single, Double, Mix)
+- Dette scraper hver spiller individuelt, hvilket tager længere tid men giver alle data
 
 ## Næste Skridt
 
-1. **Find klub-ID for Herlev Hjorten:**
-   - Gå til badmintonplayer.dk
-   - Find "Herlev Hjorten" klubben
-   - Noter URL'en og klub-ID'et
+1. **Test HTML parsing:**
+   - Kør scriptet med `--dry-run` først
+   - Inspicer output for at se om spillere bliver fundet korrekt
+   - Juster CSS-selectorer i `getPlayersFromRankingList()` hvis nødvendigt
 
-2. **Implementer `getPlayersFromClub()`:**
-   - Inspicer klub-siden på badmintonplayer.dk
-   - Find HTML-strukturen for spillerlisten
-   - Implementer parsing af spillerdata (navn, numeric ID, officielt BadmintonID)
-
-3. **Test matching:**
+2. **Test matching:**
    - Kør scriptet med `--dry-run` først
    - Verificer matches ser korrekte ud
    - Kør uden `--dry-run` for at opdatere databasen
+
+3. **Tilføj ranking list URL til andre tenants:**
+   - Find ranking list URL for andre klubber
+   - Tilføj `badmintonplayerRankingListUrl` til deres tenant config filer
 
 ## Alternativ: Manuel Opdatering
 
