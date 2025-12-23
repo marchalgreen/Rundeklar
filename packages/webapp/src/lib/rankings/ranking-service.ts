@@ -134,7 +134,7 @@ export async function updatePlayerRankings(
       // If not found and it's a numeric ID, also try to match by official ID from results
       if (!ranking && /^\d+$/.test(badmintonplayerId)) {
         // Input is numeric, try to find by matching numericId in results
-        ranking = rankingData.find(r => r.numericId === badmintonplayerId) || null
+        ranking = rankingData.find(r => r.numericId === badmintonplayerId) ?? undefined
       }
 
       if (!ranking) {

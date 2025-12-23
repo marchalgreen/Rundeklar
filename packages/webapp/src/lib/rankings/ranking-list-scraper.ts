@@ -90,9 +90,6 @@ export async function scrapeRankingList(
       let nameText = playerLink.text().trim()
       if (!nameText || nameText.length < 2) return
       
-      // Store original name with parentheses for reference
-      const originalName = nameText
-      
       // Normalize name by removing parenthesized content like "(EU)", "(Udl.)"
       // This helps with matching players in our database who don't have these suffixes
       nameText = nameText.replace(/\s*\([^)]*\)\s*/g, '').trim()
