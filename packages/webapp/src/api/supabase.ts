@@ -56,6 +56,7 @@ const rowToPlayer = (row: any): Player => ({
   active: row.active ?? true,
   preferredDoublesPartners: row.preferred_doubles_partners ?? null,
   preferredMixedPartners: row.preferred_mixed_partners ?? null,
+  badmintonplayerId: row.badmintonplayer_id ?? null,
   createdAt: row.created_at
 } as Player)
 
@@ -305,7 +306,8 @@ export const createPlayer = async (player: Omit<Player, 'id' | 'createdAt'>): Pr
       training_group: playerAny.trainingGroups ?? [],
       active: player.active,
       preferred_doubles_partners: playerAny.preferredDoublesPartners ?? [],
-      preferred_mixed_partners: playerAny.preferredMixedPartners ?? []
+      preferred_mixed_partners: playerAny.preferredMixedPartners ?? [],
+      badmintonplayer_id: playerAny.badmintonplayerId ?? null
     })
     .select()
     .single()
@@ -335,6 +337,7 @@ export const updatePlayer = async (id: string, updates: PlayerUpdateInput['patch
   if (updates.active !== undefined) updateData.active = updates.active
   if (updatesAny.preferredDoublesPartners !== undefined) updateData.preferred_doubles_partners = updatesAny.preferredDoublesPartners ?? []
   if (updatesAny.preferredMixedPartners !== undefined) updateData.preferred_mixed_partners = updatesAny.preferredMixedPartners ?? []
+  if (updatesAny.badmintonplayerId !== undefined) updateData.badmintonplayer_id = updatesAny.badmintonplayerId ?? null
 
   const supabase = getSupabase()
   const { data, error } = await supabase.from('players').update(updateData).eq('id', id).select().single()

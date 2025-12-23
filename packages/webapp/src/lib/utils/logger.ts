@@ -15,9 +15,7 @@ const isDevelopment =
 
 export const logger = {
   error: (message: string, error?: unknown) => {
-    // Guardrail: avoid console.* in production runtime.
-    if (!isDevelopment) return
-
+    // Always log errors, but format differently in production
     if (error instanceof Error) {
       console.error(`[ERROR] ${message}`, {
         message: error.message,
@@ -30,17 +28,13 @@ export const logger = {
   },
   
   warn: (message: string, ...args: unknown[]) => {
-    // Only log warnings in development
-    if (isDevelopment) {
-      console.warn(`[WARN] ${message}`, ...args)
-    }
+    // Always log warnings (important for scripts)
+    console.warn(`[WARN] ${message}`, ...args)
   },
   
   info: (message: string, ...args: unknown[]) => {
-    // Only log info in development
-    if (isDevelopment) {
-      console.log(`[INFO] ${message}`, ...args)
-    }
+    // Always log info (important for scripts to show progress)
+    console.log(`[INFO] ${message}`, ...args)
   },
   
   debug: (message: string, ...args: unknown[]) => {

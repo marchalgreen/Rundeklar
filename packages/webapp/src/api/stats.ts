@@ -754,7 +754,7 @@ const getPlayerStatistics = async (
   })
 
   // Filter match results by relevant stats (same filters as above)
-  let relevantMatchResults = allMatchResults.filter((mr) => {
+  const relevantMatchResults = allMatchResults.filter((mr) => {
     const match = allMatches.find((m) => m.id === mr.matchId)
     if (!match) return false
     

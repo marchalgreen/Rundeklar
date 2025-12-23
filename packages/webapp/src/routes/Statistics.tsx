@@ -708,7 +708,7 @@ const StatisticsPage = () => {
           </div>
 
           {/* Win/Loss Trend Chart */}
-          {playerStatistics.statistics.matchesWithResults > 0 && playerStatistics.statistics.winsBySeason && Object.keys(playerStatistics.statistics.winsBySeason).length > 0 && (
+          {playerStatistics.statistics && playerStatistics.statistics.matchesWithResults > 0 && playerStatistics.statistics.winsBySeason && Object.keys(playerStatistics.statistics.winsBySeason).length > 0 && (
             <div className="card-glass-active border-hair rounded-lg p-3 sm:p-4 md:p-5 shadow-sm">
               <h3 className="text-sm sm:text-base font-semibold text-[hsl(var(--foreground))] mb-3 sm:mb-4">
                 Sejre/Nederlag pr. sæson
@@ -718,8 +718,8 @@ const StatisticsPage = () => {
                   .sort()
                   .map((season) => ({
                     name: season,
-                    Sejre: (playerStatistics.statistics.winsBySeason?.[season]) || 0,
-                    Nederlag: (playerStatistics.statistics.lossesBySeason?.[season]) || 0
+                    Sejre: (playerStatistics.statistics!.winsBySeason?.[season]) || 0,
+                    Nederlag: (playerStatistics.statistics!.lossesBySeason?.[season]) || 0
                   }))}
                 bars={[
                   { dataKey: 'Sejre', name: 'Sejre', color: 'hsl(var(--success))' },
