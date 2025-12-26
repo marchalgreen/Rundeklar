@@ -41,17 +41,17 @@ export const GroupTrendsChart: React.FC<GroupTrendsChartProps> = memo(({
       ? deduplicateGroupAttendance(comparisonData)
       : []
 
-    // Get all unique months from both periods
+    // Get all unique months from both periods (union) - show comparison even if current period doesn't have data for that month
     const currentMonths = Array.from(new Set(uniqueData.map(d => d.month))).sort()
     const comparisonMonths = Array.from(new Set(uniqueComparisonData.map(d => d.month))).sort()
     const allMonths = Array.from(new Set([...currentMonths, ...comparisonMonths])).sort()
 
-    // Get all unique group names
+    // Get all unique group names from both periods
     const currentGroupNames = Array.from(new Set(uniqueData.map(d => d.groupName))).sort()
     const comparisonGroupNames = Array.from(new Set(uniqueComparisonData.map(d => d.groupName))).sort()
     const allGroupNames = Array.from(new Set([...currentGroupNames, ...comparisonGroupNames])).sort()
 
-    // Create data points for each month with lines for each group (current and comparison)
+    // Create data points for all months (union of both periods)
     return allMonths.map((month): LineChartData => {
       const monthData = uniqueData.find(d => d.month === month)
       const monthName = monthData?.monthName || month
@@ -60,15 +60,23 @@ export const GroupTrendsChart: React.FC<GroupTrendsChartProps> = memo(({
         name: monthName
       }
 
-      // Add current period data for each group
+      // Add current period data for each group (only if > 0)
       allGroupNames.forEach((groupName) => {
         const groupData = uniqueData.find(d => d.month === month && d.groupName === groupName)
-        result[groupName] = groupData?.averageAttendance || 0
+        const attendance = groupData?.averageAttendance || 0
+        // Only add if > 0 to avoid cluttering chart with zero values
+        if (attendance > 0) {
+          result[groupName] = attendance
+        }
         
-        // Add comparison period data with suffix
+        // Add comparison period data only if it exists and > 0
         if (hasComparison) {
           const comparisonGroupData = uniqueComparisonData.find(d => d.month === month && d.groupName === groupName)
-          result[`${groupName} (sidste år)`] = comparisonGroupData?.averageAttendance || 0
+          const comparisonAttendance = comparisonGroupData?.averageAttendance || 0
+          // Only add comparison data if > 0
+          if (comparisonAttendance > 0) {
+            result[`${groupName} (sidste år)`] = comparisonAttendance
+          }
         }
       })
 
@@ -77,44 +85,59 @@ export const GroupTrendsChart: React.FC<GroupTrendsChartProps> = memo(({
   }, [data, comparisonData, enableComparison])
 
   // Create lines for each group with distinct colors
+  // Only include lines that have at least one non-zero data point
   const lines = useMemo(() => {
-    // Get all unique group names from both periods
-    const allGroupNames = new Set<string>()
-    data.forEach((item) => allGroupNames.add(item.groupName))
-    if (comparisonData) {
-      comparisonData.forEach((item) => allGroupNames.add(item.groupName))
-    }
-    const groupNames = Array.from(allGroupNames).sort()
+    // Get all unique group names from current period only
+    const currentGroupNames = Array.from(new Set(data.map(item => item.groupName))).sort()
     
     // Use design token-based color palette
     const colorPalette = getChartColorPalette()
     
     const result: Array<{ dataKey: string; name: string; color: string; strokeDasharray?: string }> = []
     
-    groupNames.forEach((groupName, index) => {
-      // Get color from palette (cycle through if more groups than colors)
-      const baseColor = colorPalette[index % colorPalette.length]
-      
-      // Current period - solid line
-      result.push({
-        dataKey: groupName,
-        name: groupName,
-        color: baseColor
+    currentGroupNames.forEach((groupName, index) => {
+      // Check if this group has any non-zero data points in chartData
+      const hasData = chartData.some((monthData) => {
+        const value = monthData[groupName]
+        return value !== undefined && value !== null && typeof value === 'number' && value > 0
       })
       
-      // Comparison period - dashed line with darkened color for visual distinction
-      if (hasComparison) {
+      // Only add line if it has data
+      if (hasData) {
+        // Get color from palette (cycle through if more groups than colors)
+        const baseColor = colorPalette[index % colorPalette.length]
+        
+        // Current period - solid line
         result.push({
-          dataKey: `${groupName} (sidste år)`,
-          name: `${groupName} (sidste år)`,
-          color: darkenHSLColor(baseColor),
-          strokeDasharray: '5 5' // Dashed line
+          dataKey: groupName,
+          name: groupName,
+          color: baseColor
         })
+      }
+      
+        // Check if comparison group has any non-zero data points
+        if (hasComparison) {
+          const comparisonKey = `${groupName} (sidste år)`
+          const hasComparisonData = chartData.some((monthData) => {
+            const value = monthData[comparisonKey]
+            return value !== undefined && value !== null && typeof value === 'number' && value > 0
+          })
+        
+        // Only add comparison line if it has data
+        if (hasComparisonData) {
+          const baseColor = colorPalette[index % colorPalette.length]
+          result.push({
+            dataKey: comparisonKey,
+            name: comparisonKey,
+            color: darkenHSLColor(baseColor),
+            strokeDasharray: '5 5' // Dashed line
+          })
+        }
       }
     })
     
     return result
-  }, [data, comparisonData, enableComparison])
+  }, [data, comparisonData, enableComparison, chartData])
 
   if (loading) {
     return (
