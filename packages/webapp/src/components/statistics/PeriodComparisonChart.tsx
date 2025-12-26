@@ -61,7 +61,7 @@ export const PeriodComparisonChart: React.FC<PeriodComparisonChartProps> = memo(
       data={chartData}
       bars={[
         { dataKey: 'Nuværende periode', name: 'Nuværende periode', color: 'hsl(var(--primary))' },
-        { dataKey: 'Sammenligningsperiode', name: 'Sammenligningsperiode', color: 'hsl(var(--accent))' }
+        { dataKey: 'Sammenligningsperiode', name: 'Sammenligningsperiode', color: 'hsl(var(--cat-single))' }
       ]}
       xAxisLabel="Metrik"
       yAxisLabel="Værdi"

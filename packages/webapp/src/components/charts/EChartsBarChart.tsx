@@ -161,16 +161,18 @@ export const EChartsBarChart: React.FC<EChartsBarChartProps> = ({
       }
       
       return {
-        name: bar.name || bar.dataKey,
-        type: 'bar' as const,
-        data: data.map(item => item[bar.dataKey] as number),
-        itemStyle: {
+      name: bar.name || bar.dataKey,
+      type: 'bar' as const,
+      data: data.map(item => item[bar.dataKey] as number),
+      itemStyle: {
           color: (params: any) => createGradientFromHSL(resolvedColor),
           borderRadius: [6, 6, 0, 0],
           shadowBlur: 8,
           shadowColor: 'rgba(0, 0, 0, 0.15)',
           shadowOffsetY: 2
-        },
+      },
+      // Store resolved color for legend
+      _resolvedColor: resolvedColor,
       label: showValueLabels ? {
         show: true,
         position: 'top' as const,
@@ -193,8 +195,8 @@ export const EChartsBarChart: React.FC<EChartsBarChartProps> = ({
           borderColor: resolvedColor
         },
         focus: 'series' as const
+        }
       }
-    }
     })
 
     return {
@@ -242,7 +244,19 @@ export const EChartsBarChart: React.FC<EChartsBarChartProps> = ({
           fontSize: 11
         },
         itemGap: 20,
-        iconSize: 12
+        iconSize: 12,
+        // Use the same resolved colors for legend as bars
+        data: series.map((s: any) => {
+          const bar = bars.find(b => (b.name || b.dataKey) === s.name)
+          const resolvedBarColor = bar ? resolveColor(bar.color) : chartColors[0] || 'hsl(206, 88%, 52%)'
+          return {
+            name: s.name,
+            icon: 'rect',
+            itemStyle: {
+              color: resolvedBarColor
+            }
+          }
+        })
       } : {
         show: false
       },
