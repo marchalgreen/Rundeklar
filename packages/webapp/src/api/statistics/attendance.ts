@@ -718,16 +718,11 @@ export const getGroupAttendanceOverTime = async (
     })
   })
 
-  // Convert to array and deduplicate (in case of any duplicates)
-  const resultMap = new Map<string, GroupAttendanceOverTime>()
+  // Convert to array - deduplication happens via Map keys (groupMonthKey is unique)
+  const result: GroupAttendanceOverTime[] = []
   
   Array.from(groupMonthStats.entries()).forEach(([groupMonthKey, stats]) => {
     const [groupName, monthKey] = groupMonthKey.split('_')
-    
-    // Skip if we already have this group+month combination
-    if (resultMap.has(groupMonthKey)) {
-      return
-    }
     
     const [yearStr, monthStr] = monthKey.split('-')
     const year = parseInt(yearStr, 10)
@@ -735,7 +730,7 @@ export const getGroupAttendanceOverTime = async (
     const uniqueSessions = stats.sessions.size
     const averageAttendance = uniqueSessions > 0 ? stats.checkInCount / uniqueSessions : 0
 
-    resultMap.set(groupMonthKey, {
+    result.push({
       groupName,
       month: monthKey,
       year,
@@ -747,8 +742,8 @@ export const getGroupAttendanceOverTime = async (
     })
   })
 
-  // Convert to array and sort by group name, then by month
-  const result = Array.from(resultMap.values()).sort((a, b) => {
+  // Sort by group name, then by month
+  result.sort((a, b) => {
     const groupCompare = a.groupName.localeCompare(b.groupName)
     if (groupCompare !== 0) return groupCompare
     return a.month.localeCompare(b.month)

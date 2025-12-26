@@ -8,6 +8,7 @@
 import { useCallback, useState, useMemo, useEffect } from 'react'
 import type { AttendancePeriod } from '../../lib/statistics/dateRange'
 import { calculateDateRange } from '../../lib/statistics/dateRange'
+import { MAX_COMPARISON_PERIOD_DAYS } from '../../lib/statistics/constants'
 
 export interface UseStatisticsFiltersReturn {
   // Period filter state
@@ -126,14 +127,13 @@ export function useStatisticsFilters(): UseStatisticsFiltersReturn {
       return true
     }
     
-    // Disable if custom period is more than 1 year
+    // Disable if custom period is more than maximum allowed days
     if (attendancePeriod === 'custom' && customDateFrom && customDateTo) {
       const from = new Date(customDateFrom)
       const to = new Date(customDateTo)
       const diffTime = Math.abs(to.getTime() - from.getTime())
       const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24))
-      // More than 365 days
-      if (diffDays > 365) {
+      if (diffDays > MAX_COMPARISON_PERIOD_DAYS) {
         return true
       }
     }
