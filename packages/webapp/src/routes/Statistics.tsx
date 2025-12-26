@@ -1,15 +1,15 @@
 import React from 'react'
 import { PageCard } from '../components/ui'
 import { usePlayers } from '../hooks'
-import {
-  useStatisticsFilters,
-  useTrainingAttendance,
-  usePlayerStatistics,
+import { 
+  useStatisticsFilters, 
+  useTrainingAttendance, 
+  usePlayerStatistics, 
   usePlayerComparison,
   useStatisticsView
 } from '../hooks/statistics'
-import {
-  StatisticsLanding,
+import { 
+  StatisticsLanding, 
   StatisticsHeader,
   StatisticsTrainingView,
   StatisticsPlayerView

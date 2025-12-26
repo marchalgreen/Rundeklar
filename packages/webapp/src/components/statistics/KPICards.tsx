@@ -47,16 +47,16 @@ export const KPICards: React.FC<KPICardsProps> = ({ kpis, loading = false }) => 
           <div className="flex flex-col flex-1 min-w-0">
             <span className="text-xs sm:text-sm text-[hsl(var(--muted))]">Total indtjekninger</span>
             <div className="flex items-baseline gap-2">
-              {loading && kpis.totalCheckIns === 0 ? (
-                <span className="text-xs sm:text-sm text-[hsl(var(--muted))]">Indlæser...</span>
-              ) : (
+                {loading && kpis.totalCheckIns === 0 ? (
+                  <span className="text-xs sm:text-sm text-[hsl(var(--muted))]">Indlæser...</span>
+                ) : (
                 <AnimatedNumber
                   value={kpis.totalCheckIns}
                   duration={1500}
                   decimals={0}
                   className="text-lg sm:text-xl font-semibold text-[hsl(var(--foreground))] tabular-nums"
                 />
-              )}
+                )}
               {checkInDelta && !loading && (
                 <div className={`flex items-center gap-1 ${checkInDelta.color} motion-safe:transition-all motion-safe:duration-200`} title={kpis.previousPeriod ? `vs forrige periode (${new Date(kpis.previousPeriod.dateFrom).toLocaleDateString('da-DK')} - ${new Date(kpis.previousPeriod.dateTo).toLocaleDateString('da-DK')})` : ''}>
                   {checkInDelta.icon}
@@ -78,16 +78,16 @@ export const KPICards: React.FC<KPICardsProps> = ({ kpis, loading = false }) => 
           <div className="flex flex-col flex-1 min-w-0">
             <span className="text-xs sm:text-sm text-[hsl(var(--muted))]">Træningssessioner</span>
             <div className="flex items-baseline gap-2">
-              {loading && kpis.totalSessions === 0 ? (
-                <span className="text-xs sm:text-sm text-[hsl(var(--muted))]">Indlæser...</span>
-              ) : (
+                {loading && kpis.totalSessions === 0 ? (
+                  <span className="text-xs sm:text-sm text-[hsl(var(--muted))]">Indlæser...</span>
+                ) : (
                 <AnimatedNumber
                   value={kpis.totalSessions}
                   duration={1500}
                   decimals={0}
                   className="text-lg sm:text-xl font-semibold text-[hsl(var(--foreground))] tabular-nums"
                 />
-              )}
+                )}
               {sessionsDelta && !loading && (
                 <div className={`flex items-center gap-1 ${sessionsDelta.color} motion-safe:transition-all motion-safe:duration-200`} title={kpis.previousPeriod ? `vs forrige periode (${new Date(kpis.previousPeriod.dateFrom).toLocaleDateString('da-DK')} - ${new Date(kpis.previousPeriod.dateTo).toLocaleDateString('da-DK')})` : ''}>
                   {sessionsDelta.icon}
@@ -109,16 +109,16 @@ export const KPICards: React.FC<KPICardsProps> = ({ kpis, loading = false }) => 
           <div className="flex flex-col flex-1 min-w-0">
             <span className="text-xs sm:text-sm text-[hsl(var(--muted))]">Gennemsnit pr. session</span>
             <div className="flex items-baseline gap-2">
-              {loading && kpis.averageAttendance === 0 ? (
-                <span className="text-xs sm:text-sm text-[hsl(var(--muted))]">Indlæser...</span>
-              ) : (
+                {loading && kpis.averageAttendance === 0 ? (
+                  <span className="text-xs sm:text-sm text-[hsl(var(--muted))]">Indlæser...</span>
+                ) : (
                 <AnimatedNumber
                   value={kpis.averageAttendance}
                   duration={1500}
                   decimals={1}
                   className="text-lg sm:text-xl font-semibold text-[hsl(var(--foreground))] tabular-nums"
                 />
-              )}
+                )}
               {attendanceDelta && !loading && (
                 <div className={`flex items-center gap-1 ${attendanceDelta.color} motion-safe:transition-all motion-safe:duration-200`} title={kpis.previousPeriod ? `vs forrige periode (${new Date(kpis.previousPeriod.dateFrom).toLocaleDateString('da-DK')} - ${new Date(kpis.previousPeriod.dateTo).toLocaleDateString('da-DK')})` : ''}>
                   {attendanceDelta.icon}
@@ -140,16 +140,16 @@ export const KPICards: React.FC<KPICardsProps> = ({ kpis, loading = false }) => 
           <div className="flex flex-col flex-1 min-w-0">
             <span className="text-xs sm:text-sm text-[hsl(var(--muted))]">Unikke spillere</span>
             <div className="flex items-baseline gap-2">
-              {loading && kpis.uniquePlayers === 0 ? (
-                <span className="text-xs sm:text-sm text-[hsl(var(--muted))]">Indlæser...</span>
-              ) : (
+                {loading && kpis.uniquePlayers === 0 ? (
+                  <span className="text-xs sm:text-sm text-[hsl(var(--muted))]">Indlæser...</span>
+                ) : (
                 <AnimatedNumber
                   value={kpis.uniquePlayers}
                   duration={1500}
                   decimals={0}
                   className="text-lg sm:text-xl font-semibold text-[hsl(var(--foreground))] tabular-nums"
                 />
-              )}
+                )}
               {playersDelta && !loading && (
                 <div className={`flex items-center gap-1 ${playersDelta.color} motion-safe:transition-all motion-safe:duration-200`} title={kpis.previousPeriod ? `vs forrige periode (${new Date(kpis.previousPeriod.dateFrom).toLocaleDateString('da-DK')} - ${new Date(kpis.previousPeriod.dateTo).toLocaleDateString('da-DK')})` : ''}>
                   {playersDelta.icon}
