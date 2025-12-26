@@ -5,6 +5,15 @@
   "logo": "fulllogo_transparent_nobuffer_horizontal.png",
   "maxCourts": 8,
   "planId": "professional",
-  "features": {}
+  "features": {},
+  "badmintonplayerRankingListUrl": "https://badmintonplayer.dk/DBF/Ranglister/#287,2025,,0,,,1148,0,,,,15,,,,0,,,,,,",
+  "badmintonplayerRankingLists": {
+    "singleHerre": "https://badmintonplayer.dk/DBF/Ranglister/#288,2025,,0,,,1148,0,,,,15,,,,0,,,,,,M",
+    "doubleHerre": "https://badmintonplayer.dk/DBF/Ranglister/#289,2025,,0,,,1148,0,,,,15,,,,0,,,,,,M",
+    "mixHerre": "https://badmintonplayer.dk/DBF/Ranglister/#292,2025,,0,,,1148,0,,,,15,,,,0,,,,,,M",
+    "mixDame": "https://badmintonplayer.dk/DBF/Ranglister/#292,2025,,0,,,1148,0,,,,15,,,,0,,,,,,K",
+    "doubleDame": "https://badmintonplayer.dk/DBF/Ranglister/#289,2025,,0,,,1148,0,,,,15,,,,0,,,,,,K",
+    "singleDame": "https://badmintonplayer.dk/DBF/Ranglister/#288,2025,,0,,,1148,0,,,,15,,,,0,,,,,,K"
+  }
 }
 
