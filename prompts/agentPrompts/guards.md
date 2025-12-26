@@ -181,12 +181,20 @@ export async function createPlayer(input: PlayerCreateInput): Promise<Player> { 
   - **Data fetching** → Use existing hooks or create new ones following the pattern
 
 • **Before Writing Code Checklist**:
-  1. **Where should this code live?** (component, hook, service, utility, API?)
-  2. **Does similar code already exist?** (check hooks, services, utilities)
-  3. **Is this reusable?** (extract if yes)
-  4. **What's the separation of concerns?** (UI vs logic vs data)
-  5. **Should this be a new file?** (if it's a new concern/feature)
-  6. **What pattern do similar features use?** (review existing code)
+  1. **Understand the problem first**: 
+     - What is the actual problem? (not just symptoms)
+     - What does the user want to achieve?
+     - What are the constraints/requirements?
+  2. **Propose solution before implementing**:
+     - Explain what you think the problem is
+     - Explain how you plan to solve it
+     - Verify the solution will actually solve the problem (mental test)
+  3. **Where should this code live?** (component, hook, service, utility, API?)
+  4. **Does similar code already exist?** (check hooks, services, utilities)
+  5. **Is this reusable?** (extract if yes)
+  6. **What's the separation of concerns?** (UI vs logic vs data)
+  7. **Should this be a new file?** (if it's a new concern/feature)
+  8. **What pattern do similar features use?** (review existing code)
 
 • **File Organization Principles**:
   - **Single Responsibility**: Each file should have one clear purpose
