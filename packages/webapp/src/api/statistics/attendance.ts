@@ -135,7 +135,7 @@ export const getTrainingGroupAttendance = async (
 
         const stats = groupStats.get(groupName)!
         stats.checkInCount++
-        stats.uniquePlayers.add(checkIn.playerId)
+        stats.uniquePlayers.add(playerId)
         stats.sessions.add(stat.sessionId)
       })
     })
