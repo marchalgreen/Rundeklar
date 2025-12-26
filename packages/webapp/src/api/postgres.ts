@@ -277,17 +277,61 @@ const rowToMatchResult = (row: any): MatchResult => {
  */
 const rowToStatisticsSnapshot = (row: any): StatisticsSnapshot => {
   // Helper to ensure array format (handles JSONB strings, null, undefined, etc.)
-  const ensureArray = (value: any): any[] => {
+  // CRITICAL: postgres.js returns JSONB values as JavaScript objects/arrays when possible
+  // But when stored as JSONB strings (legacy data), they come as strings and need parsing
+  const ensureArray = (value: any, fieldName: string = 'field'): any[] => {
+    // Already an array - return as-is
     if (Array.isArray(value)) return value
+    
+    // Null or undefined - return empty array
     if (value == null) return []
+    
+    // String - try to parse as JSON (handles JSONB strings from database)
     if (typeof value === 'string') {
+      // Handle double-encoded strings (can happen through API serialization)
+      let stringToParse = value
+      // If string looks like it's already JSON-encoded, try parsing twice
+      if (stringToParse.startsWith('"') && stringToParse.endsWith('"')) {
+        try {
+          stringToParse = JSON.parse(stringToParse)
+          // If result is still a string, parse again
+          if (typeof stringToParse === 'string') {
+            const parsed = JSON.parse(stringToParse)
+            return Array.isArray(parsed) ? parsed : []
+          }
+        } catch {
+          // If first parse fails, continue with original string
+        }
+      }
+      
       try {
-        const parsed = JSON.parse(value)
+        const parsed = JSON.parse(stringToParse)
         return Array.isArray(parsed) ? parsed : []
-      } catch {
+      } catch (e) {
+        // Log parsing errors for debugging (only in development)
+        if (import.meta.env.DEV) {
+          logger.warn(`[rowToStatisticsSnapshot] Failed to parse ${fieldName} as JSON`, {
+            fieldName,
+            valueType: typeof value,
+            valuePreview: value.substring(0, 100),
+            error: e instanceof Error ? e.message : String(e)
+          })
+        }
         return []
       }
     }
+    
+    // Object but not array - log warning in development
+    if (typeof value === 'object' && value !== null) {
+      if (import.meta.env.DEV) {
+        logger.warn(`[rowToStatisticsSnapshot] ${fieldName} is object but not array`, {
+          fieldName,
+          valueType: typeof value,
+          valueKeys: Object.keys(value).slice(0, 5)
+        })
+      }
+    }
+    
     return []
   }
 
@@ -296,9 +340,9 @@ const rowToStatisticsSnapshot = (row: any): StatisticsSnapshot => {
   sessionId: row.session_id,
   sessionDate: row.session_date,
   season: row.season,
-    matches: ensureArray(row.matches),
-    matchPlayers: ensureArray(row.match_players),
-    checkIns: ensureArray(row.check_ins),
+    matches: ensureArray(row.matches, 'matches'),
+    matchPlayers: ensureArray(row.match_players, 'matchPlayers'),
+    checkIns: ensureArray(row.check_ins, 'checkIns'),
   createdAt: row.created_at
   }
 }
@@ -324,9 +368,9 @@ export const loadState = async (): Promise<DatabaseState> => {
         logger.error('[loadState] Error loading players', err)
         return []
       }),
-      // Sessions: filter by isolation_id
+      // Sessions: filter by isolation_id (include NULL for demo tenants to match seeded data)
       isolationId
-        ? sql`SELECT * FROM training_sessions WHERE tenant_id = ${tenantId} AND isolation_id = ${isolationId} ORDER BY created_at DESC`.catch(err => {
+        ? sql`SELECT * FROM training_sessions WHERE tenant_id = ${tenantId} AND (isolation_id = ${isolationId} OR isolation_id IS NULL) ORDER BY created_at DESC`.catch(err => {
             logger.error('[loadState] Error loading sessions', err)
             return []
           })
@@ -1255,9 +1299,15 @@ export const deleteCourt = async (id: string): Promise<void> => {
  * Gets all matches from Postgres (uses cache if available).
  */
 export const getMatches = async (): Promise<Match[]> => {
-  // Check cache first
-  if (tableCaches.matches) {
+  // Check cache first - but don't use empty arrays as they might be stale
+  // Only use cache if it has actual data (length > 0)
+  if (tableCaches.matches && tableCaches.matches.length > 0) {
     return tableCaches.matches
+  }
+  
+  // If cache exists but is empty, clear it and query fresh
+  if (tableCaches.matches && tableCaches.matches.length === 0) {
+    tableCaches.matches = null
   }
 
   const sql = getPostgres()
@@ -1265,32 +1315,53 @@ export const getMatches = async (): Promise<Match[]> => {
   const isolationId = await getIsolationIdForCurrentTenant()
   
   let matches
-  if (isolationId) {
-    // Demo tenant: filter by isolation_id from training_sessions
-    matches = await sql`
-      SELECT m.* FROM matches m
-      INNER JOIN training_sessions ts ON m.session_id = ts.id
-      WHERE m.tenant_id = ${tenantId} 
-        AND ts.isolation_id = ${isolationId}
-      ORDER BY m.started_at
-    `
-  } else {
-    // Production tenants: filter by NULL isolation_id
-    matches = await sql`
-      SELECT m.* FROM matches m
-      INNER JOIN training_sessions ts ON m.session_id = ts.id
-      WHERE m.tenant_id = ${tenantId} 
-        AND (ts.isolation_id IS NULL OR ts.isolation_id = '')
-      ORDER BY m.started_at
-    `
+  try {
+    if (isolationId) {
+      // Demo tenant: include both current isolation_id AND NULL isolation_id (seeded data)
+      matches = await sql`
+        SELECT m.* FROM matches m
+        INNER JOIN training_sessions ts ON m.session_id = ts.id
+        WHERE m.tenant_id = ${tenantId} 
+          AND (ts.isolation_id = ${isolationId} OR ts.isolation_id IS NULL)
+        ORDER BY m.started_at
+      `
+    } else {
+      // Production tenants: filter by NULL isolation_id
+      matches = await sql`
+        SELECT m.* FROM matches m
+        INNER JOIN training_sessions ts ON m.session_id = ts.id
+        WHERE m.tenant_id = ${tenantId} 
+          AND (ts.isolation_id IS NULL OR ts.isolation_id = '')
+        ORDER BY m.started_at
+      `
+    }
+  } catch (error) {
+    logger.error('[getMatches] Query failed', {
+      error,
+      tenantId,
+      isolationId
+    })
+    throw error
   }
   
   const converted = matches.map(rowToMatch)
   
-  // Update cache
-  tableCaches.matches = converted
-  if (cachedState) {
-    cachedState.matches = converted
+  logger.debug('[getMatches] Query completed', {
+    tenantId,
+    isolationId,
+    rawCount: matches.length,
+    convertedCount: converted.length
+  })
+  
+  // Only cache if we got results - don't cache empty arrays as they might be stale
+  if (converted.length > 0) {
+    tableCaches.matches = converted
+    if (cachedState) {
+      cachedState.matches = converted
+    }
+  } else {
+    // Don't cache empty arrays - leave cache as null so next call will retry
+    tableCaches.matches = null
   }
   
   return converted
@@ -1413,9 +1484,15 @@ export const deleteMatch = async (id: string): Promise<void> => {
  * Gets all match players from Postgres (uses cache if available).
  */
 export const getMatchPlayers = async (): Promise<MatchPlayer[]> => {
-  // Check cache first
-  if (tableCaches.matchPlayers) {
+  // Check cache first - but don't use empty arrays as they might be stale
+  // Only use cache if it has actual data (length > 0)
+  if (tableCaches.matchPlayers && tableCaches.matchPlayers.length > 0) {
     return tableCaches.matchPlayers
+  }
+  
+  // If cache exists but is empty, clear it and query fresh
+  if (tableCaches.matchPlayers && tableCaches.matchPlayers.length === 0) {
+    tableCaches.matchPlayers = null
   }
 
   const sql = getPostgres()
@@ -1423,32 +1500,53 @@ export const getMatchPlayers = async (): Promise<MatchPlayer[]> => {
   const isolationId = await getIsolationIdForCurrentTenant()
   
   let matchPlayers
-  if (isolationId) {
-    // Demo tenant: filter by isolation_id from training_sessions via matches
-    matchPlayers = await sql`
-      SELECT mp.* FROM match_players mp
-      INNER JOIN matches m ON mp.match_id = m.id
-      INNER JOIN training_sessions ts ON m.session_id = ts.id
-      WHERE mp.tenant_id = ${tenantId} 
-        AND ts.isolation_id = ${isolationId}
-    `
-  } else {
-    // Production tenants: filter by NULL isolation_id
-    matchPlayers = await sql`
-      SELECT mp.* FROM match_players mp
-      INNER JOIN matches m ON mp.match_id = m.id
-      INNER JOIN training_sessions ts ON m.session_id = ts.id
-      WHERE mp.tenant_id = ${tenantId} 
-        AND (ts.isolation_id IS NULL OR ts.isolation_id = '')
-    `
+  try {
+    if (isolationId) {
+      // Demo tenant: include both current isolation_id AND NULL isolation_id (seeded data)
+      matchPlayers = await sql`
+        SELECT mp.* FROM match_players mp
+        INNER JOIN matches m ON mp.match_id = m.id
+        INNER JOIN training_sessions ts ON m.session_id = ts.id
+        WHERE mp.tenant_id = ${tenantId} 
+          AND (ts.isolation_id = ${isolationId} OR ts.isolation_id IS NULL)
+      `
+    } else {
+      // Production tenants: filter by NULL isolation_id
+      matchPlayers = await sql`
+        SELECT mp.* FROM match_players mp
+        INNER JOIN matches m ON mp.match_id = m.id
+        INNER JOIN training_sessions ts ON m.session_id = ts.id
+        WHERE mp.tenant_id = ${tenantId} 
+          AND (ts.isolation_id IS NULL OR ts.isolation_id = '')
+      `
+    }
+  } catch (error) {
+    logger.error('[getMatchPlayers] Query failed', {
+      error,
+      tenantId,
+      isolationId
+    })
+    throw error
   }
   
   const converted = matchPlayers.map(rowToMatchPlayer)
   
-  // Update cache
-  tableCaches.matchPlayers = converted
-  if (cachedState) {
-    cachedState.matchPlayers = converted
+  logger.debug('[getMatchPlayers] Query completed', {
+    tenantId,
+    isolationId,
+    rawCount: matchPlayers.length,
+    convertedCount: converted.length
+  })
+  
+  // Only cache if we got results - don't cache empty arrays as they might be stale
+  if (converted.length > 0) {
+    tableCaches.matchPlayers = converted
+    if (cachedState) {
+      cachedState.matchPlayers = converted
+    }
+  } else {
+    // Don't cache empty arrays - leave cache as null so next call will retry
+    tableCaches.matchPlayers = null
   }
   
   return converted
@@ -1569,20 +1667,66 @@ export const deleteMatchPlayer = async (id: string): Promise<void> => {
  * Gets all statistics snapshots from Postgres (uses cache if available).
  */
 export const getStatisticsSnapshots = async (): Promise<StatisticsSnapshot[]> => {
-  // Check cache first
-  if (tableCaches.statistics) {
+  // Check cache first - but don't use empty arrays as they might be stale
+  // Only use cache if it has actual data (length > 0)
+  if (tableCaches.statistics && tableCaches.statistics.length > 0) {
     return tableCaches.statistics
+  }
+  
+  // If cache exists but is empty, clear it and query fresh
+  if (tableCaches.statistics && tableCaches.statistics.length === 0) {
+    tableCaches.statistics = null
   }
 
   const sql = getPostgres()
   const tenantId = getTenantId()
-  const snapshots = await sql`SELECT * FROM statistics_snapshots WHERE tenant_id = ${tenantId} ORDER BY session_date DESC`
+  const isolationId = await getIsolationIdForCurrentTenant()
+  
+  // Filter by isolation_id to match loadState behavior
+  // For demo tenant: also include sessions with NULL isolation_id (seeded data)
+  // This allows seeded data to be visible alongside user-created data
+  let snapshots
+  try {
+  if (isolationId) {
+    // Demo tenant: include both current isolation_id AND NULL isolation_id (seeded data)
+    snapshots = await sql`
+      SELECT ss.* FROM statistics_snapshots ss
+      INNER JOIN training_sessions ts ON ss.session_id = ts.id
+      WHERE ss.tenant_id = ${tenantId} 
+        AND (ts.isolation_id = ${isolationId} OR ts.isolation_id IS NULL)
+      ORDER BY ss.session_date DESC
+    `
+  } else {
+    // Production tenants: only NULL isolation_id
+    snapshots = await sql`
+      SELECT ss.* FROM statistics_snapshots ss
+      INNER JOIN training_sessions ts ON ss.session_id = ts.id
+      WHERE ss.tenant_id = ${tenantId} AND (ts.isolation_id IS NULL OR ts.isolation_id = '')
+      ORDER BY ss.session_date DESC
+    `
+    }
+  } catch (error) {
+    logger.error('[getStatisticsSnapshots] Query failed', {
+      error,
+      tenantId,
+      isolationId
+    })
+    throw error
+  }
+  
   const converted = snapshots.map(rowToStatisticsSnapshot)
   
-  // Update cache
+  // Only cache if we got results - don't cache empty arrays as they might be stale
+  // This prevents race conditions where an empty cache from a failed query
+  // prevents subsequent successful queries
+  if (converted.length > 0) {
   tableCaches.statistics = converted
   if (cachedState) {
     cachedState.statistics = converted
+    }
+  } else {
+    // Don't cache empty arrays - leave cache as null so next call will retry
+    tableCaches.statistics = null
   }
   
   return converted
@@ -1594,19 +1738,21 @@ export const getStatisticsSnapshots = async (): Promise<StatisticsSnapshot[]> =>
 export const createStatisticsSnapshot = async (snapshot: Omit<StatisticsSnapshot, 'id' | 'createdAt'>): Promise<StatisticsSnapshot> => {
   const sql = getPostgres()
   const tenantId = getTenantId()
-  const [created] = await sql`
-    INSERT INTO statistics_snapshots (session_id, session_date, season, matches, match_players, check_ins, tenant_id)
-    VALUES (
-      ${snapshot.sessionId},
-      ${snapshot.sessionDate},
-      ${snapshot.season},
-      ${JSON.stringify(snapshot.matches)},
-      ${JSON.stringify(snapshot.matchPlayers)},
-      ${JSON.stringify(snapshot.checkIns)},
-      ${tenantId}
-    )
-    RETURNING *
-  `
+  // Use raw SQL with ::jsonb cast to ensure arrays are stored as JSONB, not text
+  const [created] = await sql.unsafe(
+    `INSERT INTO statistics_snapshots (session_id, session_date, season, matches, match_players, check_ins, tenant_id)
+     VALUES ($1, $2, $3, $4::jsonb, $5::jsonb, $6::jsonb, $7)
+     RETURNING *`,
+    [
+      snapshot.sessionId,
+      snapshot.sessionDate,
+      snapshot.season,
+      JSON.stringify(snapshot.matches),
+      JSON.stringify(snapshot.matchPlayers),
+      JSON.stringify(snapshot.checkIns),
+      tenantId
+    ]
+  )
   const converted = rowToStatisticsSnapshot(created)
   
   // Optimistic cache update
@@ -1641,9 +1787,15 @@ export const deleteStatisticsSnapshot = async (id: string): Promise<void> => {
  * Gets all match results from Postgres (uses cache if available).
  */
 export const getMatchResults = async (): Promise<MatchResult[]> => {
-  // Check cache first
-  if (tableCaches.matchResults) {
+  // Check cache first - but don't use empty arrays as they might be stale
+  // Only use cache if it has actual data (length > 0)
+  if (tableCaches.matchResults && tableCaches.matchResults.length > 0) {
     return tableCaches.matchResults
+  }
+  
+  // If cache exists but is empty, clear it and query fresh
+  if (tableCaches.matchResults && tableCaches.matchResults.length === 0) {
+    tableCaches.matchResults = null
   }
 
   const sql = getPostgres()
@@ -1651,30 +1803,54 @@ export const getMatchResults = async (): Promise<MatchResult[]> => {
   const isolationId = await getIsolationIdForCurrentTenant()
   
   let matchResults
-  if (isolationId) {
-    // Demo tenant: filter by isolation_id from training_sessions via matches
-    matchResults = await sql`
-      SELECT mr.* FROM match_results mr
-      INNER JOIN matches m ON mr.match_id = m.id
-      INNER JOIN training_sessions ts ON m.session_id = ts.id
-      WHERE mr.tenant_id = ${tenantId} 
-        AND ts.isolation_id = ${isolationId}
-    `
-  } else {
-    // Production tenants: filter by NULL isolation_id
-    matchResults = await sql`
-      SELECT mr.* FROM match_results mr
-      INNER JOIN matches m ON mr.match_id = m.id
-      INNER JOIN training_sessions ts ON m.session_id = ts.id
-      WHERE mr.tenant_id = ${tenantId} 
-        AND (ts.isolation_id IS NULL OR ts.isolation_id = '')
-    `
+  try {
+    if (isolationId) {
+      // Demo tenant: include both current isolation_id AND NULL isolation_id (seeded data)
+      matchResults = await sql`
+        SELECT mr.* FROM match_results mr
+        INNER JOIN matches m ON mr.match_id = m.id
+        INNER JOIN training_sessions ts ON m.session_id = ts.id
+        WHERE mr.tenant_id = ${tenantId} 
+          AND (ts.isolation_id = ${isolationId} OR ts.isolation_id IS NULL)
+      `
+    } else {
+      // Production tenants: filter by NULL isolation_id
+      matchResults = await sql`
+        SELECT mr.* FROM match_results mr
+        INNER JOIN matches m ON mr.match_id = m.id
+        INNER JOIN training_sessions ts ON m.session_id = ts.id
+        WHERE mr.tenant_id = ${tenantId} 
+          AND (ts.isolation_id IS NULL OR ts.isolation_id = '')
+      `
+    }
+  } catch (error) {
+    logger.error('[getMatchResults] Query failed', {
+      error,
+      tenantId,
+      isolationId
+    })
+    throw error
   }
   
   const converted = matchResults.map(rowToMatchResult)
   
-  // Cache the results
-  tableCaches.matchResults = converted
+  logger.debug('[getMatchResults] Query completed', {
+    tenantId,
+    isolationId,
+    rawCount: matchResults.length,
+    convertedCount: converted.length,
+    sampleMatchIds: converted.slice(0, 5).map(mr => mr.matchId)
+  })
+  
+  // Only cache if we got results - don't cache empty arrays as they might be stale
+  // This prevents race conditions where an empty cache from a failed query
+  // prevents subsequent successful queries
+  if (converted.length > 0) {
+    tableCaches.matchResults = converted
+  } else {
+    // Don't cache empty arrays - leave cache as null so next call will retry
+    tableCaches.matchResults = null
+  }
   
   return converted
 }

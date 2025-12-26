@@ -16,12 +16,12 @@ export const StatisticsFilters: React.FC<StatisticsFiltersProps> = ({ filters })
   const {
     attendancePeriod,
     setAttendancePeriod,
-    selectedMonth,
-    setSelectedMonth,
     customDateFrom,
     setCustomDateFrom,
     customDateTo,
     setCustomDateTo,
+    enableComparison,
+    setEnableComparison,
     selectedGroups,
     setSelectedGroups,
     allGroups
@@ -36,7 +36,7 @@ export const StatisticsFilters: React.FC<StatisticsFiltersProps> = ({ filters })
   }
   
   return (
-    <div className="card-glass-active border-hair rounded-lg p-3 sm:p-4 md:p-5 shadow-sm">
+    <div className="rounded-[28px] bg-[hsl(var(--surface)/0.9)] ring-1 ring-[hsl(var(--line)/0.16)] shadow-[0_30px_60px_hsl(var(--accent-blue)/0.12)] backdrop-blur-xl p-3 sm:p-4 md:p-5 transition-all motion-reduce:transition-none">
       <div className="flex flex-col gap-4">
         <h3 className="text-sm sm:text-base font-semibold text-[hsl(var(--foreground))]">
           Filtre
@@ -50,6 +50,17 @@ export const StatisticsFilters: React.FC<StatisticsFiltersProps> = ({ filters })
           <div className="flex flex-wrap items-center gap-2">
             <button
               type="button"
+              onClick={() => setAttendancePeriod('currentSeason')}
+              className={`px-2 sm:px-3 py-1 text-xs rounded transition-colors ${
+                attendancePeriod === 'currentSeason'
+                  ? 'bg-[hsl(var(--primary))] text-white'
+                  : 'bg-[hsl(var(--surface-2))] text-[hsl(var(--muted))] hover:bg-[hsl(var(--surface))]'
+              }`}
+            >
+              Denne sæson
+            </button>
+            <button
+              type="button"
               onClick={() => setAttendancePeriod('last7days')}
               className={`px-2 sm:px-3 py-1 text-xs rounded transition-colors ${
                 attendancePeriod === 'last7days'
@@ -61,36 +72,14 @@ export const StatisticsFilters: React.FC<StatisticsFiltersProps> = ({ filters })
             </button>
             <button
               type="button"
-              onClick={() => setAttendancePeriod('lastMonth')}
+              onClick={() => setAttendancePeriod('last30days')}
               className={`px-2 sm:px-3 py-1 text-xs rounded transition-colors ${
-                attendancePeriod === 'lastMonth'
+                attendancePeriod === 'last30days'
                   ? 'bg-[hsl(var(--primary))] text-white'
                   : 'bg-[hsl(var(--surface-2))] text-[hsl(var(--muted))] hover:bg-[hsl(var(--surface))]'
               }`}
             >
-              Sidste måned
-            </button>
-            <button
-              type="button"
-              onClick={() => setAttendancePeriod('lastSeason')}
-              className={`px-2 sm:px-3 py-1 text-xs rounded transition-colors ${
-                attendancePeriod === 'lastSeason'
-                  ? 'bg-[hsl(var(--primary))] text-white'
-                  : 'bg-[hsl(var(--surface-2))] text-[hsl(var(--muted))] hover:bg-[hsl(var(--surface))]'
-              }`}
-            >
-              Denne sæson
-            </button>
-            <button
-              type="button"
-              onClick={() => setAttendancePeriod('month')}
-              className={`px-2 sm:px-3 py-1 text-xs rounded transition-colors ${
-                attendancePeriod === 'month'
-                  ? 'bg-[hsl(var(--primary))] text-white'
-                  : 'bg-[hsl(var(--surface-2))] text-[hsl(var(--muted))] hover:bg-[hsl(var(--surface))]'
-              }`}
-            >
-              Måned
+              Sidste 30 dage
             </button>
             <button
               type="button"
@@ -105,26 +94,18 @@ export const StatisticsFilters: React.FC<StatisticsFiltersProps> = ({ filters })
             </button>
             <button
               type="button"
-              onClick={() => setAttendancePeriod('all')}
+              onClick={() => setAttendancePeriod('allSeasons')}
               className={`px-2 sm:px-3 py-1 text-xs rounded transition-colors ${
-                attendancePeriod === 'all'
+                attendancePeriod === 'allSeasons'
                   ? 'bg-[hsl(var(--primary))] text-white'
                   : 'bg-[hsl(var(--surface-2))] text-[hsl(var(--muted))] hover:bg-[hsl(var(--surface))]'
               }`}
             >
-              Hele perioden
+              Alle sæsoner
             </button>
           </div>
           
           {/* Period-specific inputs */}
-          {attendancePeriod === 'month' && (
-            <input
-              type="month"
-              value={selectedMonth}
-              onChange={(e) => setSelectedMonth(e.target.value)}
-              className="mt-2 px-2 py-1 text-xs rounded bg-[hsl(var(--surface))] border-hair max-w-[200px]"
-            />
-          )}
           {attendancePeriod === 'custom' && (
             <div className="mt-2 flex flex-col sm:flex-row gap-2">
               <input
@@ -145,6 +126,44 @@ export const StatisticsFilters: React.FC<StatisticsFiltersProps> = ({ filters })
           )}
         </div>
 
+        {/* Period Comparison Toggle */}
+        <div className="flex flex-col gap-2">
+          <div className="flex items-center gap-2">
+            <input
+              type="checkbox"
+              id="enableComparison"
+              checked={enableComparison}
+              onChange={(e) => setEnableComparison(e.target.checked)}
+              disabled={filters.isComparisonDisabled}
+              className={`w-4 h-4 rounded border-hair text-[hsl(var(--primary))] focus:ring-focus ${
+                filters.isComparisonDisabled 
+                  ? 'opacity-50 cursor-not-allowed' 
+                  : 'cursor-pointer'
+              }`}
+            />
+            <label 
+              htmlFor="enableComparison" 
+              className={`text-xs sm:text-sm font-medium ${
+                filters.isComparisonDisabled 
+                  ? 'text-[hsl(var(--muted))] cursor-not-allowed' 
+                  : 'text-[hsl(var(--foreground))] cursor-pointer'
+              }`}
+            >
+              Sammenlign med samme periode sidste år
+            </label>
+          </div>
+          {filters.isComparisonDisabled && (
+            <p className="text-xs text-[hsl(var(--muted))] ml-6">
+              Ikke tilgængelig for "Alle sæsoner" eller perioder længere end 1 år
+            </p>
+          )}
+          {enableComparison && !filters.isComparisonDisabled && (
+            <p className="text-xs text-[hsl(var(--muted))] ml-6">
+              Sammenligner automatisk med samme datointerval sidste år for at se sæsonudsvingninger
+            </p>
+          )}
+        </div>
+
         {/* Training Group Multi-Select - Button Layout */}
         <div className="flex flex-col gap-2">
           <label className="text-sm font-semibold text-[hsl(var(--foreground))]">
@@ -153,39 +172,56 @@ export const StatisticsFilters: React.FC<StatisticsFiltersProps> = ({ filters })
           {allGroups.length === 0 ? (
             <p className="text-xs text-[hsl(var(--muted))]">Ingen træningsgrupper fundet</p>
           ) : (
-            <div className="flex flex-wrap gap-2">
-              {allGroups.map((group) => {
-                const isSelected = selectedGroups.includes(group)
-                return (
+            <>
+              <div className="flex flex-wrap gap-2">
+                {allGroups.map((group) => {
+                  const isSelected = selectedGroups.includes(group)
+                  return (
+                    <button
+                      key={group}
+                      type="button"
+                      onClick={() => handleGroupToggle(group)}
+                      className={`px-3 py-1.5 text-xs sm:text-sm rounded-full transition-all ${
+                        isSelected
+                          ? 'bg-[hsl(var(--primary))] text-white font-medium shadow-sm'
+                          : 'bg-[hsl(var(--surface-2))] text-[hsl(var(--muted))] hover:bg-[hsl(var(--surface))] hover:text-[hsl(var(--foreground))]'
+                      }`}
+                    >
+                      {group}
+                    </button>
+                  )
+                })}
+              </div>
+              <div className="flex items-center gap-2 mt-1">
+                {selectedGroups.length === allGroups.length ? (
+                  <span className="text-xs text-[hsl(var(--muted))]">
+                    Alle grupper valgt
+                  </span>
+                ) : (
+                  <>
+                    <span className="text-xs text-[hsl(var(--muted))]">
+                      {selectedGroups.length} af {allGroups.length} {allGroups.length === 1 ? 'gruppe' : 'grupper'} valgt
+                    </span>
+                    <button
+                      type="button"
+                      onClick={() => setSelectedGroups([...allGroups])}
+                      className="text-xs text-[hsl(var(--muted))] hover:text-[hsl(var(--foreground))] transition-colors underline"
+                    >
+                      Vælg alle
+                    </button>
+                  </>
+                )}
+                {selectedGroups.length > 0 && (
                   <button
-                    key={group}
                     type="button"
-                    onClick={() => handleGroupToggle(group)}
-                    className={`px-3 py-1.5 text-xs sm:text-sm rounded-full transition-all ${
-                      isSelected
-                        ? 'bg-[hsl(var(--primary))] text-white font-medium shadow-sm'
-                        : 'bg-[hsl(var(--surface-2))] text-[hsl(var(--muted))] hover:bg-[hsl(var(--surface))] hover:text-[hsl(var(--foreground))]'
-                    }`}
+                    onClick={() => setSelectedGroups([])}
+                    className="text-xs text-[hsl(var(--muted))] hover:text-[hsl(var(--foreground))] transition-colors underline"
                   >
-                    {group}
+                    Fravælg alle
                   </button>
-                )
-              })}
-            </div>
-          )}
-          {selectedGroups.length > 0 && (
-            <div className="flex items-center gap-2 mt-1">
-              <span className="text-xs text-[hsl(var(--muted))]">
-                {selectedGroups.length} {selectedGroups.length === 1 ? 'gruppe' : 'grupper'} valgt
-              </span>
-              <button
-                type="button"
-                onClick={() => setSelectedGroups([])}
-                className="text-xs text-[hsl(var(--muted))] hover:text-[hsl(var(--foreground))] transition-colors underline"
-              >
-                Ryd valg
-              </button>
-            </div>
+                )}
+              </div>
+            </>
           )}
         </div>
       </div>

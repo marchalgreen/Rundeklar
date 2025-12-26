@@ -3,6 +3,28 @@
 These guardrails define the non-negotiable engineering constraints for the Clairity Desktop-Web codebase.
 They ensure maintainability, data safety, and design consistency across all epics.
 
+**See also:**
+- [README.md](./README.md) - Master index and quick reference
+- [design-tokens.md](./design-tokens.md) - Design system tokens and UI conventions
+- [aw.md](./aw.md) - Always Works™ testing checklist
+- [commit.md](./commit.md) - Git commit workflow
+- [workflow-playbook.md](./workflow-playbook.md) - Epic workflow and delivery process
+
+⸻
+
+## 🚨 Quick Reference - CRITICAL Rules
+
+These rules must **always** be followed:
+
+1. **Responsive Design**: ALL UI components MUST be responsive by default (mobile-first)
+2. **Design Tokens**: Use `hsl(var(--token))` - never hardcoded hex values (see [design-tokens.md](./design-tokens.md))
+3. **Error Handling**: Always use `normalizeError` from `src/lib/errors.ts` - never console.log/error
+4. **Testing**: Always Works™ - test before claiming it works (see [aw.md](./aw.md))
+5. **Code Organization**: Think architecturally - extract reusable logic to hooks/services/utilities
+6. **JSDoc**: Required for all exported functions, classes, components, hooks, and services
+7. **Plan First**: Always propose plan before implementation (see [workflow-playbook.md](./workflow-playbook.md))
+8. **No Secrets**: Never commit secrets, connection strings, or real URLs
+
 ⸻
 
 🧩 Architecture & File Structure
@@ -16,7 +38,7 @@ They ensure maintainability, data safety, and design consistency across all epic
 ⸻
 
 🎨 Styling & Design System
-• Use Tailwind v4 tokens (see design-tokens.md and tailwind.config.ts).
+• Use Tailwind v4 tokens (see [design-tokens.md](./design-tokens.md) and tailwind.config.ts).
 • No hard-coded hex values. Use tokens or semantic Tailwind utilities.
 • Use shadcn/ui primitives and lucide-react icons for all new UI.
 • No new UI libraries or design systems unless explicitly justified and approved in the epic plan.
@@ -24,6 +46,8 @@ They ensure maintainability, data safety, and design consistency across all epic
 • Hairlines use rings, not borders:
 • ✅ `ring-1 ring-[hsl(var(--line)/.12)]`
 • ❌ `border-[hsl(var(--line))]`
+
+**For complete token reference and UI patterns, see [design-tokens.md](./design-tokens.md).**
 
 📱 Responsive Design (CRITICAL)
 • **ALL UI components MUST be responsive by default.** This is non-negotiable.
@@ -80,6 +104,8 @@ pnpm prisma migrate deploy
 • Never commit secrets, connection strings, or real URLs.
 • .env keys must remain documented but values must be safe placeholders.
 
+**For complete database change workflow, see [workflow-playbook.md](./workflow-playbook.md).**
+
 ⸻
 
 🧪 Build & Quality Gates
@@ -88,6 +114,8 @@ pnpm prisma migrate deploy
 • Respect TypeScript strict mode.
 • No any unless wrapped in a typed alias with a // TODO: refine note.
 • Ensure new files pass Prettier and ESLint automatically.
+
+**Before committing, ensure your code Always Works™ (see [aw.md](./aw.md)).**
 
 ⸻
 
@@ -181,12 +209,20 @@ export async function createPlayer(input: PlayerCreateInput): Promise<Player> { 
   - **Data fetching** → Use existing hooks or create new ones following the pattern
 
 • **Before Writing Code Checklist**:
-  1. **Where should this code live?** (component, hook, service, utility, API?)
-  2. **Does similar code already exist?** (check hooks, services, utilities)
-  3. **Is this reusable?** (extract if yes)
-  4. **What's the separation of concerns?** (UI vs logic vs data)
-  5. **Should this be a new file?** (if it's a new concern/feature)
-  6. **What pattern do similar features use?** (review existing code)
+  1. **Understand the problem first**: 
+     - What is the actual problem? (not just symptoms)
+     - What does the user want to achieve?
+     - What are the constraints/requirements?
+  2. **Propose solution before implementing**:
+     - Explain what you think the problem is
+     - Explain how you plan to solve it
+     - Verify the solution will actually solve the problem (mental test)
+  3. **Where should this code live?** (component, hook, service, utility, API?)
+  4. **Does similar code already exist?** (check hooks, services, utilities)
+  5. **Is this reusable?** (extract if yes)
+  6. **What's the separation of concerns?** (UI vs logic vs data)
+  7. **Should this be a new file?** (if it's a new concern/feature)
+  8. **What pattern do similar features use?** (review existing code)
 
 • **File Organization Principles**:
   - **Single Responsibility**: Each file should have one clear purpose

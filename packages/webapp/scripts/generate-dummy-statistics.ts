@@ -217,16 +217,16 @@ async function generateDummyHistoricalData(sql: ReturnType<typeof postgres>, ten
   }))
 
   const now = new Date()
-  
+
   // Generate sessions for the past 1.5 seasons (about 18 months)
   // Normalize: equal amount of data for current and previous season
   const sessions: Array<{ date: string; season: string }> = []
   const monthsToGenerate = 18
-  
+
   // Start from 18 months ago
   const startDate = new Date(now)
   startDate.setMonth(startDate.getMonth() - monthsToGenerate)
-  
+    
   // Find first training day (Tuesday or Thursday)
   let currentDate = getNextTrainingDay(startDate)
   
@@ -242,16 +242,16 @@ async function generateDummyHistoricalData(sql: ReturnType<typeof postgres>, ten
       
       // Normalize: max 8 sessions per month per season
       if (count < 8) {
-        const hour = 18 + Math.floor(Math.random() * 3) // 18-20 (6-8 PM)
-        const minute = Math.floor(Math.random() * 4) * 15 // 0, 15, 30, 45
+      const hour = 18 + Math.floor(Math.random() * 3) // 18-20 (6-8 PM)
+      const minute = Math.floor(Math.random() * 4) * 15 // 0, 15, 30, 45
         const sessionDate = new Date(currentDate)
         sessionDate.setHours(hour, minute, 0, 0)
-        
+      
         const season = getSeasonFromDate(sessionDate.toISOString())
-        sessions.push({
+      sessions.push({
           date: sessionDate.toISOString(),
-          season
-        })
+        season
+      })
         
         sessionsPerMonth.set(monthKey, count + 1)
       }

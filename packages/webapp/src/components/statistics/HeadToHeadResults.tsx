@@ -9,6 +9,8 @@ interface HeadToHeadResultsProps {
   player2Name: string
   player1Wins: number
   player2Wins: number
+  showOnlyPartners?: boolean // If true, only show partner matches. If false, only show opponent matches.
+  onCompare?: () => void // Callback to open comparison view
 }
 
 /**
@@ -19,19 +21,10 @@ export const HeadToHeadResults: React.FC<HeadToHeadResultsProps> = ({
   player1Name,
   player2Name,
   player1Wins,
-  player2Wins
+  player2Wins,
+  showOnlyPartners = false,
+  onCompare
 }) => {
-  if (results.length === 0) {
-    return (
-      <div className="card-glass-active border-hair rounded-lg p-3 sm:p-4 md:p-5 shadow-sm">
-        <h3 className="text-sm sm:text-base font-semibold text-[hsl(var(--foreground))] mb-3 sm:mb-4">
-          Head-to-Head
-        </h3>
-        <p className="text-xs sm:text-sm text-[hsl(var(--muted))]">Ingen kampresultater mellem disse spillere</p>
-      </div>
-    )
-  }
-
   const formatScore = (scoreData: HeadToHeadResult['scoreData'], sport: string) => {
     if (sport === 'badminton' && 'sets' in scoreData) {
       const sets = scoreData.sets.filter(s => s.team1 !== null && s.team2 !== null)
@@ -40,19 +33,41 @@ export const HeadToHeadResults: React.FC<HeadToHeadResultsProps> = ({
     return 'N/A'
   }
 
-  // Filter to only show matches where they played against each other (not as partners)
-  const headToHeadOnly = results.filter(r => !r.wasPartner)
-  const partnerMatches = results.filter(r => r.wasPartner)
+  // Filter based on showOnlyPartners flag
+  const filteredResults = showOnlyPartners 
+    ? results.filter(r => r.wasPartner)
+    : results.filter(r => !r.wasPartner)
+
+  if (filteredResults.length === 0) {
+    return (
+      <div className="p-3 text-center text-xs sm:text-sm text-[hsl(var(--muted))]">
+        {showOnlyPartners 
+          ? 'Ingen kampe spillet sammen'
+          : 'Ingen kampe mod hinanden'}
+      </div>
+    )
+  }
+
+  // For partner matches, we don't need win/loss summary
+  const headToHeadOnly = showOnlyPartners ? [] : filteredResults
+  const partnerMatches = showOnlyPartners ? filteredResults : []
 
   return (
-    <div className="card-glass-active border-hair rounded-lg p-3 sm:p-4 md:p-5 shadow-sm">
-      <h3 className="text-sm sm:text-base font-semibold text-[hsl(var(--foreground))] mb-3 sm:mb-4">
-        Head-to-Head
-      </h3>
-      
-      {/* Win/Loss Summary */}
+    <div className="space-y-3">
+      {/* Compare button */}
+      {onCompare && (
+        <button
+          type="button"
+          onClick={onCompare}
+          className="w-full px-3 py-2 text-xs sm:text-sm font-medium text-[hsl(var(--primary))] bg-[hsl(var(--primary)/.1)] hover:bg-[hsl(var(--primary)/.15)] rounded-md border-hair ring-1 ring-[hsl(var(--primary)/.2)] transition-colors"
+        >
+          Sammenlign spillere
+        </button>
+      )}
+
+      {/* Win/Loss Summary - only for opponent matches */}
       {headToHeadOnly.length > 0 && (
-        <div className="mb-4 p-3 bg-[hsl(var(--surface))] rounded-md border-hair">
+        <div className="p-3 bg-[hsl(var(--surface))] rounded-md border-hair">
           <div className="flex items-center justify-between gap-4">
             <div className="flex items-center gap-2">
               <span className="text-xs sm:text-sm font-medium text-[hsl(var(--foreground))]">
@@ -81,7 +96,7 @@ export const HeadToHeadResults: React.FC<HeadToHeadResultsProps> = ({
           <h4 className="text-xs sm:text-sm font-medium text-[hsl(var(--muted))] mb-2">
             Mod hinanden ({headToHeadOnly.length})
           </h4>
-          <div className="space-y-2">
+          <div className="space-y-2 max-h-[400px] overflow-y-auto pr-2 scrollbar-thin">
             {headToHeadOnly.map((result) => (
               <div
                 key={result.matchId}
@@ -98,9 +113,30 @@ export const HeadToHeadResults: React.FC<HeadToHeadResultsProps> = ({
                     <Target className="w-4 h-4 sm:w-5 sm:h-5 text-[hsl(var(--muted))] flex-shrink-0" />
                   )}
                   <div className="flex flex-col min-w-0 flex-1">
-                    <span className="text-xs sm:text-sm font-medium text-[hsl(var(--foreground))]">
-                      {result.player1Won ? player1Name : player2Name} vandt
-                    </span>
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <span className="text-xs sm:text-sm font-medium text-[hsl(var(--foreground))]">
+                        {result.player1Won ? player1Name : player2Name} vandt
+                      </span>
+                      {/* Show 2v2 match details */}
+                      {result.partnerNames && result.partnerNames.length > 0 && (
+                        <>
+                          <span className="text-[hsl(var(--muted))]">•</span>
+                          <Users className="w-3 h-3 text-[hsl(var(--primary))]" />
+                          <span className="text-xs sm:text-sm text-[hsl(var(--foreground))]">
+                            Med {result.partnerNames.join(', ')}
+                          </span>
+                        </>
+                      )}
+                      {result.opponentNamesSeparate && result.opponentNamesSeparate.length > 0 && (
+                        <>
+                          <span className="text-[hsl(var(--muted))]">•</span>
+                          <Target className="w-3 h-3 text-[hsl(var(--muted))]" />
+                          <span className="text-xs sm:text-sm text-[hsl(var(--foreground))]">
+                            Mod {result.opponentNamesSeparate.join(', ')}
+                          </span>
+                        </>
+                      )}
+                    </div>
                     <span className="text-xs text-[hsl(var(--muted))] mt-0.5">
                       {formatDate(result.date, false)} • {formatScore(result.scoreData, result.sport)}
                     </span>
@@ -118,7 +154,7 @@ export const HeadToHeadResults: React.FC<HeadToHeadResultsProps> = ({
           <h4 className="text-xs sm:text-sm font-medium text-[hsl(var(--muted))] mb-2">
             Spillet sammen ({partnerMatches.length})
           </h4>
-          <div className="space-y-2">
+          <div className="space-y-2 max-h-[400px] overflow-y-auto pr-2 scrollbar-thin">
             {partnerMatches.map((result) => (
               <div
                 key={result.matchId}
@@ -131,9 +167,20 @@ export const HeadToHeadResults: React.FC<HeadToHeadResultsProps> = ({
                 <div className="flex items-center gap-2 sm:gap-3 min-w-0 flex-1">
                   <Users className="w-4 h-4 sm:w-5 sm:h-5 text-[hsl(var(--muted))] flex-shrink-0" />
                   <div className="flex flex-col min-w-0 flex-1">
-                    <span className="text-xs sm:text-sm font-medium text-[hsl(var(--foreground))]">
-                      {result.player1Won ? 'Sejr' : 'Nederlag'} sammen
-                    </span>
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <span className="text-xs sm:text-sm font-medium text-[hsl(var(--foreground))]">
+                        {result.player1Won ? 'Sejr' : 'Nederlag'} sammen
+                      </span>
+                      {result.opponentNames && result.opponentNames.length > 0 && (
+                        <>
+                          <span className="text-[hsl(var(--muted))]">•</span>
+                          <Target className="w-3 h-3 text-[hsl(var(--muted))]" />
+                          <span className="text-xs sm:text-sm text-[hsl(var(--muted))]">
+                            Mod {result.opponentNames.join(', ')}
+                          </span>
+                        </>
+                      )}
+                    </div>
                     <span className="text-xs text-[hsl(var(--muted))] mt-0.5">
                       {formatDate(result.date, false)} • {formatScore(result.scoreData, result.sport)}
                     </span>

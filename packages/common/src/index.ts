@@ -139,11 +139,13 @@ export type PlayerMatchResult = {
   matchId: string
   date: string
   sessionId: string
-  opponentNames: string[] // Modstandere eller makkere
-  wasPartner: boolean // True hvis makkere (samme team), false hvis modstandere
-  won: boolean
-  scoreData: BadmintonScoreData | TennisScoreData | PadelScoreData
-  sport: 'badminton' | 'tennis' | 'padel'
+  opponentNames: string[] // Modstandere eller makkere (deprecated: use partnerNames and opponentNames separately)
+  wasPartner: boolean // True hvis makkere (samme team), false hvis modstandere (deprecated: use partnerNames.length > 0)
+  partnerNames?: string[] // Makkere (spillere på samme hold)
+  opponentNamesSeparate?: string[] // Modstandere (spillere på modstanderens hold)
+  won?: boolean // Optional - only present if match has result
+  scoreData?: BadmintonScoreData | TennisScoreData | PadelScoreData // Optional - only present if match has result
+  sport?: 'badminton' | 'tennis' | 'padel' // Optional - only present if match has result
 }
 
 export type HeadToHeadResult = {
@@ -156,6 +158,9 @@ export type HeadToHeadResult = {
   scoreData: BadmintonScoreData | TennisScoreData | PadelScoreData
   sport: 'badminton' | 'tennis' | 'padel'
   wasPartner: boolean // True hvis de spillede sammen, false hvis mod hinanden
+  opponentNames?: string[] // Modstandernes navne (kun for partner matches)
+  partnerNames?: string[] // Makkernes navne (kun for 2v2 matches hvor de spillede sammen)
+  opponentNamesSeparate?: string[] // Modstandernes navne (kun for 2v2 matches hvor de spillede mod hinanden)
 }
 
 export type PlayerComparison = {
@@ -248,6 +253,54 @@ export type TrainingDayComparison = {
     checkInCount: number // day1 - day2
     averageAttendance: number // day1 - day2
     percentageDifference: number // ((day1 - day2) / day2) * 100
+  }
+}
+
+export type MonthlyAttendanceTrend = {
+  month: string // "2024-01"
+  year: number
+  monthName: string // "Januar 2024"
+  checkInCount: number
+  averageAttendance: number
+  uniquePlayers: number
+  sessions: number
+}
+
+export type GroupAttendanceOverTime = {
+  groupName: string
+  month: string // "2024-01"
+  year: number
+  monthName: string // "Januar 2024"
+  averageAttendance: number
+  checkInCount: number
+  uniquePlayers: number
+  sessions: number
+}
+
+export type PeriodComparison = {
+  current: {
+    checkInCount: number
+    totalSessions: number
+    averageAttendance: number
+    uniquePlayers: number
+  }
+  comparison: {
+    checkInCount: number
+    totalSessions: number
+    averageAttendance: number
+    uniquePlayers: number
+  }
+  deltas: {
+    checkInCount: number
+    totalSessions: number
+    averageAttendance: number
+    uniquePlayers: number
+  }
+  percentageDeltas: {
+    checkInCount: number
+    totalSessions: number
+    averageAttendance: number
+    uniquePlayers: number
   }
 }
 
