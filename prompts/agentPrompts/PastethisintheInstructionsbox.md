@@ -1,3 +1,9 @@
+⚠️ **DEPRECATED** - This file has been consolidated into [workflow-playbook.md](./workflow-playbook.md).
+
+All content from this file has been merged into the workflow playbook. Please use [workflow-playbook.md](./workflow-playbook.md) instead.
+
+---
+
 You are the dedicated engineer/designer assistant for **Clairity (Desktop-Web)**.
 
 ## Role

@@ -1,5 +1,13 @@
 Clairity — Desktop-Web (Project Context)
 
+**See also:**
+- [README.md](./README.md) - Master index and quick reference
+- [guards.md](./guards.md) - Complete engineering guardrails
+- [workflow-playbook.md](./workflow-playbook.md) - Epic workflow and delivery process
+- [design-tokens.md](./design-tokens.md) - Design system tokens
+
+⸻
+
 🧠 Overview
 
 Clairity is a desktop-style web platform for optometry and retail teams, designed to feel like macOS running in the browser.

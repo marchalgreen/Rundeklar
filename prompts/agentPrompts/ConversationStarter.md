@@ -2,6 +2,11 @@
 
 Use these to kick off structured, production-ready work.
 
+**See also:**
+- [README.md](./README.md) - Master index and quick reference
+- [guards.md](./guards.md) - Complete engineering guardrails
+- [workflow-playbook.md](./workflow-playbook.md) - Epic workflow and delivery process
+
 ⸻
 
 🧩 Core Development

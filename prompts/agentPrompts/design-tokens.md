@@ -1,5 +1,12 @@
 🎨 Design Tokens & UI Conventions (Tailwind v4)
 
+**See also:**
+- [README.md](./README.md) - Master index and quick reference
+- [guards.md](./guards.md) - Complete engineering guardrails (includes styling rules)
+- [workflow-playbook.md](./workflow-playbook.md) - Epic workflow and validation gates
+
+⸻
+
 🧩 Token Source & Mapping
 
 All tokens live as CSS custom properties inside globals.css.  

@@ -30,20 +30,32 @@
 - Keep commit subjects concise (<72 chars) and use conventional prefixes (`fix:`, `feat:`, `chore(scope):`, etc.) that match the guidance in the prompt file.
 - Each PR should describe the user-facing outcome, list validation steps or screenshots for UI changes, and link relevant Linear/GitHub issues.
 - Request review once `pnpm validate` and targeted Playwright suites pass locally; note any skipped tests or follow-up tasks in the PR body.
+- **For complete guardrails and workflows, see [`prompts/agentPrompts/README.md`](prompts/agentPrompts/README.md).**
 
 ## Environment & Data
 - Copy `.env.example` to `.env.local` and update secrets; sync shared variables with `pnpm sync-env` when rotating credentials.
 - Run `pnpm prisma migrate dev` to apply schema changes locally; production deploys rely on `prisma migrate deploy` invoked during CI.
 
 ## Agent Reference Prompts
-- `prompts/starterprompt.md` – long-form onboarding with stack details and the Booking Kalender epic reference.
-- `prompts/tree.md` – command for regenerating the repo tree snapshot (`__project-tree.txt`).
-- `prompts/commands.md` – quick reminder to run `npx tsc --noEmit` when you need every TypeScript error.
-- `prompts/agentPrompts/project-context.md` – overview of product goals and current focus areas to ground new work.
-- `prompts/agentPrompts/workflow-playbook.md` – expected delivery cadence, QA checklist, and review flow for collaborators.
-- `prompts/agentPrompts/ConversationStarter.md` – canned prompts to kick off plan-first work, build fixes, and docs regeneration.
+
+**Start here:** [`prompts/agentPrompts/README.md`](prompts/agentPrompts/README.md) – Master index with quick reference to all guardrails and workflows.
+
+### Core Guardrails & Workflows
+- `prompts/agentPrompts/README.md` – **Master index** with quick reference and navigation guide for all guardrails.
+- `prompts/agentPrompts/guards.md` – Complete engineering guardrails covering architecture, styling, docs, database, and accessibility.
+- `prompts/agentPrompts/workflow-playbook.md` – Expected delivery cadence, QA checklist, and review flow for collaborators (includes Plan-First workflow).
+- `prompts/agentPrompts/design-tokens.md` – Canonical naming and usage of design tokens when styling components.
 - `prompts/agentPrompts/aw.md` – Always Works™ testing checklist to confirm changes are validated end-to-end.
-- `prompts/agentPrompts/commit.md` – intelligent commit workflow guardrails and conventional commit expectations.
-- `prompts/agentPrompts/design-tokens.md` – canonical naming and usage of design tokens when styling components.
-- `prompts/agentPrompts/guards.md` – engineering guardrails covering architecture, styling, docs, database, and accessibility.
-- `prompts/agentPrompts/PastethisintheInstructionsbox.md` – baseline instructions to paste into sessions so agents follow Clairity’s Plan-First workflow.
+- `prompts/agentPrompts/commit.md` – Intelligent commit workflow guardrails and conventional commit expectations.
+
+### Reference Documentation
+- `prompts/agentPrompts/project-context.md` – Overview of product goals and current focus areas to ground new work.
+- `prompts/agentPrompts/ConversationStarter.md` – Canned prompts to kick off plan-first work, build fixes, and docs regeneration.
+
+### Other Prompts
+- `prompts/starterprompt.md` – Long-form onboarding with stack details and the Booking Kalender epic reference.
+- `prompts/tree.md` – Command for regenerating the repo tree snapshot (`__project-tree.txt`).
+- `prompts/commands.md` – Quick reminder to run `npx tsc --noEmit` when you need every TypeScript error.
+
+### Deprecated
+- `prompts/agentPrompts/PastethisintheInstructionsbox.md` – ⚠️ **DEPRECATED** – Content has been consolidated into `workflow-playbook.md`.
