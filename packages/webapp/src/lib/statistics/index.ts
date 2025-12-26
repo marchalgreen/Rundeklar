@@ -7,4 +7,7 @@
 export * from './dateRange'
 export * from './kpiCalculation'
 export * from './insights'
+export * from './constants'
+export * from './deduplication'
+export * from './colorUtils'
 
