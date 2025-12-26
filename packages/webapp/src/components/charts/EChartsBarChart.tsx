@@ -1,6 +1,7 @@
 import React, { useMemo, useEffect, useState } from 'react'
 import ReactECharts from 'echarts-for-react'
 import type { EChartsOption } from 'echarts'
+import { createGradientFromHSL } from '../../lib/statistics/colorUtils'
 
 /**
  * Gets computed CSS variable value as a color string.
@@ -32,50 +33,6 @@ const getCSSVariableColor = (cssVar: string): string => {
   }
   
   return value
-}
-
-/**
- * Creates a gradient color object for ECharts from an HSL color.
- * @param hslColor - HSL color string (e.g., "hsl(206, 88%, 52%)")
- * @returns ECharts gradient object
- */
-const createGradient = (hslColor: string): any => {
-  // Extract HSL values - handle both formats: "hsl(206, 88%, 52%)" and "206 88% 52%"
-  let hslMatch = hslColor.match(/hsl\((\d+),\s*(\d+)%,\s*(\d+)%\)/)
-  
-  // If no match, try format without hsl() wrapper
-  if (!hslMatch) {
-    hslMatch = hslColor.match(/(\d+)\s+(\d+)%\s+(\d+)%/)
-  }
-  
-  if (!hslMatch) {
-    // Fallback to solid color if parsing fails
-    return hslColor
-  }
-  
-  const [, h, s, l] = hslMatch
-  const hue = parseInt(h)
-  const saturation = parseInt(s)
-  const lightness = parseInt(l)
-  
-  // Create more dramatic gradient from lighter to darker
-  const lightColor = `hsl(${hue}, ${saturation}%, ${Math.min(lightness + 20, 95)}%)`
-  const darkColor = `hsl(${hue}, ${Math.min(saturation + 15, 100)}%, ${Math.max(lightness - 20, 5)}%)`
-  
-  const gradient = {
-    type: 'linear' as const,
-    x: 0,
-    y: 0,
-    x2: 0,
-    y2: 1,
-    colorStops: [
-      { offset: 0, color: lightColor },
-      { offset: 1, color: darkColor }
-    ],
-    global: false
-  }
-  
-  return gradient
 }
 
 export interface EChartsBarChartData {
@@ -200,7 +157,7 @@ export const EChartsBarChart: React.FC<EChartsBarChartProps> = ({
       
       // Store gradient function
       gradientFunctions[gradientId] = (params: any) => {
-        return createGradient(resolvedColor)
+        return createGradientFromHSL(resolvedColor)
       }
       
       return {
@@ -208,7 +165,7 @@ export const EChartsBarChart: React.FC<EChartsBarChartProps> = ({
         type: 'bar' as const,
         data: data.map(item => item[bar.dataKey] as number),
         itemStyle: {
-          color: (params: any) => createGradient(resolvedColor),
+          color: (params: any) => createGradientFromHSL(resolvedColor),
           borderRadius: [6, 6, 0, 0],
           shadowBlur: 8,
           shadowColor: 'rgba(0, 0, 0, 0.15)',

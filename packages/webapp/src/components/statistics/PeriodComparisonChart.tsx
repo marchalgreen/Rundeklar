@@ -1,4 +1,4 @@
-import React from 'react'
+import React, { memo } from 'react'
 import { EChartsBarChart } from '../charts/EChartsBarChart'
 import type { PeriodComparison } from '@rundeklar/common'
 
@@ -16,7 +16,7 @@ interface PeriodComparisonChartProps {
  * 
  * @remarks Follows design tokens and provides consistent styling. Mobile-first responsive design.
  */
-export const PeriodComparisonChart: React.FC<PeriodComparisonChartProps> = ({
+export const PeriodComparisonChart: React.FC<PeriodComparisonChartProps> = memo(({
   data,
   loading = false,
   height = 300
@@ -70,6 +70,6 @@ export const PeriodComparisonChart: React.FC<PeriodComparisonChartProps> = ({
       showValueLabels={true}
     />
   )
-}
+})
 
-
+PeriodComparisonChart.displayName = 'PeriodComparisonChart'

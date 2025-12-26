@@ -1,10 +1,13 @@
-import React, { useMemo } from 'react'
+import React, { useMemo, memo } from 'react'
 import { LineChart, type LineChartData } from '../charts'
 import type { GroupAttendanceOverTime } from '@rundeklar/common'
+import { deduplicateGroupAttendance, createGroupMonthKey } from '../../lib/statistics/deduplication'
+import { darkenHSLColor, getChartColorPalette } from '../../lib/statistics/colorUtils'
 
 interface GroupTrendsChartProps {
   data: GroupAttendanceOverTime[]
   comparisonData?: GroupAttendanceOverTime[]
+  enableComparison?: boolean
   loading?: boolean
   height?: number
 }
@@ -17,40 +20,26 @@ interface GroupTrendsChartProps {
  * 
  * @remarks Follows design tokens and provides consistent styling. Mobile-first responsive design.
  */
-export const GroupTrendsChart: React.FC<GroupTrendsChartProps> = ({
+export const GroupTrendsChart: React.FC<GroupTrendsChartProps> = memo(({
   data,
   comparisonData,
+  enableComparison = false,
   loading = false,
   height = 300
 }) => {
-  const hasComparison = comparisonData && comparisonData.length > 0
+  const hasComparison = enableComparison && comparisonData && comparisonData.length > 0
   
   // Transform data for multi-line chart
   const chartData = useMemo((): LineChartData[] => {
     if (data.length === 0 && !hasComparison) return []
 
-    // Deduplicate current period data
-    const deduplicatedData = new Map<string, GroupAttendanceOverTime>()
-    data.forEach((item) => {
-      const key = `${item.groupName}_${item.month}`
-      if (!deduplicatedData.has(key)) {
-        deduplicatedData.set(key, item)
-      }
-    })
+    // Deduplicate current period data using utility function
+    const uniqueData = deduplicateGroupAttendance(data)
 
-    // Deduplicate comparison data
-    const deduplicatedComparisonData = new Map<string, GroupAttendanceOverTime>()
-    if (comparisonData) {
-      comparisonData.forEach((item) => {
-        const key = `${item.groupName}_${item.month}`
-        if (!deduplicatedComparisonData.has(key)) {
-          deduplicatedComparisonData.set(key, item)
-        }
-      })
-    }
-
-    const uniqueData = Array.from(deduplicatedData.values())
-    const uniqueComparisonData = Array.from(deduplicatedComparisonData.values())
+    // Deduplicate comparison data using utility function
+    const uniqueComparisonData = comparisonData
+      ? deduplicateGroupAttendance(comparisonData)
+      : []
 
     // Get all unique months from both periods
     const currentMonths = Array.from(new Set(uniqueData.map(d => d.month))).sort()
@@ -85,7 +74,7 @@ export const GroupTrendsChart: React.FC<GroupTrendsChartProps> = ({
 
       return result
     })
-  }, [data, comparisonData, hasComparison])
+  }, [data, comparisonData, enableComparison])
 
   // Create lines for each group with distinct colors
   const lines = useMemo(() => {
@@ -97,39 +86,35 @@ export const GroupTrendsChart: React.FC<GroupTrendsChartProps> = ({
     }
     const groupNames = Array.from(allGroupNames).sort()
     
-    // Use a color palette that works well for multiple groups
-    const colorPalette = [
-      'hsl(206, 88%, 52%)', // primary blue
-      'hsl(158, 58%, 42%)', // success green
-      'hsl(38, 92%, 52%)',  // warning orange
-      'hsl(258, 65%, 58%)', // purple
-      'hsl(195, 70%, 52%)'  // cyan
-    ]
+    // Use design token-based color palette
+    const colorPalette = getChartColorPalette()
     
     const result: Array<{ dataKey: string; name: string; color: string; strokeDasharray?: string }> = []
     
     groupNames.forEach((groupName, index) => {
-      const color = colorPalette[index % colorPalette.length]
+      // Get color from palette (cycle through if more groups than colors)
+      const baseColor = colorPalette[index % colorPalette.length]
+      
       // Current period - solid line
       result.push({
         dataKey: groupName,
         name: groupName,
-        color
+        color: baseColor
       })
       
-      // Comparison period - dashed line with same color but slightly muted
+      // Comparison period - dashed line with darkened color for visual distinction
       if (hasComparison) {
         result.push({
           dataKey: `${groupName} (sidste år)`,
           name: `${groupName} (sidste år)`,
-          color: color.replace('52%)', '42%)'), // Slightly darker
+          color: darkenHSLColor(baseColor),
           strokeDasharray: '5 5' // Dashed line
         })
       }
     })
     
     return result
-  }, [data, comparisonData, hasComparison])
+  }, [data, comparisonData, enableComparison])
 
   if (loading) {
     return (
@@ -161,5 +146,7 @@ export const GroupTrendsChart: React.FC<GroupTrendsChartProps> = ({
       showGrid={true}
     />
   )
-}
+})
+
+GroupTrendsChart.displayName = 'GroupTrendsChart'
 
