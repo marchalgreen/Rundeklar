@@ -1098,7 +1098,7 @@ export const getPlayerStatistics = async (
     })
     
     // Filter match results by relevant stats (same filters as above)
-    let relevantMatchResults = allMatchResults.filter((mr) => {
+    const relevantMatchResults = allMatchResults.filter((mr) => {
       const match = allMatchesMap.get(mr.matchId)
       if (!match) return false
       
