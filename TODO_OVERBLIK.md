@@ -73,13 +73,6 @@
   - **Beskrivelse:** Review alle any types, fix hvor muligt, dokumenter hvor any er nødvendigt med TODO comments
   - **Files:** `packages/webapp/src/components/players/EditablePartnerCell.tsx`, `packages/webapp/src/api/postgres.ts`
 
-#### Epic 2.4: UX Forbedringer
-- 🔄 **ux-auto-match-balance** - Auto-match - Balance Scoring (DEFERRED)
-  - **Effort:** 2-3 dage
-  - **Beskrivelse:** Overvej at tilføje balance scoring baseret på levels, giv mulighed for at vælge mellem random og balanced
-  - **File:** `packages/webapp/src/api/matches.ts`
-  - **Status:** DEFERRED - Skal implementeres på separat branch efter fokuseret dialog. Nuværende løsning fungerer, og tidligere implementeringer har haft problemer.
-
 ### Sprint 3: Nice-to-Have Features (1 pending)
 
 #### Epic 3.1: Import/Export Funktionalitet
