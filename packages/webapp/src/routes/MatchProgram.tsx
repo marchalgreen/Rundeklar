@@ -70,6 +70,12 @@ const MatchProgramPage = () => {
   const [notesModalPlayer, setNotesModalPlayer] = React.useState<CheckedInPlayer | null>(null)
   const [notesModalOpener, setNotesModalOpener] = React.useState<HTMLElement | null>(null)
   
+  // Move player modal state (mobile-friendly alternative to drag-and-drop)
+  const [moveModalOpen, setMoveModalOpen] = React.useState(false)
+  const [moveModalPlayer, setMoveModalPlayer] = React.useState<Player | null>(null)
+  const [moveModalCurrentCourtIdx, setMoveModalCurrentCourtIdx] = React.useState<number | undefined>(undefined)
+  const [moveModalCurrentSlot, setMoveModalCurrentSlot] = React.useState<number | undefined>(undefined)
+  
   // Match program hook - manages all state and operations
   const matchProgram = useMatchProgram({
     session,
@@ -172,6 +178,24 @@ const MatchProgramPage = () => {
     setNotesModalPlayer(null)
     setNotesModalOpener(null)
   }, [notesModalPlayer, updateNotes])
+
+  /**
+   * Handles opening move player modal (mobile-friendly alternative to drag-and-drop).
+   */
+  const handleMoveClick = React.useCallback((player: Player, courtIdx: number, slot: number) => {
+    setMoveModalPlayer(player)
+    setMoveModalCurrentCourtIdx(courtIdx)
+    setMoveModalCurrentSlot(slot)
+    setMoveModalOpen(true)
+  }, [])
+
+  /**
+   * Handles moving a player via modal (mobile-friendly).
+   */
+  const handleMoveViaModal = React.useCallback(async (courtIdx: number, slot: number) => {
+    if (!moveModalPlayer) return
+    await matchProgram.handleMove(moveModalPlayer.id, courtIdx, slot)
+  }, [moveModalPlayer, matchProgram])
   
   // Get sport from tenant config
   const sport = getTenantSport(config)
