@@ -4,7 +4,11 @@
  */
 
 const RECAPTCHA_SITE_KEY = import.meta.env.VITE_RECAPTCHA_SITE_KEY || ''
-const RECAPTCHA_SECRET_KEY = process.env.RECAPTCHA_SECRET_KEY || ''
+// NOTE: RECAPTCHA_SECRET_KEY should only be used server-side (in API routes)
+// In browser context, we use VITE_ prefix for environment variables
+const RECAPTCHA_SECRET_KEY = typeof process !== 'undefined' && process.env 
+  ? process.env.RECAPTCHA_SECRET_KEY || '' 
+  : ''
 
 /**
  * Load reCAPTCHA script if not already loaded
@@ -127,7 +131,11 @@ export async function verifyRecaptchaToken(
     // Score threshold: 0.5 (adjust based on your needs)
     // Lower scores indicate bot-like behavior
     const score = data.score || 0.0
-    const threshold = parseFloat(process.env.RECAPTCHA_SCORE_THRESHOLD || '0.5')
+    const threshold = parseFloat(
+      (typeof process !== 'undefined' && process.env 
+        ? process.env.RECAPTCHA_SCORE_THRESHOLD 
+        : import.meta.env.VITE_RECAPTCHA_SCORE_THRESHOLD) || '0.5'
+    )
 
     return {
       success: score >= threshold,
