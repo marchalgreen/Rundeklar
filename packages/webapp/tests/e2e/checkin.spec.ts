@@ -15,15 +15,17 @@ test.describe('Check-In Page', () => {
   test('should display check-in interface', async ({ page }) => {
     const helpers = new TestHelpers(page)
     
-    // Wait for page to load
-    await page.waitForLoadState('networkidle')
-    await page.waitForTimeout(1000) // Wait for session check
-    
-    // Check for either active session UI (search input) or empty state
+    // Wait for either active session UI (search input) or empty state to appear
     const searchInput = page.getByPlaceholder(/søg.*spiller|search.*player/i).or(
       page.locator('input[type="text"]').filter({ hasText: /søg/i })
     )
     const emptyState = page.locator('text=/ingen aktiv træning|no active.*session|gå til træner/i')
+    
+    // Wait for at least one to be visible
+    await Promise.race([
+      searchInput.waitFor({ state: 'visible', timeout: 5000 }).catch(() => {}),
+      emptyState.waitFor({ state: 'visible', timeout: 5000 }).catch(() => {})
+    ])
     
     const hasSearch = await helpers.elementExists(searchInput)
     const hasEmptyState = await helpers.elementExists(emptyState)
@@ -58,12 +60,17 @@ test.describe('Check-In Page', () => {
     
     if (exists) {
       await searchInput.fill('test')
-      await page.waitForTimeout(500) // Wait for debounce
-      await page.waitForLoadState('networkidle')
+      await helpers.waitForDebounce()
       
       // Check for results or empty state
       const results = page.locator('[role="list"]').or(page.locator('[data-testid="player-list"]'))
       const emptyMessage = page.locator('text=/ingen resultater|no results/i')
+      
+      // Wait for results to update
+      await Promise.race([
+        results.waitFor({ state: 'visible', timeout: 3000 }).catch(() => {}),
+        emptyMessage.waitFor({ state: 'visible', timeout: 3000 }).catch(() => {})
+      ])
       
       const hasResults = await helpers.elementExists(results)
       const hasEmpty = await helpers.elementExists(emptyMessage)
@@ -81,8 +88,7 @@ test.describe('Check-In Page', () => {
     
     if (exists) {
       await letterFilter.click()
-      await page.waitForTimeout(500)
-      await page.waitForLoadState('networkidle')
+      await page.waitForLoadState('networkidle', { timeout: 2000 }).catch(() => {})
       
       // Verify filter is active (may have visual indicator)
       await expect(letterFilter).toBeVisible()
@@ -111,10 +117,11 @@ test.describe('Check-In Page', () => {
     
     if (playerExists) {
       await playerCard.click()
-      await page.waitForTimeout(500)
       
-      // Verify player is checked in (look for checked-in indicator)
+      // Wait for check-in to complete - look for checked-in indicator or updated UI
       const checkedInIndicator = page.locator('text=/tjekket ind|checked in/i')
+      await checkedInIndicator.waitFor({ state: 'visible', timeout: 5000 }).catch(() => {})
+      
       const hasIndicator = await helpers.elementExists(checkedInIndicator)
       // May show success message or update UI
       expect(hasIndicator || await helpers.elementExists(playerCard)).toBe(true)
@@ -141,7 +148,9 @@ test.describe('Check-In Page', () => {
       
       if (buttonExists) {
         await checkOutButton.click()
-        await page.waitForTimeout(500)
+        
+        // Wait for check-out to complete - player should disappear from checked-in list
+        await checkedInPlayer.waitFor({ state: 'hidden', timeout: 5000 }).catch(() => {})
         
         // Verify player is checked out
         const checkedOut = await helpers.elementExists(checkedInPlayer)
@@ -176,9 +185,9 @@ test.describe('Check-In Page', () => {
       return
     }
     
-    // Wait for players to load
-    await page.waitForTimeout(1000)
-    await page.waitForLoadState('networkidle')
+    // Wait for players API call to complete
+    await helpers.waitForApiCall(/players/i, 10000).catch(() => {})
+    await page.waitForLoadState('networkidle', { timeout: 2000 }).catch(() => {})
     
     // Check that players from multiple groups are shown
     // This is verified by the fact that players appear in the list
@@ -186,6 +195,9 @@ test.describe('Check-In Page', () => {
     const playerCards = page.locator('[role="button"]').filter({ 
       hasText: /check.*in|tjek.*ind/i 
     })
+    
+    // Wait for at least one player card to appear (or confirm empty state)
+    await playerCards.first().waitFor({ state: 'visible', timeout: 5000 }).catch(() => {})
     
     const playerCount = await playerCards.count()
     
@@ -215,7 +227,10 @@ test.describe('Check-In Page', () => {
     
     if (playerExists) {
       await playerCard.click()
-      await page.waitForTimeout(1000)
+      
+      // Wait for check-in to complete
+      const checkedInIndicator = page.locator('text=/tjekket ind|checked in/i')
+      await checkedInIndicator.waitFor({ state: 'visible', timeout: 5000 }).catch(() => {})
     }
     
     // Look for info icon on checked-in player card
@@ -238,12 +253,12 @@ test.describe('Check-In Page', () => {
     } else {
       // Click info icon to open notes modal
       await infoIcon.click()
-      await page.waitForTimeout(500)
       
-      // Look for notes modal
+      // Wait for notes modal to appear
       const notesModal = page.locator('[role="dialog"]').filter({
         hasText: /noter|notes/i
       })
+      await notesModal.waitFor({ state: 'visible', timeout: 5000 }).catch(() => {})
       
       const modalExists = await helpers.elementExists(notesModal)
       
@@ -255,7 +270,10 @@ test.describe('Check-In Page', () => {
         // Save notes
         const saveButton = notesModal.getByRole('button', { name: /gem|save/i })
         await saveButton.click()
-        await page.waitForTimeout(500)
+        
+        // Wait for modal to close and notes to save
+        await notesModal.waitFor({ state: 'hidden', timeout: 5000 }).catch(() => {})
+        await page.waitForLoadState('networkidle', { timeout: 2000 }).catch(() => {})
         
         // Verify notes icon appears (or tooltip shows on hover)
         const updatedInfoIcon = page.locator('button[aria-label*="noter" i]').first()
@@ -275,10 +293,11 @@ test.describe('Check-In Page', () => {
     if (exists) {
       // Hover over info icon
       await infoIcon.hover()
-      await page.waitForTimeout(300)
       
-      // Look for tooltip
+      // Wait for tooltip to appear (may have delay)
       const tooltip = page.locator('[role="tooltip"]')
+      await tooltip.waitFor({ state: 'visible', timeout: 2000 }).catch(() => {})
+      
       const tooltipExists = await helpers.elementExists(tooltip)
       
       // Tooltip may or may not be visible depending on implementation
@@ -296,11 +315,12 @@ test.describe('Check-In Page', () => {
     
     if (exists) {
       await infoIcon.click()
-      await page.waitForTimeout(500)
       
+      // Wait for notes modal to appear
       const notesModal = page.locator('[role="dialog"]').filter({
         hasText: /noter|notes/i
       })
+      await notesModal.waitFor({ state: 'visible', timeout: 5000 }).catch(() => {})
       
       const modalExists = await helpers.elementExists(notesModal)
       
@@ -311,8 +331,12 @@ test.describe('Check-In Page', () => {
         const longText = 'a'.repeat(501)
         await textarea.fill(longText)
         
+        // Wait for validation to trigger
+        await page.waitForTimeout(100) // Small delay for validation
+        
         // Check for validation error
         const errorMessage = notesModal.locator('text=/500.*tegn|500.*char/i')
+        await errorMessage.waitFor({ state: 'visible', timeout: 2000 }).catch(() => {})
         const hasError = await helpers.elementExists(errorMessage)
         
         // Save button should be disabled if validation fails

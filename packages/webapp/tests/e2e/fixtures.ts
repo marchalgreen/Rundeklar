@@ -136,6 +136,40 @@ export class TestHelpers {
     const hash = await this.page.evaluate(() => window.location.hash)
     return hash.includes(`#/${route}`)
   }
+
+  /**
+   * Wait for element to be visible and stable (no animations)
+   */
+  async waitForStable(selector: string | Locator, timeout = 5000) {
+    const locator = typeof selector === 'string' ? this.page.locator(selector) : selector
+    await locator.waitFor({ state: 'visible', timeout })
+    // Wait for any animations to complete
+    await this.page.waitForLoadState('networkidle', { timeout: 2000 }).catch(() => {})
+    return locator
+  }
+
+  /**
+   * Wait for API request matching pattern
+   */
+  async waitForApiCall(urlPattern: string | RegExp, timeout = 10000) {
+    await this.page.waitForResponse(
+      (response) => {
+        const url = response.url()
+        return typeof urlPattern === 'string' 
+          ? url.includes(urlPattern)
+          : urlPattern.test(url)
+      },
+      { timeout }
+    )
+  }
+
+  /**
+   * Wait for debounced input (waits for network idle after input)
+   */
+  async waitForDebounce(timeout = 500) {
+    await this.page.waitForTimeout(timeout)
+    await this.page.waitForLoadState('networkidle', { timeout: 2000 }).catch(() => {})
+  }
 }
 
 /**

@@ -13,11 +13,7 @@ test.describe('Players Page', () => {
   })
 
   test('should display players page', async ({ page }) => {
-    // Wait for page to load
-    await page.waitForLoadState('networkidle')
-    await page.waitForTimeout(1000) // Wait for players to load
-    
-    // Check for players page heading - can be in various formats
+    // Wait for page to load and players heading to appear
     const heading = page.getByRole('heading', { name: /spillere|players/i })
     await expect(heading).toBeVisible({ timeout: 10000 })
   })
@@ -25,14 +21,20 @@ test.describe('Players Page', () => {
   test('should display players list', async ({ page }) => {
     const helpers = new TestHelpers(page)
     
-    // Wait for page to load
-    await page.waitForLoadState('networkidle')
-    await page.waitForTimeout(2000) // Wait for players API call
+    // Wait for players API call to complete
+    await helpers.waitForApiCall(/players/i, 10000).catch(() => {})
     
-    // Look for players table or list
+    // Look for players table or list - wait for at least one to appear
     const playersTable = page.locator('table').or(page.locator('[role="table"]'))
     const playersList = page.locator('[role="list"]')
     const emptyState = page.locator('text=/ingen spillere|no players/i')
+    
+    // Wait for at least one element to be visible
+    await Promise.race([
+      playersTable.waitFor({ state: 'visible', timeout: 5000 }).catch(() => {}),
+      playersList.waitFor({ state: 'visible', timeout: 5000 }).catch(() => {}),
+      emptyState.waitFor({ state: 'visible', timeout: 5000 }).catch(() => {})
+    ])
     
     const hasTable = await helpers.elementExists(playersTable)
     const hasList = await helpers.elementExists(playersList)
@@ -53,11 +55,11 @@ test.describe('Players Page', () => {
     
     if (exists) {
       await searchInput.fill('test')
-      await page.waitForTimeout(500) // Wait for debounce
-      await page.waitForLoadState('networkidle')
+      await helpers.waitForDebounce()
       
-      // Check for filtered results
+      // Check for filtered results - wait for results to update
       const results = page.locator('tbody tr').or(page.locator('[role="listitem"]'))
+      await page.waitForLoadState('networkidle', { timeout: 2000 }).catch(() => {})
       const resultCount = await results.count()
       
       // Results should be filtered (may be 0 if no matches)
@@ -74,8 +76,7 @@ test.describe('Players Page', () => {
     
     if (exists) {
       await statusFilter.click()
-      await page.waitForTimeout(500)
-      await page.waitForLoadState('networkidle')
+      await page.waitForLoadState('networkidle', { timeout: 2000 }).catch(() => {})
       
       // Verify filter is applied
       await expect(statusFilter).toBeVisible()
@@ -105,10 +106,10 @@ test.describe('Players Page', () => {
     
     if (exists) {
       await addButton.click()
-      await page.waitForTimeout(500)
       
-      // Check for create player form/modal
+      // Wait for form/modal to appear
       const form = page.locator('form').or(page.locator('[role="dialog"]'))
+      await form.waitFor({ state: 'visible', timeout: 5000 }).catch(() => {})
       const formExists = await helpers.elementExists(form)
       expect(formExists).toBe(true)
     }
@@ -123,10 +124,10 @@ test.describe('Players Page', () => {
     
     if (exists) {
       await editButton.click()
-      await page.waitForTimeout(500)
       
-      // Check for edit form
+      // Wait for edit form to appear
       const form = page.locator('form')
+      await form.waitFor({ state: 'visible', timeout: 5000 }).catch(() => {})
       const formExists = await helpers.elementExists(form)
       expect(formExists).toBe(true)
     }
@@ -157,11 +158,11 @@ test.describe('Players Page', () => {
     
     if (hasNext) {
       await nextButton.click()
-      await page.waitForTimeout(500)
-      await page.waitForLoadState('networkidle')
+      await page.waitForLoadState('networkidle', { timeout: 2000 }).catch(() => {})
       
-      // Verify page changed
+      // Verify page changed - wait for indicator or updated content
       const pageIndicator = page.locator('text=/side|page/i')
+      await pageIndicator.waitFor({ state: 'visible', timeout: 5000 }).catch(() => {})
       const hasIndicator = await helpers.elementExists(pageIndicator)
       expect(hasIndicator).toBeDefined()
     }
