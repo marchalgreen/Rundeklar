@@ -19,7 +19,6 @@ import { usePlayers, useSelection, useScrollRestoration } from '../hooks'
 import { formatDate } from '../lib/formatting'
 import { PLAYER_CATEGORIES } from '../constants'
 import { useToast } from '../components/ui/Toast'
-import { FixedSizeList as List } from 'react-window'
 import api from '../api'
 
 /**
@@ -1252,45 +1251,20 @@ const PlayersPage = () => {
                     </button>
                   </div>
                   
-                  {/* Player cards - virtualized for large lists */}
-                  {sortedData.length >= 30 ? (
-                    <div className="h-[calc(100vh-300px)] min-h-[400px]">
-                      <List
-                        height={600}
-                        itemCount={sortedData.length}
-                        itemSize={180}
-                        width="100%"
-                      >
-                        {({ index, style }) => (
-                          <div style={{ ...style, paddingBottom: '12px' }}>
-                            <PlayerCardMobile
-                              key={sortedData[index].id}
-                              player={sortedData[index]}
-                              isSelected={selection.isSelected(sortedData[index].id)}
-                              onToggleSelection={selection.toggle}
-                              onEdit={openEdit}
-                              onDelete={handleDelete}
-                              allPlayers={allPlayersForDropdown}
-                            />
-                          </div>
-                        )}
-                      </List>
-                    </div>
-                  ) : (
-                    <div className="space-y-3">
-                      {sortedData.map((player) => (
-                        <PlayerCardMobile
-                          key={player.id}
-                          player={player}
-                          isSelected={selection.isSelected(player.id)}
-                          onToggleSelection={selection.toggle}
-                          onEdit={openEdit}
-                          onDelete={handleDelete}
-                          allPlayers={allPlayersForDropdown}
-                        />
-                      ))}
-                    </div>
-                  )}
+                  {/* Player cards */}
+                  <div className="space-y-3">
+                    {sortedData.map((player) => (
+                      <PlayerCardMobile
+                        key={player.id}
+                        player={player}
+                        isSelected={selection.isSelected(player.id)}
+                        onToggleSelection={selection.toggle}
+                        onEdit={openEdit}
+                        onDelete={handleDelete}
+                        allPlayers={allPlayersForDropdown}
+                      />
+                    ))}
+                  </div>
                 </>
               )}
             </div>

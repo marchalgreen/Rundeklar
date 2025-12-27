@@ -75,10 +75,9 @@ export function DataTable<T>({
   }, [columns, data, sort])
 
   // Determine if virtualization should be enabled (must be before useEffect that uses it)
-  // Only enable for very large lists (200+) to preserve the perfect original view for normal use
-  const shouldVirtualize = enableVirtualization !== undefined 
-    ? enableVirtualization 
-    : sortedData.length >= 200
+  // Disabled by default - only enable explicitly via enableVirtualization prop
+  // This preserves the perfect original view and prevents UI breakage during onboarding
+  const shouldVirtualize = enableVirtualization === true
 
   // Sync horizontal scroll between header and body (only for virtualized tables)
   useEffect(() => {
