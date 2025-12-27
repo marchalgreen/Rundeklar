@@ -7,11 +7,13 @@
 
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import type { Player } from '@rundeklar/common'
+import { Info } from 'lucide-react'
 import api from '../../api'
 import { formatPlayerName } from '../../lib/formatting'
 import { normalizeError } from '../../lib/errors'
 import { PLAYER_GENDERS } from '../../constants'
 import { useToast } from '../ui/Toast'
+import { Tooltip } from '../ui'
 
 /**
  * Props for EditablePartnerCell component.
@@ -54,10 +56,18 @@ const PartnerOverrideDialog: React.FC<{
       onClick={(e) => e.stopPropagation()}
     >
       <h3 className="text-lg font-semibold text-[hsl(var(--foreground))] mb-2">Bekræft overskrivning</h3>
-      <p className="text-sm text-[hsl(var(--muted))] mb-4">
-        Den valgte spiller er allerede tildelt til <strong>{existingPartnerName}</strong>. Vil du overskrive denne
-        tilknytning?
+      <p className="text-sm text-[hsl(var(--muted))] mb-2">
+        Den valgte spiller er allerede tildelt til <strong>{existingPartnerName}</strong> som {partnerType === 'doubles' ? 'double' : 'mixed'} makker.
       </p>
+      <p className="text-sm text-[hsl(var(--muted))] mb-4">
+        Partner-relationer er tovejs: Hvis du vælger denne spiller, vil de automatisk blive tildelt tilbage til {player.name} som {partnerType === 'doubles' ? 'double' : 'mixed'} makker. Den eksisterende relation med {existingPartnerName} vil blive fjernet.
+      </p>
+      <div className="flex items-start gap-2 p-2 bg-[hsl(var(--surface-2))] rounded text-xs text-[hsl(var(--muted))] mb-4">
+        <Info className="h-4 w-4 flex-shrink-0 mt-0.5" />
+        <span>
+          <strong>Tip:</strong> Partner-relationer er altid gensidige. Når du vælger en makker, opdateres begge spilleres preferencer automatisk.
+        </span>
+      </div>
       <div className="flex gap-3 justify-end">
         <button
           type="button"
@@ -235,7 +245,7 @@ export const EditablePartnerCell: React.FC<EditablePartnerCellProps> = ({
 
         if (currentPartnerId && currentPartnerId !== selectedId) {
         // Clear the old partner's relationship
-        const clearOldPartnerData: any = partnerType === 'doubles'
+        const clearOldPartnerData: { preferredDoublesPartners?: string[] | null; preferredMixedPartners?: string[] | null } = partnerType === 'doubles'
           ? { preferredDoublesPartners: [] }
           : { preferredMixedPartners: [] }
 
@@ -261,7 +271,7 @@ export const EditablePartnerCell: React.FC<EditablePartnerCellProps> = ({
             // If they have an existing partner (and it's not the current player), remove that relationship
             if (existingPartnerId && existingPartnerId !== player.id) {
               // Clear the existing partner's relationship
-              const clearExistingData: any = partnerType === 'doubles'
+              const clearExistingData: { preferredDoublesPartners?: string[] | null; preferredMixedPartners?: string[] | null } = partnerType === 'doubles'
                 ? { preferredDoublesPartners: [] }
                 : { preferredMixedPartners: [] }
 
@@ -274,7 +284,7 @@ export const EditablePartnerCell: React.FC<EditablePartnerCellProps> = ({
         }
 
         // Step 4: Update the current player with the new partner
-        const updateData: any = partnerType === 'doubles'
+        const updateData: { preferredDoublesPartners?: string[] | null; preferredMixedPartners?: string[] | null } = partnerType === 'doubles'
           ? { preferredDoublesPartners: selectedId ? [selectedId] : [] }
           : { preferredMixedPartners: selectedId ? [selectedId] : [] }
 
@@ -285,7 +295,7 @@ export const EditablePartnerCell: React.FC<EditablePartnerCellProps> = ({
 
         // Step 5: If a partner was selected, set the bidirectional relationship
         if (selectedId) {
-          const partnerUpdateData: any = partnerType === 'doubles'
+          const partnerUpdateData: { preferredDoublesPartners?: string[] | null; preferredMixedPartners?: string[] | null } = partnerType === 'doubles'
             ? { preferredDoublesPartners: [player.id] }
             : { preferredMixedPartners: [player.id] }
 
@@ -432,13 +442,21 @@ export const EditablePartnerCell: React.FC<EditablePartnerCellProps> = ({
       <>
         {dialogElement}
       <div className="w-full max-w-full sm:max-w-[200px] mx-auto">
-        <button
-          type="button"
-          onClick={() => setIsEditing(true)}
-          className="w-full text-xs rounded bg-[hsl(var(--surface))] px-2 py-1 ring-1 ring-[hsl(var(--line)/.14)] hover:ring-2 hover:ring-[hsl(var(--ring))] transition-colors text-left"
+        <Tooltip 
+          content={partner 
+            ? `Klik for at ændre ${partnerType === 'doubles' ? 'double' : 'mixed'} makker. Partner-relationer er tovejs.`
+            : `Klik for at vælge ${partnerType === 'doubles' ? 'double' : 'mixed'} makker. Partner-relationer er tovejs - når du vælger en makker, opdateres begge spilleres preferencer automatisk.`
+          }
+          position="top"
         >
-          {partner ? formatPlayerName(partner.name, partner.alias) : 'Ingen'}
-        </button>
+          <button
+            type="button"
+            onClick={() => setIsEditing(true)}
+            className="w-full text-xs rounded bg-[hsl(var(--surface))] px-2 py-1 ring-1 ring-[hsl(var(--line)/.14)] hover:ring-2 hover:ring-[hsl(var(--ring))] transition-colors text-left"
+          >
+            {partner ? formatPlayerName(partner.name, partner.alias) : 'Ingen'}
+          </button>
+        </Tooltip>
       </div>
       </>
     )
