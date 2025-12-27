@@ -120,9 +120,18 @@ export const LineChart: React.FC<LineChartProps> = ({
     )
   }
 
+  // Only render chart if we have data and valid dimensions
+  if (!data || data.length === 0 || height <= 0) {
+    return (
+      <div style={{ width: '100%', height, minHeight: height }} className="flex items-center justify-center">
+        <p className="text-sm text-[hsl(var(--foreground)/0.6)]">Ingen data tilgængelig</p>
+      </div>
+    )
+  }
+
   return (
-    <div style={{ width: '100%', height }} className="motion-safe:transition-all motion-safe:duration-200">
-      <ResponsiveContainer width="100%" height="100%">
+    <div style={{ width: '100%', height, minHeight: height }} className="motion-safe:transition-all motion-safe:duration-200">
+      <ResponsiveContainer width="100%" height="100%" minHeight={height} minWidth={0}>
         <RechartsLineChart
           data={data}
           margin={{ top: 8, right: 8, left: 0, bottom: 0 }}

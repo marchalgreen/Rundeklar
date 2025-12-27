@@ -329,14 +329,29 @@ export const EChartsBarChart: React.FC<EChartsBarChartProps> = ({
     }
   }, [data, bars, xAxisLabel, yAxisLabel, showLegend, showGrid, showValueLabels, textColor, mutedColor, gridColor, surfaceColor, borderColor, chartColors])
 
+  // Only render chart if we have data and valid dimensions
+  if (!data || data.length === 0 || height <= 0) {
+    return (
+      <div style={{ width: '100%', height, minHeight: height }} className="flex items-center justify-center">
+        <p className="text-sm text-[hsl(var(--foreground)/0.6)]">Ingen data tilgængelig</p>
+      </div>
+    )
+  }
+
   return (
-    <div style={{ width: '100%', height }} className="motion-safe:transition-all motion-safe:duration-200">
+    <div style={{ width: '100%', height, minHeight: height }} className="motion-safe:transition-all motion-safe:duration-200">
       <ReactECharts
         option={option}
-        style={{ height: '100%', width: '100%' }}
+        style={{ height: '100%', width: '100%', minHeight: height, minWidth: 0 }}
         opts={{ renderer: 'svg' }}
         notMerge={true}
         lazyUpdate={false}
+        onChartReady={(chart) => {
+          // Store chart instance for cleanup if needed
+          if (chart) {
+            // Chart is ready
+          }
+        }}
       />
     </div>
   )
