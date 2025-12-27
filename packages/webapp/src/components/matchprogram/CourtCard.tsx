@@ -106,6 +106,7 @@ export const CourtCard: React.FC<CourtCardProps> = ({
   onSlotDragOver,
   onSlotDragLeave,
   onSlotDrop,
+  onMoveClick,
   matchResult,
   isMatchFinished,
   onEnterResult,
