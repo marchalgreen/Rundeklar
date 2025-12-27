@@ -20,7 +20,8 @@ import { PreviousRoundsPopup } from '../components/matchprogram/PreviousRoundsPo
 import { MatchProgramHeader } from '../components/matchprogram/MatchProgramHeader'
 import { MatchResultInput } from '../components/matchprogram/MatchResultInput'
 import { NotesModal } from '../components/checkin/NotesModal'
-import type { CheckedInPlayer } from '@rundeklar/common'
+import { MovePlayerModal } from '../components/matchprogram/MovePlayerModal'
+import type { CheckedInPlayer, Player } from '@rundeklar/common'
 import type { PlayerSortType } from '../lib/matchProgramUtils'
 
 /**
@@ -357,6 +358,7 @@ const MatchProgramPage = () => {
                 onSlotDragOver={handleSlotDragOver}
                 onSlotDragLeave={handleSlotDragLeave}
                 onSlotDrop={handleSlotDrop}
+                onMoveClick={handleMoveClick}
                 matchResult={result}
                 isMatchFinished={isFinished}
                 onEnterResult={() => handleEnterResult(court.courtIdx)}
@@ -431,6 +433,23 @@ const MatchProgramPage = () => {
           returnFocusTo={notesModalOpener}
         />
       )}
+
+      {/* Move Player Modal (mobile-friendly alternative to drag-and-drop) */}
+      <MovePlayerModal
+        isOpen={moveModalOpen}
+        player={moveModalPlayer}
+        courts={matches}
+        extendedCapacityCourts={extendedCapacityCourts}
+        currentCourtIdx={moveModalCurrentCourtIdx}
+        currentSlot={moveModalCurrentSlot}
+        onMove={handleMoveViaModal}
+        onClose={() => {
+          setMoveModalOpen(false)
+          setMoveModalPlayer(null)
+          setMoveModalCurrentCourtIdx(undefined)
+          setMoveModalCurrentSlot(undefined)
+        }}
+      />
     </section>
   )
 }

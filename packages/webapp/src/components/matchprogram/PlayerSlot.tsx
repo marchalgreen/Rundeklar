@@ -36,6 +36,8 @@ interface PlayerSlotProps {
   onDragLeave: () => void
   /** Handler for drop */
   onDrop: (event: React.DragEvent<HTMLDivElement>) => void
+  /** Handler for move button click (mobile alternative to drag-and-drop) */
+  onMoveClick?: (player: Player, courtIdx: number, slot: number) => void
 }
 
 /**
@@ -155,6 +157,20 @@ export const PlayerSlot: React.FC<PlayerSlotProps> = ({
               </div>
             )}
           </div>
+          {/* Mobile: Move button (alternative to drag-and-drop) */}
+          {onMoveClick && (
+            <button
+              type="button"
+              onClick={(e) => {
+                e.stopPropagation()
+                onMoveClick(player, court.courtIdx, slotIndex)
+              }}
+              className="md:hidden flex-shrink-0 p-1.5 rounded hover:bg-[hsl(var(--surface-2)/.5)] transition-colors text-[hsl(var(--muted))] hover:text-[hsl(var(--foreground))]"
+              aria-label={`Flyt ${player.name}`}
+            >
+              <Move size={16} />
+            </button>
+          )}
         </>
       ) : null}
     </div>

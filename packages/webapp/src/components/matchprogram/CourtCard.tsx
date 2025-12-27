@@ -48,6 +48,8 @@ interface CourtCardProps {
   onSlotDragLeave: () => void
   /** Handler for drop on slot */
   onSlotDrop: (event: React.DragEvent<HTMLDivElement>, courtIdx: number, slotIndex: number) => void
+  /** Handler for move button click (mobile alternative to drag-and-drop) */
+  onMoveClick?: (player: Player, courtIdx: number, slot: number) => void
   /** Match result if available */
   matchResult?: MatchResult | null
   /** Whether match is finished (has endedAt) */
@@ -150,6 +152,7 @@ export const CourtCard: React.FC<CourtCardProps> = ({
             onDragOver={(event) => onSlotDragOver(event, court.courtIdx, slotIndex)}
             onDragLeave={onSlotDragLeave}
             onDrop={(event) => onSlotDrop(event, court.courtIdx, slotIndex)}
+            onMoveClick={onMoveClick ? (player) => onMoveClick(player, court.courtIdx, slotIndex) : undefined}
           />
         )
       })}
