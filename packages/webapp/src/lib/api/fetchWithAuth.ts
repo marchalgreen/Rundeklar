@@ -34,10 +34,31 @@ export async function fetchWithAuth(
     headers.set('Authorization', `Bearer ${token}`)
   }
   
-  const response = await fetch(url, {
-    ...options,
-    headers
-  })
+  let response: Response
+  try {
+    response = await fetch(url, {
+      ...options,
+      headers
+    })
+  } catch (fetchError) {
+    // Handle network errors (connection refused, etc.)
+    const isConnectionRefused = fetchError instanceof TypeError && 
+      (fetchError.message.includes('fetch') || fetchError.message.includes('Failed to fetch'))
+    
+    if (isConnectionRefused && import.meta.env.DEV && url.includes('127.0.0.1:3000')) {
+      logger.warn('[fetchWithAuth] Vercel dev server not running', {
+        url,
+        error: fetchError instanceof Error ? fetchError.message : String(fetchError),
+        hint: 'Please run "vercel dev" in a separate terminal to start the API server'
+      })
+      // Return a mock response to prevent crashes, but mark it as failed
+      return new Response(
+        JSON.stringify({ error: 'API server ikke tilgængelig. Kør "vercel dev" i en separat terminal.' }),
+        { status: 503, statusText: 'Service Unavailable', headers: { 'Content-Type': 'application/json' } }
+      )
+    }
+    throw fetchError
+  }
 
   // If 401, try to refresh and retry once
   if (response.status === 401 && token) {

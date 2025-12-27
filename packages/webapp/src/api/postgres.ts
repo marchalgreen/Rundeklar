@@ -47,13 +47,27 @@ async function executeQuery(query: string, params: unknown[] = []): Promise<unkn
     ? 'http://127.0.0.1:3000/api/db'  // Local Vercel dev server
     : '/api/db'  // Vercel production API route
 
-  const response = await fetch(apiUrl, {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-    },
-    body: JSON.stringify({ query, params, tenantId }),
-  })
+  let response: Response
+  try {
+    response = await fetch(apiUrl, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ query, params, tenantId }),
+    })
+  } catch (fetchError) {
+    // Handle network errors (connection refused, etc.)
+    const isConnectionRefused = fetchError instanceof TypeError && fetchError.message.includes('fetch')
+    if (isConnectionRefused && import.meta.env.DEV) {
+      logger.error('[executeQuery] Vercel dev server not running', {
+        error: fetchError instanceof Error ? fetchError.message : String(fetchError),
+        hint: 'Please run "vercel dev" in a separate terminal to start the API server'
+      })
+      throw new Error('API server ikke tilgængelig. Kør "vercel dev" i en separat terminal for at starte API serveren.')
+    }
+    throw fetchError
+  }
 
   if (!response.ok) {
     const errorText = await response.text()
