@@ -134,10 +134,10 @@ export const PlayerSlot: React.FC<PlayerSlotProps> = ({
     >
       {player ? (
         <>
-          <div className="min-w-0 flex-1">
+          <div className="min-w-0 flex-1 flex items-center gap-2">
             {fullScreen ? (
               // Full-screen: icon and name on same row, larger font
-              <div className="flex items-center gap-2">
+              <>
                 <InitialsAvatar seed={player.id} name={player.name} gender={player.gender ?? null} />
                 <p className="text-lg sm:text-xl font-semibold text-[hsl(var(--foreground))] truncate">{formatPlayerCardName(player.name, player.alias)}</p>
                 {isDuplicatePlayer && (
@@ -145,10 +145,10 @@ export const PlayerSlot: React.FC<PlayerSlotProps> = ({
                     !
                   </span>
                 )}
-              </div>
+              </>
             ) : (
               // Normal view: icon and name on same row
-              <div className="flex items-center gap-2">
+              <>
                 <InitialsAvatar seed={player.id} name={player.name} gender={player.gender ?? null} />
                 <p className={`font-semibold text-[hsl(var(--foreground))] truncate text-sm sm:text-base`}>{formatPlayerCardName(player.name, player.alias)}</p>
                 {isDuplicatePlayer && (
@@ -156,7 +156,7 @@ export const PlayerSlot: React.FC<PlayerSlotProps> = ({
                     !
                   </span>
                 )}
-              </div>
+              </>
             )}
           </div>
           {/* Mobile: Move button (alternative to drag-and-drop) */}
