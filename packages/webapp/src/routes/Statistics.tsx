@@ -48,6 +48,16 @@ const StatisticsPage = () => {
    */
   const exportTrainingStatisticsToCSV = useCallback(() => {
     try {
+      // Check if data is available
+      if (trainingAttendance.kpisLoading || trainingAttendance.attendanceLoading) {
+        notify({
+          variant: 'warning',
+          title: 'Data indlæses',
+          description: 'Vent venligst til data er indlæst før eksport'
+        })
+        return
+      }
+
       const csvRows: string[] = []
       
       // Add header
@@ -62,34 +72,41 @@ const StatisticsPage = () => {
       // KPIs Section
       csvRows.push('KPI\'er')
       csvRows.push('Metrik,Værdi,Ændring')
-      csvRows.push(`Total indtjekninger,${trainingAttendance.kpis.totalCheckIns},${trainingAttendance.kpis.deltas.totalCheckIns >= 0 ? '+' : ''}${trainingAttendance.kpis.deltas.totalCheckIns.toFixed(1)}%`)
-      csvRows.push(`Sessioner,${trainingAttendance.kpis.totalSessions},${trainingAttendance.kpis.deltas.totalSessions >= 0 ? '+' : ''}${trainingAttendance.kpis.deltas.totalSessions.toFixed(1)}%`)
-      csvRows.push(`Gennemsnit pr. session,${trainingAttendance.kpis.averageAttendance.toFixed(1)},${trainingAttendance.kpis.deltas.averageAttendance >= 0 ? '+' : ''}${trainingAttendance.kpis.deltas.averageAttendance.toFixed(1)}%`)
-      csvRows.push(`Unikke spillere,${trainingAttendance.kpis.uniquePlayers},${trainingAttendance.kpis.deltas.uniquePlayers >= 0 ? '+' : ''}${trainingAttendance.kpis.deltas.uniquePlayers.toFixed(1)}%`)
+      const kpis = trainingAttendance.kpis
+      csvRows.push(`Total indtjekninger,${kpis.totalCheckIns},${kpis.deltas.totalCheckIns >= 0 ? '+' : ''}${kpis.deltas.totalCheckIns.toFixed(1)}%`)
+      csvRows.push(`Sessioner,${kpis.totalSessions},${kpis.deltas.totalSessions >= 0 ? '+' : ''}${kpis.deltas.totalSessions.toFixed(1)}%`)
+      csvRows.push(`Gennemsnit pr. session,${kpis.averageAttendance.toFixed(1)},${kpis.deltas.averageAttendance >= 0 ? '+' : ''}${kpis.deltas.averageAttendance.toFixed(1)}%`)
+      csvRows.push(`Unikke spillere,${kpis.uniquePlayers},${kpis.deltas.uniquePlayers >= 0 ? '+' : ''}${kpis.deltas.uniquePlayers.toFixed(1)}%`)
       csvRows.push('') // Empty line
       
       // Training Group Attendance
-      csvRows.push('Fremmøde pr. Træningsgruppe')
-      csvRows.push('Gruppe,Gennemsnitligt fremmøde,Total indtjekninger,Sessioner,Unikke spillere')
-      trainingAttendance.trainingGroupAttendance.forEach((group) => {
-        csvRows.push(`${group.groupName},${group.averageAttendance.toFixed(1)},${group.checkInCount},${group.sessions},${group.uniquePlayers}`)
-      })
-      csvRows.push('') // Empty line
+      if (trainingAttendance.trainingGroupAttendance.length > 0) {
+        csvRows.push('Fremmøde pr. Træningsgruppe')
+        csvRows.push('Gruppe,Gennemsnitligt fremmøde,Total indtjekninger,Sessioner,Unikke spillere')
+        trainingAttendance.trainingGroupAttendance.forEach((group) => {
+          csvRows.push(`${group.groupName},${group.averageAttendance.toFixed(1)},${group.checkInCount},${group.sessions},${group.uniquePlayers}`)
+        })
+        csvRows.push('') // Empty line
+      }
       
       // Weekday Attendance
-      csvRows.push('Fremmøde pr. Ugedag')
-      csvRows.push('Ugedag,Gennemsnitligt fremmøde,Total indtjekninger,Sessioner')
-      trainingAttendance.weekdayAttendance.forEach((day) => {
-        csvRows.push(`${day.weekdayName},${day.averageAttendance.toFixed(1)},${day.checkInCount},${day.sessions}`)
-      })
-      csvRows.push('') // Empty line
+      if (trainingAttendance.weekdayAttendance.length > 0) {
+        csvRows.push('Fremmøde pr. Ugedag')
+        csvRows.push('Ugedag,Gennemsnitligt fremmøde,Total indtjekninger,Sessioner')
+        trainingAttendance.weekdayAttendance.forEach((day) => {
+          csvRows.push(`${day.weekdayName},${day.averageAttendance.toFixed(1)},${day.checkInCount},${day.sessions}`)
+        })
+        csvRows.push('') // Empty line
+      }
       
       // Top Players (Long Tail)
-      csvRows.push('Top Spillere (Indtjekninger)')
-      csvRows.push('Spiller,Antal indtjekninger')
-      trainingAttendance.playerCheckInLongTail.slice(0, 50).forEach((player) => {
-        csvRows.push(`${player.playerName},${player.checkInCount}`)
-      })
+      if (trainingAttendance.playerCheckInLongTail.length > 0) {
+        csvRows.push('Top Spillere (Indtjekninger)')
+        csvRows.push('Spiller,Antal indtjekninger')
+        trainingAttendance.playerCheckInLongTail.slice(0, 50).forEach((player) => {
+          csvRows.push(`${player.playerName},${player.checkInCount}`)
+        })
+      }
       
       // Create CSV content
       const csvContent = csvRows.join('\n')

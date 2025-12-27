@@ -86,14 +86,32 @@ async function executeQuery(query: string, params: unknown[] = []): Promise<unkn
   return result.data
 }
 
-// Create a proxy object that handles template literal queries
-// Template literals like sql`SELECT * FROM players` are actually function calls
-function createSqlProxy() {
+/**
+ * Type for SQL template literal function with unsafe method.
+ * 
+ * Allows calling sql`SELECT * FROM players WHERE id = ${id}` or sql.unsafe('SELECT * FROM players', [id])
+ */
+type SqlFunction = {
+  (strings: TemplateStringsArray, ...values: unknown[]): Promise<unknown[]>
+  unsafe: (query: string, params?: unknown[]) => Promise<unknown[]>
+}
+
+/**
+ * Creates a proxy object that handles template literal queries.
+ * Template literals like sql`SELECT * FROM players` are actually function calls.
+ * 
+ * @returns SQL function that can be used as template literal or called with .unsafe()
+ * 
+ * @remarks
+ * This mimics the postgres.js API for compatibility, but proxies through Vercel API routes.
+ * The function supports both template literal syntax and unsafe raw queries.
+ */
+function createSqlProxy(): SqlFunction {
   // Create a function that can be called as a template literal
-  const sqlFunction = (strings: TemplateStringsArray, ...values: any[]) => {
+  const sqlFunction = (strings: TemplateStringsArray, ...values: unknown[]): Promise<unknown[]> => {
     // Convert template literal to parameterized query
     let query = ''
-    const params: any[] = []
+    const params: unknown[] = []
     
     for (let i = 0; i < strings.length; i++) {
       query += strings[i]
@@ -110,13 +128,11 @@ function createSqlProxy() {
   // Add unsafe method to the function object
   // NOTE: Dynamic method attachment required for postgres client proxy compatibility
   // The unsafe method allows executing raw SQL queries without parameterization
-  // Type assertion needed because TypeScript cannot infer dynamic method attachment
-  ;(sqlFunction as typeof sqlFunction & { unsafe: (query: string, params?: unknown[]) => Promise<unknown[]> }).unsafe = (query: string, params: unknown[] = []) => {
+  sqlFunction.unsafe = (query: string, params: unknown[] = []): Promise<unknown[]> => {
     return executeQuery(query, params)
   }
   
-  // TODO: refine type - postgres client proxy returns function with unsafe method
-  return sqlFunction as any
+  return sqlFunction as SqlFunction
 }
 
 // Get Postgres client (returns proxy that handles template literals)
