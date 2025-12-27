@@ -5,8 +5,8 @@
  */
 
 import React, { useEffect, useState } from 'react'
-import type { CheckedInPlayer } from '@rundeklar/common'
-import { Info } from 'lucide-react'
+import type { CheckedInPlayer, Player } from '@rundeklar/common'
+import { Info, Move } from 'lucide-react'
 import { PageCard, Tooltip } from '../ui'
 import { getCategoryBadge, getPlayerSlotBgColor, type PlayerSortType } from '../../lib/matchProgramUtils'
 import { formatPlayerCardName } from '../../lib/formatting'
@@ -58,6 +58,8 @@ interface BenchSectionProps {
   onActivateOneRoundPlayer: (playerId: string) => void
   /** Optional callback when notes icon is clicked to edit notes */
   onEditNotes?: (player: CheckedInPlayer) => void
+  /** Handler for move button click (mobile alternative to drag-and-drop) - for bench players, courtIdx and slot are undefined */
+  onMoveClick?: (player: Player) => void
 }
 
 /**
@@ -113,7 +115,8 @@ export const BenchSection: React.FC<BenchSectionProps> = ({
   onInactiveDrop,
   onMarkAvailable,
   onActivateOneRoundPlayer,
-  onEditNotes
+  onEditNotes,
+  onMoveClick
 }) => {
   const [variant, setVariant] = useState<PlayerUiVariant>(() => getPlayerUiVariant())
   useEffect(() => {
@@ -220,6 +223,22 @@ export const BenchSection: React.FC<BenchSectionProps> = ({
                       )}
                     </div>
                   </div>
+                  {/* Mobile: Move button (alternative to drag-and-drop) */}
+                  {onMoveClick && (
+                    <button
+                      type="button"
+                      onClick={(e) => {
+                        e.stopPropagation()
+                        e.preventDefault()
+                        onMoveClick(player)
+                      }}
+                      className="md:hidden flex-shrink-0 p-1.5 rounded-md bg-[hsl(var(--surface-2))] hover:bg-[hsl(var(--surface-2)/.8)] transition-colors text-[hsl(var(--muted))] hover:text-[hsl(var(--foreground))] border border-[hsl(var(--line)/.2)] active:scale-95"
+                      aria-label={`Flyt ${player.name}`}
+                      title="Flyt spiller"
+                    >
+                      <Move size={16} strokeWidth={2} />
+                    </button>
+                  )}
                 </div>
               )
             })}
@@ -261,6 +280,22 @@ export const BenchSection: React.FC<BenchSectionProps> = ({
                       )}
                     </div>
                   </div>
+                  {/* Mobile: Move button (alternative to drag-and-drop) */}
+                  {onMoveClick && (
+                    <button
+                      type="button"
+                      onClick={(e) => {
+                        e.stopPropagation()
+                        e.preventDefault()
+                        onMoveClick(player)
+                      }}
+                      className="md:hidden flex-shrink-0 p-1.5 rounded-md bg-[hsl(var(--surface-2))] hover:bg-[hsl(var(--surface-2)/.8)] transition-colors text-[hsl(var(--muted))] hover:text-[hsl(var(--foreground))] border border-[hsl(var(--line)/.2)] active:scale-95"
+                      aria-label={`Flyt ${player.name}`}
+                      title="Flyt spiller"
+                    >
+                      <Move size={16} strokeWidth={2} />
+                    </button>
+                  )}
                 </div>
               )
             })}
@@ -301,6 +336,22 @@ export const BenchSection: React.FC<BenchSectionProps> = ({
                       )}
                     </div>
                   </div>
+                  {/* Mobile: Move button (alternative to drag-and-drop) */}
+                  {onMoveClick && (
+                    <button
+                      type="button"
+                      onClick={(e) => {
+                        e.stopPropagation()
+                        e.preventDefault()
+                        onMoveClick(player)
+                      }}
+                      className="md:hidden flex-shrink-0 p-1.5 rounded-md bg-[hsl(var(--surface-2))] hover:bg-[hsl(var(--surface-2)/.8)] transition-colors text-[hsl(var(--muted))] hover:text-[hsl(var(--foreground))] border border-[hsl(var(--line)/.2)] active:scale-95"
+                      aria-label={`Flyt ${player.name}`}
+                      title="Flyt spiller"
+                    >
+                      <Move size={16} strokeWidth={2} />
+                    </button>
+                  )}
                 </div>
               )
             })}
@@ -343,6 +394,22 @@ export const BenchSection: React.FC<BenchSectionProps> = ({
                       )}
                     </div>
                   </div>
+                  {/* Mobile: Move button (alternative to drag-and-drop) */}
+                  {onMoveClick && (
+                    <button
+                      type="button"
+                      onClick={(e) => {
+                        e.stopPropagation()
+                        e.preventDefault()
+                        onMoveClick(player)
+                      }}
+                      className="md:hidden flex-shrink-0 p-1.5 rounded-md bg-[hsl(var(--surface-2))] hover:bg-[hsl(var(--surface-2)/.8)] transition-colors text-[hsl(var(--muted))] hover:text-[hsl(var(--foreground))] border border-[hsl(var(--line)/.2)] active:scale-95"
+                      aria-label={`Flyt ${player.name}`}
+                      title="Flyt spiller"
+                    >
+                      <Move size={16} strokeWidth={2} />
+                    </button>
+                  )}
                 </div>
               )
             })}

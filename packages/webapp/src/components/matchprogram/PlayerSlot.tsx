@@ -168,11 +168,11 @@ export const PlayerSlot: React.FC<PlayerSlotProps> = ({
                 e.preventDefault()
                 onMoveClick(player, court.courtIdx, slotIndex)
               }}
-              className="md:hidden flex-shrink-0 p-2.5 rounded-lg bg-[hsl(var(--primary))] hover:bg-[hsl(var(--primary)/.9)] transition-colors text-white border-2 border-[hsl(var(--primary)/.5)] active:scale-95 shadow-lg relative z-10"
+              className="md:hidden flex-shrink-0 p-1.5 rounded-md bg-[hsl(var(--surface-2))] hover:bg-[hsl(var(--surface-2)/.8)] transition-colors text-[hsl(var(--muted))] hover:text-[hsl(var(--foreground))] border border-[hsl(var(--line)/.2)] active:scale-95"
               aria-label={`Flyt ${player.name}`}
               title="Flyt spiller"
             >
-              <Move size={20} strokeWidth={2.5} />
+              <Move size={16} strokeWidth={2} />
             </button>
           )}
         </>

@@ -181,13 +181,21 @@ const MatchProgramPage = () => {
 
   /**
    * Handles opening move player modal (mobile-friendly alternative to drag-and-drop).
+   * For bench players, courtIdx and slot are undefined.
    */
-  const handleMoveClick = React.useCallback((player: Player, courtIdx: number, slot: number) => {
+  const handleMoveClick = React.useCallback((player: Player, courtIdx?: number, slot?: number) => {
     setMoveModalPlayer(player)
     setMoveModalCurrentCourtIdx(courtIdx)
     setMoveModalCurrentSlot(slot)
     setMoveModalOpen(true)
   }, [])
+  
+  /**
+   * Handles opening move player modal for bench players (no court/slot).
+   */
+  const handleBenchMoveClick = React.useCallback((player: Player) => {
+    handleMoveClick(player)
+  }, [handleMoveClick])
 
   /**
    * Handles moving a player via modal (mobile-friendly).
@@ -354,6 +362,7 @@ const MatchProgramPage = () => {
           onMarkAvailable={handleMarkAvailable}
           onActivateOneRoundPlayer={handleActivateOneRoundPlayer}
           onEditNotes={handleEditNotes}
+          onMoveClick={handleBenchMoveClick}
         />
 
         {/* Courts */}

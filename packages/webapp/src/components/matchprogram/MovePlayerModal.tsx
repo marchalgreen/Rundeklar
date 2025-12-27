@@ -17,6 +17,9 @@ interface MovePlayerModalProps {
   /** All courts */
   courts: CourtWithPlayers[]
   
+  /** Extended capacity courts map */
+  extendedCapacityCourts: Map<number, number>
+  
   /** Current court index (if player is already on a court) */
   currentCourtIdx?: number
   
@@ -70,15 +73,27 @@ export const MovePlayerModal: React.FC<MovePlayerModalProps> = ({
   const handleMove = async () => {
     if (selectedCourtIdx === null || selectedSlot === null || !player) return
     
+    // Get the court to find court.courtIdx (1-based) from array index (0-based)
+    const selectedCourt = courts[selectedCourtIdx]
+    if (!selectedCourt) return
+    
+    const targetCourtIdx = selectedCourt.courtIdx
+    
     // Don't allow moving to same position
-    if (selectedCourtIdx === currentCourtIdx && selectedSlot === currentSlot) {
+    // currentCourtIdx is court.courtIdx (1-based), so find the array index for comparison
+    const currentCourtArrayIdx = currentCourtIdx !== undefined 
+      ? courts.findIndex(c => c.courtIdx === currentCourtIdx)
+      : undefined
+    
+    if (selectedCourtIdx === currentCourtArrayIdx && selectedSlot === currentSlot) {
       onClose()
       return
     }
     
     setIsMoving(true)
     try {
-      await onMove(selectedCourtIdx, selectedSlot)
+      // Pass court.courtIdx (1-based) instead of array index (0-based)
+      await onMove(targetCourtIdx, selectedSlot)
       onClose()
     } catch (err) {
       // Error handling is done by parent
@@ -115,8 +130,9 @@ export const MovePlayerModal: React.FC<MovePlayerModalProps> = ({
             <div className="grid grid-cols-2 gap-2">
               {courts.map((court, idx) => {
                 const isSelected = selectedCourtIdx === idx
-                const isCurrentCourt = currentCourtIdx === idx
-                const occupiedSlots = court.players.filter(Boolean).length
+                // currentCourtIdx is court.courtIdx (1-based), not array index
+                const isCurrentCourt = currentCourtIdx !== undefined && court.courtIdx === currentCourtIdx
+                const occupiedSlots = court.slots.filter(slot => slot.player).length
                 const maxCapacity = extendedCapacityCourts.get(court.courtIdx) || 4
                 const isFull = occupiedSlots >= maxCapacity
                 
@@ -140,7 +156,7 @@ export const MovePlayerModal: React.FC<MovePlayerModalProps> = ({
                     `}
                   >
                     <div className="text-sm font-semibold text-[hsl(var(--foreground))]">
-                      Bane {court.courtIdx + 1}
+                      Bane {court.courtIdx}
                     </div>
                     <div className="text-xs text-[hsl(var(--muted))] mt-1">
                       {occupiedSlots}/{maxCapacity} spillere
@@ -162,9 +178,12 @@ export const MovePlayerModal: React.FC<MovePlayerModalProps> = ({
               <div className="grid grid-cols-2 gap-2">
                 {availableSlots.map((slot) => {
                   const court = courts[selectedCourtIdx]
-                  const slotPlayer = court.players[slot]
+                  if (!court) return null
+                  const slotEntry = court.slots.find(s => s.slot === slot)
+                  const slotPlayer = slotEntry?.player
                   const isSelected = selectedSlot === slot
-                  const isCurrentSlot = currentCourtIdx === selectedCourtIdx && currentSlot === slot
+                  // currentCourtIdx is court.courtIdx (1-based), compare with court.courtIdx
+                  const isCurrentSlot = currentCourtIdx !== undefined && court.courtIdx === currentCourtIdx && currentSlot === slot
                   
                   return (
                     <button
