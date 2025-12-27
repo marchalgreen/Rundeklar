@@ -17,8 +17,8 @@ export default defineConfig({
       '**/landing/LandingPage.test.tsx' // Requires React Testing Library setup
     ],
     globals: true,
-    // Use jsdom for React hooks tests, node for others
-    environment: 'jsdom',
+    // Default to node environment, but allow per-file overrides
+    environment: 'node',
     setupFiles: ['./tests/setup.ts']
   },
   resolve: {
