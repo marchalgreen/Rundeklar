@@ -29,18 +29,31 @@ pnpm install
 
 ### Udvikling
 
-For lokal udvikling skal du køre både Vite dev server og Vercel API routes:
+For lokal udvikling kører `pnpm dev` automatisk både Vite dev server og API serveren samtidigt via `concurrently`:
 
 ```bash
-# Terminal 1: Start Vite dev server
 pnpm dev
-
-# Terminal 2: Start Vercel API routes (for database access)
-cd packages/webapp
-vercel dev
 ```
 
-Vite dev server kører på http://127.0.0.1:5173 og Vercel API routes på http://127.0.0.1:3000.
+Dette starter:
+- **Vite dev server** på `http://127.0.0.1:5173` (frontend)
+- **API server** på `http://127.0.0.1:3000` (backend/database proxy)
+
+Begge servere kører i samme terminal med farvekodet output (`[vite]` og `[api]`).
+
+**Vigtigt:** Hvis du ser `net::ERR_CONNECTION_REFUSED` fejl i browserens konsol, betyder det sandsynligvis, at:
+- API serveren crashede ved startup (tjek terminal output for fejl)
+- Port 3000 er allerede i brug af en anden proces
+- Der mangler miljøvariabler i `.env.local` (f.eks. `DATABASE_URL`)
+
+**Alternativ:** Hvis du foretrækker at køre servere separat, kan du bruge:
+```bash
+# Terminal 1: Kun Vite
+pnpm --filter webapp dev:vite
+
+# Terminal 2: Kun API server
+pnpm --filter webapp dev:api
+```
 
 **Miljøvariabler:**
 - Opret `.env.local` i `packages/webapp/` med `DATABASE_URL` (Postgres connection string)
