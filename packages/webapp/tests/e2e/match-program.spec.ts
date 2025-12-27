@@ -10,7 +10,11 @@ test.describe('Player Sorting', () => {
   test.beforeEach(async ({ page }) => {
     await page.goto('/#/rounds')
     await page.waitForLoadState('networkidle')
-    await page.waitForTimeout(1000) // Wait for session check
+    // Wait for either match program UI or empty state
+    await Promise.race([
+      page.locator('text=/bænk|bench/i').waitFor({ state: 'visible', timeout: 5000 }).catch(() => {}),
+      page.locator('text=/ingen aktiv|no active/i').waitFor({ state: 'visible', timeout: 5000 }).catch(() => {})
+    ])
   })
 
   test('should display sort dropdown in bench section', async ({ page }) => {
@@ -46,7 +50,8 @@ test.describe('Player Sorting', () => {
       
       if (dropdownExists) {
         await sortDropdown.selectOption('gender-alphabetical')
-        await page.waitForTimeout(300) // Wait for sort to apply
+        // Wait for dropdown value to update
+        await expect(sortDropdown).toHaveValue('gender-alphabetical', { timeout: 2000 })
         
         // Verify dropdown value changed
         const value = await sortDropdown.inputValue()
@@ -69,7 +74,8 @@ test.describe('Player Sorting', () => {
       
       if (dropdownExists) {
         await sortDropdown.selectOption('alphabetical')
-        await page.waitForTimeout(300) // Wait for sort to apply
+        // Wait for dropdown value to update
+        await expect(sortDropdown).toHaveValue('alphabetical', { timeout: 2000 })
         
         // Verify dropdown value changed
         const value = await sortDropdown.inputValue()
@@ -93,11 +99,11 @@ test.describe('Player Sorting', () => {
       if (dropdownExists) {
         // First set to alphabetical
         await sortDropdown.selectOption('alphabetical')
-        await page.waitForTimeout(300)
+        await expect(sortDropdown).toHaveValue('alphabetical', { timeout: 2000 })
         
         // Then change back to gender-category
         await sortDropdown.selectOption('gender-category')
-        await page.waitForTimeout(300)
+        await expect(sortDropdown).toHaveValue('gender-category', { timeout: 2000 })
         
         // Verify dropdown value changed
         const value = await sortDropdown.inputValue()
@@ -128,12 +134,16 @@ test.describe('Player Sorting', () => {
         if (dropdownExists) {
           // Change to alphabetical sort
           await sortDropdown.selectOption('alphabetical')
-          await page.waitForTimeout(500) // Wait for sort to apply
+          await expect(sortDropdown).toHaveValue('alphabetical', { timeout: 2000 })
+          
+          // Wait for players to re-render after sort
+          await page.waitForLoadState('networkidle', { timeout: 2000 }).catch(() => {})
           
           // Verify players are still visible (sorting applied)
           const playersAfterSort = page.locator('[data-testid="bench-player"]').or(
             page.locator('text=/damer|herrer/i').locator('..').locator('p').filter({ hasText: /./ })
           )
+          await playersAfterSort.first().waitFor({ state: 'visible', timeout: 3000 }).catch(() => {})
           const countAfterSort = await playersAfterSort.count()
           expect(countAfterSort).toBe(playerCount)
         }
@@ -156,10 +166,14 @@ test.describe('Player Sorting', () => {
       if (dropdownExists) {
         // Change to alphabetical sort
         await sortDropdown.selectOption('alphabetical')
-        await page.waitForTimeout(500) // Wait for sort to apply
+        await expect(sortDropdown).toHaveValue('alphabetical', { timeout: 2000 })
+        
+        // Wait for sort to apply
+        await page.waitForLoadState('networkidle', { timeout: 2000 }).catch(() => {})
         
         // Verify inactive section still exists
         const inactiveAfterSort = page.locator('text=/inaktive|inactive/i')
+        await inactiveAfterSort.waitFor({ state: 'visible', timeout: 3000 }).catch(() => {})
         const stillExists = await helpers.elementExists(inactiveAfterSort)
         expect(stillExists).toBe(true)
       }
@@ -176,11 +190,7 @@ test.describe('Match Program Page', () => {
   test('should display match program interface', async ({ page }) => {
     const helpers = new TestHelpers(page)
     
-    // Wait for page to load
-    await page.waitForLoadState('networkidle')
-    await page.waitForTimeout(1000) // Wait for session check
-    
-    // Check for either match program UI or empty state
+    // Wait for either match program UI or empty state to appear
     // Match program shows courts, bench, or message about no active session
     const courtsSection = page.locator('text=/baner|courts/i')
     const benchSection = page.locator('text=/bænk|bench/i')
@@ -260,11 +270,13 @@ test.describe('Match Program Page', () => {
     
     if (exists && await autoMatchButton.isEnabled()) {
       await autoMatchButton.click()
-      await page.waitForTimeout(1000)
-      await page.waitForLoadState('networkidle')
       
-      // Verify players were assigned to courts
+      // Wait for auto-match to complete
+      await page.waitForLoadState('networkidle', { timeout: 5000 })
+      
+      // Verify players were assigned to courts or button still visible
       const assignedPlayers = page.locator('[data-testid="assigned-player"]')
+      await assignedPlayers.first().waitFor({ state: 'visible', timeout: 5000 }).catch(() => {})
       const hasAssigned = await helpers.elementExists(assignedPlayers)
       // May assign players or show message
       expect(hasAssigned || await helpers.elementExists(autoMatchButton)).toBe(true)
@@ -289,9 +301,10 @@ test.describe('Match Program Page', () => {
       if (slotExists) {
         // Drag and drop or click to assign
         await benchPlayer.click()
-        await page.waitForTimeout(300)
         await emptySlot.click()
-        await page.waitForTimeout(500)
+        
+        // Wait for assignment to complete
+        await page.waitForLoadState('networkidle', { timeout: 3000 }).catch(() => {})
         
         // Verify assignment
         const assigned = await helpers.elementExists(benchPlayer)
@@ -341,12 +354,12 @@ test.describe('Match Program Page', () => {
       
       if (exists && await enterResultButton.isEnabled()) {
         await enterResultButton.click()
-        await page.waitForTimeout(500)
         
-        // Modal should be visible
+        // Wait for modal to appear
         const modal = page.locator('[role="dialog"]').filter({ 
           hasText: /indtast.*resultat|enter.*result/i 
         })
+        await modal.waitFor({ state: 'visible', timeout: 5000 }).catch(() => {})
         const modalExists = await helpers.elementExists(modal)
         expect(modalExists).toBe(true)
       }
@@ -363,9 +376,10 @@ test.describe('Match Program Page', () => {
       
       if (exists && await enterResultButton.isEnabled()) {
         await enterResultButton.click()
-        await page.waitForTimeout(500)
         
-        // Check for set headers
+        // Wait for modal and check for set headers
+        const modal = page.locator('[role="dialog"]')
+        await modal.waitFor({ state: 'visible', timeout: 5000 }).catch(() => {})
         const set1Header = page.locator('text=/1\\. sæt|1st set/i')
         const set2Header = page.locator('text=/2\\. sæt|2nd set/i')
         const set3Header = page.locator('text=/3\\. sæt|3rd set/i')
@@ -391,9 +405,10 @@ test.describe('Match Program Page', () => {
       
       if (exists && await enterResultButton.isEnabled()) {
         await enterResultButton.click()
-        await page.waitForTimeout(500)
         
-        // Find first input field (Team 1, Set 1)
+        // Wait for modal and find first input field (Team 1, Set 1)
+        const modal = page.locator('[role="dialog"]')
+        await modal.waitFor({ state: 'visible', timeout: 5000 }).catch(() => {})
         const inputs = page.locator('input[type="number"]')
         const inputCount = await inputs.count()
         
@@ -408,10 +423,10 @@ test.describe('Match Program Page', () => {
           
           if (saveExists) {
             await saveButton.click()
-            await page.waitForTimeout(300)
             
-            // Should show validation error
+            // Wait for validation error to appear
             const errorMessage = page.locator('text=/vinder.*mindst.*2.*point|winner.*at least.*2.*points/i')
+            await errorMessage.waitFor({ state: 'visible', timeout: 2000 }).catch(() => {})
             const hasError = await helpers.elementExists(errorMessage)
             // Error may or may not be visible depending on validation timing
             expect(hasError !== undefined).toBe(true)
@@ -431,9 +446,10 @@ test.describe('Match Program Page', () => {
       
       if (exists && await enterResultButton.isEnabled()) {
         await enterResultButton.click()
-        await page.waitForTimeout(500)
         
-        // Find input fields
+        // Wait for modal and find input fields
+        const modal = page.locator('[role="dialog"]')
+        await modal.waitFor({ state: 'visible', timeout: 5000 }).catch(() => {})
         const inputs = page.locator('input[type="number"]')
         const inputCount = await inputs.count()
         
@@ -444,19 +460,18 @@ test.describe('Match Program Page', () => {
           await inputs.nth(2).fill('21')
           await inputs.nth(3).fill('19')
           
-          // Wait for validation
-          await page.waitForTimeout(500)
-          
-          // Save button should be enabled
+          // Wait for validation - check if save button becomes enabled
           const saveButton = page.getByRole('button', { name: /gem|save/i })
+          await saveButton.waitFor({ state: 'visible', timeout: 2000 }).catch(() => {})
           const saveExists = await helpers.elementExists(saveButton)
           
           if (saveExists && await saveButton.isEnabled()) {
             await saveButton.click()
-            await page.waitForTimeout(1000)
             
-            // Modal should close
+            // Wait for modal to close
             const modal = page.locator('[role="dialog"]')
+            await modal.waitFor({ state: 'hidden', timeout: 5000 }).catch(() => {})
+            await page.waitForLoadState('networkidle', { timeout: 2000 }).catch(() => {})
             const modalExists = await helpers.elementExists(modal)
             expect(modalExists).toBe(false)
             
