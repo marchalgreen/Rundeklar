@@ -8,11 +8,12 @@
 
 import React, { useCallback, useLayoutEffect, useMemo, useRef, useState } from 'react'
 import type { Player, PlayerCategory, PlayerGender, PlayerCreateInput, PlayerUpdateInput } from '@rundeklar/common'
-import { Pencil, Plus, Trash2, UsersRound, Info, Download, Upload, HelpCircle, FileText } from 'lucide-react'
+import { Pencil, Plus, Trash2, UsersRound, Info, Download, Upload, HelpCircle, FileText, CheckSquare, Square, Edit } from 'lucide-react'
 import { Badge, Button, EmptyState, PageCard, Tooltip } from '../components/ui'
 import { DataTable, TableSearch, type Column } from '../components/ui/Table'
 import { EditablePartnerCell, PlayerForm } from '../components/players'
 import { EditableTrainingGroupsCell } from '../components/players/EditableTrainingGroupsCell'
+import { BulkEditModal } from '../components/players/BulkEditModal'
 import { usePlayers } from '../hooks'
 import { formatDate } from '../lib/formatting'
 import { PLAYER_CATEGORIES } from '../constants'
@@ -45,6 +46,8 @@ const PlayersPage = () => {
   const [dialogMode, setDialogMode] = useState<'create' | 'edit'>('create')
   const [currentPlayer, setCurrentPlayer] = useState<Player | null>(null)
   const [isImporting, setIsImporting] = useState(false)
+  const [selectedPlayerIds, setSelectedPlayerIds] = useState<Set<string>>(new Set())
+  const [isBulkEditOpen, setIsBulkEditOpen] = useState(false)
   const fileInputRef = useRef<HTMLInputElement>(null)
   const [sort, setSort] = useState<{ columnId: string; direction: 'asc' | 'desc' } | undefined>({
     columnId: 'name',
@@ -740,10 +743,131 @@ const PlayersPage = () => {
   }, [notify])
 
   /**
+   * Toggles player selection for bulk operations.
+   */
+  const togglePlayerSelection = useCallback((playerId: string) => {
+    setSelectedPlayerIds((prev) => {
+      const newSet = new Set(prev)
+      if (newSet.has(playerId)) {
+        newSet.delete(playerId)
+      } else {
+        newSet.add(playerId)
+      }
+      return newSet
+    })
+  }, [])
+
+  /**
+   * Toggles select all players.
+   */
+  const toggleSelectAll = useCallback(() => {
+    if (selectedPlayerIds.size === players.length) {
+      // Deselect all
+      setSelectedPlayerIds(new Set())
+    } else {
+      // Select all
+      setSelectedPlayerIds(new Set(players.map(p => p.id)))
+    }
+  }, [players, selectedPlayerIds.size])
+
+  /**
+   * Handles bulk edit save.
+   */
+  const handleBulkEditSave = useCallback(async (updates: {
+    trainingGroups?: string[]
+    active?: boolean
+  }) => {
+    if (selectedPlayerIds.size === 0) return
+
+    const selectedPlayers = players.filter(p => selectedPlayerIds.has(p.id))
+    let successCount = 0
+    let failCount = 0
+
+    for (const player of selectedPlayers) {
+      try {
+        const updateData: PlayerUpdateInput['patch'] = {}
+
+        // Update training groups (add to existing)
+        if (updates.trainingGroups && updates.trainingGroups.length > 0) {
+          const existingGroups = player.trainingGroups ?? []
+          const newGroups = [...new Set([...existingGroups, ...updates.trainingGroups])]
+          updateData.trainingGroups = newGroups
+        }
+
+        // Update active status
+        if (updates.active !== undefined) {
+          updateData.active = updates.active
+        }
+
+        if (Object.keys(updateData).length > 0) {
+          await updatePlayer({ id: player.id, patch: updateData })
+          successCount++
+        }
+      } catch (error) {
+        failCount++
+      }
+    }
+
+    // Refresh player list
+    await refetch()
+
+    // Clear selection
+    setSelectedPlayerIds(new Set())
+
+    // Show results
+    if (failCount === 0) {
+      notify({
+        variant: 'success',
+        title: 'Bulk redigering gennemført',
+        description: `${successCount} spillere opdateret succesfuldt`
+      })
+    } else {
+      notify({
+        variant: 'danger',
+        title: 'Delvis bulk redigering gennemført',
+        description: `${successCount} spillere opdateret, ${failCount} fejlede`
+      })
+    }
+  }, [selectedPlayerIds, players, updatePlayer, refetch, notify])
+
+  /**
    * Memoized table column definitions with sort/filter logic.
    */
   const columns: Column<Player>[] = useMemo(
     () => [
+      {
+        id: 'select',
+        header: (
+          <button
+            type="button"
+            onClick={toggleSelectAll}
+            className="p-1 rounded hover:bg-[hsl(var(--surface-2)/.5)] transition-colors"
+            aria-label={selectedPlayerIds.size === players.length ? 'Fjern markering' : 'Vælg alle'}
+          >
+            {selectedPlayerIds.size === players.length && players.length > 0 ? (
+              <CheckSquare size={18} className="text-[hsl(var(--primary))]" />
+            ) : (
+              <Square size={18} className="text-[hsl(var(--muted))]" />
+            )}
+          </button>
+        ),
+        cell: (row: Player) => (
+          <button
+            type="button"
+            onClick={() => togglePlayerSelection(row.id)}
+            className="p-1 rounded hover:bg-[hsl(var(--surface-2)/.5)] transition-colors"
+            aria-label={`${selectedPlayerIds.has(row.id) ? 'Fjern' : 'Vælg'} ${row.name}`}
+          >
+            {selectedPlayerIds.has(row.id) ? (
+              <CheckSquare size={18} className="text-[hsl(var(--primary))]" />
+            ) : (
+              <Square size={18} className="text-[hsl(var(--muted))]" />
+            )}
+          </button>
+        ),
+        width: '50px',
+        align: 'center' as const
+      },
       {
         id: 'name',
         header: 'Navn',
@@ -970,7 +1094,7 @@ const PlayersPage = () => {
         )
       }
     ],
-    [allPlayersForDropdown, refetch, toggleActive, updatePrimaryCategory, openEdit, saveScrollPosition]
+    [allPlayersForDropdown, refetch, toggleActive, updatePrimaryCategory, openEdit, saveScrollPosition, selectedPlayerIds, players, toggleSelectAll, togglePlayerSelection]
   )
 
   return (
@@ -1035,6 +1159,17 @@ const PlayersPage = () => {
             <span className="hidden sm:inline">Eksporter CSV</span>
             <span className="sm:hidden">Export</span>
           </Button>
+          {selectedPlayerIds.size > 0 && (
+            <Button
+              variant="primary"
+              size="md"
+              onClick={() => setIsBulkEditOpen(true)}
+            >
+              <Edit size={18} />
+              <span className="hidden sm:inline">Rediger {selectedPlayerIds.size}</span>
+              <span className="sm:hidden">{selectedPlayerIds.size}</span>
+            </Button>
+          )}
           <Button
             variant="secondary"
             size="md"
@@ -1073,6 +1208,13 @@ const PlayersPage = () => {
           />
         )}
       </PageCard>
+
+      <BulkEditModal
+        isOpen={isBulkEditOpen}
+        selectedPlayers={players.filter(p => selectedPlayerIds.has(p.id))}
+        onClose={() => setIsBulkEditOpen(false)}
+        onSave={handleBulkEditSave}
+      />
 
       <PlayerForm
         isOpen={isSheetOpen}
