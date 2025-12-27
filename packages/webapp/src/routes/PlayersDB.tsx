@@ -14,7 +14,7 @@ import { DataTable, TableSearch, type Column } from '../components/ui/Table'
 import { EditablePartnerCell, PlayerForm } from '../components/players'
 import { EditableTrainingGroupsCell } from '../components/players/EditableTrainingGroupsCell'
 import { BulkEditModal } from '../components/players/BulkEditModal'
-import { usePlayers } from '../hooks'
+import { usePlayers, useSelection, useScrollRestoration } from '../hooks'
 import { formatDate } from '../lib/formatting'
 import { PLAYER_CATEGORIES } from '../constants'
 import { useToast } from '../components/ui/Toast'
@@ -46,36 +46,20 @@ const PlayersPage = () => {
   const [dialogMode, setDialogMode] = useState<'create' | 'edit'>('create')
   const [currentPlayer, setCurrentPlayer] = useState<Player | null>(null)
   const [isImporting, setIsImporting] = useState(false)
-  const [selectedPlayerIds, setSelectedPlayerIds] = useState<Set<string>>(new Set())
   const [isBulkEditOpen, setIsBulkEditOpen] = useState(false)
   const fileInputRef = useRef<HTMLInputElement>(null)
   const [sort, setSort] = useState<{ columnId: string; direction: 'asc' | 'desc' } | undefined>({
     columnId: 'name',
     direction: 'asc'
   })
-  const scrollPositionRef = useRef<number>(0)
-  const shouldRestoreScrollRef = useRef(false)
-  const [scrollRestoreKey, setScrollRestoreKey] = useState(0)
 
-  /**
-   * Saves current scroll position and marks it for restoration.
-   * Stores it in both a ref (for parent restoration) and data attribute (for DataTable).
-   */
-  const saveScrollPosition = useCallback(() => {
-    const tableContainer = document.querySelector('[data-table-container]') as HTMLElement
-    if (tableContainer) {
-      const currentScroll = tableContainer.scrollTop
-      if (currentScroll > 0) {
-        scrollPositionRef.current = currentScroll
-        shouldRestoreScrollRef.current = true
-        // Store scroll position in data attribute for DataTable to read
-        // Use a timestamp to ensure it's fresh
-        tableContainer.setAttribute('data-saved-scroll', currentScroll.toString())
-        tableContainer.setAttribute('data-saved-scroll-time', Date.now().toString())
-        setScrollRestoreKey((prev) => prev + 1)
-      }
-    }
-  }, [])
+  // Use reusable hooks for selection and scroll restoration
+  const selection = useSelection<string>()
+  const scrollRestoration = useScrollRestoration({
+    container: '[data-table-container]',
+    autoRestore: true,
+    restoreDependencies: [loading, players]
+  })
 
   // Form state
   const [formName, setFormName] = useState('')
@@ -150,7 +134,7 @@ const PlayersPage = () => {
 
       // Save scroll position before update (for edit mode)
       if (dialogMode === 'edit') {
-        saveScrollPosition()
+        scrollRestoration.saveScrollPosition()
       }
 
     try {
@@ -209,7 +193,7 @@ const PlayersPage = () => {
       currentPlayer,
       createPlayer,
       updatePlayer,
-      saveScrollPosition
+      scrollRestoration.saveScrollPosition
     ]
   )
 
@@ -219,14 +203,14 @@ const PlayersPage = () => {
   const toggleActive = useCallback(
     async (player: Player) => {
       // Save scroll position before update
-      saveScrollPosition()
+      scrollRestoration.saveScrollPosition()
       
       await updatePlayer({
         id: player.id,
         patch: { active: !player.active }
       })
     },
-    [updatePlayer, saveScrollPosition]
+    [updatePlayer, scrollRestoration.saveScrollPosition]
   )
 
   /**
@@ -235,45 +219,18 @@ const PlayersPage = () => {
   const updatePrimaryCategory = useCallback(
     async (player: Player, category: PlayerCategory | null) => {
       // Save scroll position before update
-      saveScrollPosition()
+      scrollRestoration.saveScrollPosition()
 
       await updatePlayer({
         id: player.id,
         patch: { primaryCategory: category }
       })
     },
-    [updatePlayer, saveScrollPosition]
+    [updatePlayer, scrollRestoration.saveScrollPosition]
   )
 
-  /**
-   * Restores scroll position after data changes.
-   * This effect runs when loading changes from true to false (update complete)
-   * and when players array changes. We use useLayoutEffect to restore before paint.
-   */
-  useLayoutEffect(() => {
-    // Only restore when loading is false (data has finished loading) and we have a saved position
-    if (!loading && shouldRestoreScrollRef.current && scrollPositionRef.current > 0) {
-      // Use multiple RAFs to ensure we restore after DataTable's effects have run
-      // This ensures the table has fully rendered before we restore scroll
-      const restoreScroll = () => {
-      const tableContainer = document.querySelector('[data-table-container]') as HTMLElement
-      if (tableContainer) {
-          const savedScroll = scrollPositionRef.current
-          if (savedScroll > 0) {
-            tableContainer.scrollTop = savedScroll
-            shouldRestoreScrollRef.current = false
-          }
-        }
-      }
-      
-      // Use multiple RAFs to ensure restoration happens after DataTable's layout effects
-      requestAnimationFrame(() => {
-        requestAnimationFrame(() => {
-          requestAnimationFrame(restoreScroll)
-        })
-      })
-    }
-  }, [loading, players, scrollRestoreKey])
+  // Scroll restoration is handled by useScrollRestoration hook
+  // The hook automatically restores scroll when dependencies change
 
   // Note: Search filtering is handled by API via usePlayers hook with q parameter
   // No client-side filtering needed - improves performance with large datasets
@@ -562,7 +519,7 @@ const PlayersPage = () => {
       
       if (playersToCreate.length === 0) {
         notify({
-          variant: 'info',
+          variant: 'default',
           title: 'Ingen spillere at importere',
           description: 'CSV filen indeholder ingen gyldige spillere'
         })
@@ -742,33 +699,9 @@ const PlayersPage = () => {
     })
   }, [notify])
 
-  /**
-   * Toggles player selection for bulk operations.
-   */
-  const togglePlayerSelection = useCallback((playerId: string) => {
-    setSelectedPlayerIds((prev) => {
-      const newSet = new Set(prev)
-      if (newSet.has(playerId)) {
-        newSet.delete(playerId)
-      } else {
-        newSet.add(playerId)
-      }
-      return newSet
-    })
-  }, [])
-
-  /**
-   * Toggles select all players.
-   */
-  const toggleSelectAll = useCallback(() => {
-    if (selectedPlayerIds.size === players.length) {
-      // Deselect all
-      setSelectedPlayerIds(new Set())
-    } else {
-      // Select all
-      setSelectedPlayerIds(new Set(players.map(p => p.id)))
-    }
-  }, [players, selectedPlayerIds.size])
+  // Selection is handled by useSelection hook
+  // togglePlayerSelection -> selection.toggle
+  // toggleSelectAll -> selection.toggleAll
 
   /**
    * Handles bulk edit save.
@@ -777,9 +710,9 @@ const PlayersPage = () => {
     trainingGroups?: string[]
     active?: boolean
   }) => {
-    if (selectedPlayerIds.size === 0) return
+    if (selection.selectedCount === 0) return
 
-    const selectedPlayers = players.filter(p => selectedPlayerIds.has(p.id))
+    const selectedPlayers = players.filter(p => selection.isSelected(p.id))
     let successCount = 0
     let failCount = 0
 
@@ -812,7 +745,7 @@ const PlayersPage = () => {
     await refetch()
 
     // Clear selection
-    setSelectedPlayerIds(new Set())
+    selection.clear()
 
     // Show results
     if (failCount === 0) {
@@ -828,7 +761,7 @@ const PlayersPage = () => {
         description: `${successCount} spillere opdateret, ${failCount} fejlede`
       })
     }
-  }, [selectedPlayerIds, players, updatePlayer, refetch, notify])
+  }, [selection.selected, players, updatePlayer, refetch, notify])
 
   /**
    * Memoized table column definitions with sort/filter logic.
@@ -840,11 +773,11 @@ const PlayersPage = () => {
         header: (
           <button
             type="button"
-            onClick={toggleSelectAll}
+            onClick={() => selection.toggleAll(players.map(p => p.id))}
             className="p-1 rounded hover:bg-[hsl(var(--surface-2)/.5)] transition-colors"
-            aria-label={selectedPlayerIds.size === players.length ? 'Fjern markering' : 'Vælg alle'}
+            aria-label={selection.isAllSelected(players.map(p => p.id)) ? 'Fjern markering' : 'Vælg alle'}
           >
-            {selectedPlayerIds.size === players.length && players.length > 0 ? (
+            {selection.isAllSelected(players.map(p => p.id)) && players.length > 0 ? (
               <CheckSquare size={18} className="text-[hsl(var(--primary))]" />
             ) : (
               <Square size={18} className="text-[hsl(var(--muted))]" />
@@ -854,11 +787,11 @@ const PlayersPage = () => {
         cell: (row: Player) => (
           <button
             type="button"
-            onClick={() => togglePlayerSelection(row.id)}
+            onClick={() => selection.toggle(row.id)}
             className="p-1 rounded hover:bg-[hsl(var(--surface-2)/.5)] transition-colors"
-            aria-label={`${selectedPlayerIds.has(row.id) ? 'Fjern' : 'Vælg'} ${row.name}`}
+            aria-label={`${selection.isSelected(row.id) ? 'Fjern' : 'Vælg'} ${row.name}`}
           >
-            {selectedPlayerIds.has(row.id) ? (
+            {selection.isSelected(row.id) ? (
               <CheckSquare size={18} className="text-[hsl(var(--primary))]" />
             ) : (
               <Square size={18} className="text-[hsl(var(--muted))]" />
@@ -995,7 +928,7 @@ const PlayersPage = () => {
           <EditableTrainingGroupsCell
             player={row}
             onUpdate={refetch}
-            onBeforeUpdate={saveScrollPosition}
+            onBeforeUpdate={scrollRestoration.saveScrollPosition}
           />
         )
       },
@@ -1021,7 +954,7 @@ const PlayersPage = () => {
               partnerType="doubles"
               allPlayers={allPlayersForDropdown}
               onUpdate={refetch}
-              onBeforeUpdate={saveScrollPosition}
+              onBeforeUpdate={scrollRestoration.saveScrollPosition}
             />
           </div>
         )
@@ -1048,7 +981,7 @@ const PlayersPage = () => {
               partnerType="mixed"
               allPlayers={allPlayersForDropdown}
               onUpdate={refetch}
-              onBeforeUpdate={saveScrollPosition}
+              onBeforeUpdate={scrollRestoration.saveScrollPosition}
             />
           </div>
         )
@@ -1094,7 +1027,7 @@ const PlayersPage = () => {
         )
       }
     ],
-    [allPlayersForDropdown, refetch, toggleActive, updatePrimaryCategory, openEdit, saveScrollPosition, selectedPlayerIds, players, toggleSelectAll, togglePlayerSelection]
+    [allPlayersForDropdown, refetch, toggleActive, updatePrimaryCategory, openEdit, scrollRestoration.saveScrollPosition, selection, players]
   )
 
   return (
@@ -1159,15 +1092,15 @@ const PlayersPage = () => {
             <span className="hidden sm:inline">Eksporter CSV</span>
             <span className="sm:hidden">Export</span>
           </Button>
-          {selectedPlayerIds.size > 0 && (
+          {selection.selectedCount > 0 && (
             <Button
               variant="primary"
               size="md"
               onClick={() => setIsBulkEditOpen(true)}
             >
               <Edit size={18} />
-              <span className="hidden sm:inline">Rediger {selectedPlayerIds.size}</span>
-              <span className="sm:hidden">{selectedPlayerIds.size}</span>
+              <span className="hidden sm:inline">Rediger {selection.selectedCount}</span>
+              <span className="sm:hidden">{selection.selectedCount}</span>
             </Button>
           )}
           <Button
@@ -1211,7 +1144,7 @@ const PlayersPage = () => {
 
       <BulkEditModal
         isOpen={isBulkEditOpen}
-        selectedPlayers={players.filter(p => selectedPlayerIds.has(p.id))}
+        selectedPlayers={players.filter(p => selection.isSelected(p.id))}
         onClose={() => setIsBulkEditOpen(false)}
         onSave={handleBulkEditSave}
       />
