@@ -24,12 +24,13 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   try {
     const body = resetPasswordSchema.parse(req.body)
 
-    // Validate password strength
-    const passwordValidation = validatePasswordStrength(body.password)
+    // Validate password strength (includes breach check)
+    const passwordValidation = await validatePasswordStrength(body.password, true)
     if (!passwordValidation.isValid) {
       return res.status(400).json({
         error: 'Password does not meet requirements',
-        details: passwordValidation.errors
+        details: passwordValidation.errors,
+        breachCount: passwordValidation.breachCount
       })
     }
 

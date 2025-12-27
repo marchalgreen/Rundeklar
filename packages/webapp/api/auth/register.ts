@@ -27,26 +27,37 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   try {
     const body = registerSchema.parse(req.body)
 
-    // Validate password strength
-    const passwordValidation = validatePasswordStrength(body.password)
+    // Validate password strength (includes breach check)
+    const passwordValidation = await validatePasswordStrength(body.password, true)
     if (!passwordValidation.isValid) {
       return res.status(400).json({
         error: 'Password does not meet requirements',
-        details: passwordValidation.errors
+        details: passwordValidation.errors,
+        breachCount: passwordValidation.breachCount
       })
     }
 
     const sql = getPostgresClient(getDatabaseUrl())
 
-    // Check if club already exists
+    // Check if club already exists (but don't reveal this information)
     const existing = await sql`
       SELECT id FROM clubs
       WHERE email = ${body.email} OR tenant_id = ${body.tenantId}
     `
 
+    // Always return same response to prevent user enumeration
+    // If account exists, don't create it but still return success message
     if (existing.length > 0) {
-      return res.status(409).json({
-        error: 'Club with this email or tenant ID already exists'
+      // Log the attempt but don't reveal to user
+      logger.warn('Registration attempt for existing account', {
+        email: body.email,
+        tenantId: body.tenantId
+      })
+      
+      // Return generic success message (same as successful registration)
+      return res.status(201).json({
+        success: true,
+        message: 'If an account with this email does not exist, a verification email has been sent. Please check your email to verify your account.'
       })
     }
 
@@ -84,15 +95,10 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       // Don't fail registration if email fails
     }
 
+    // Return generic success message (same format as when account exists)
     return res.status(201).json({
       success: true,
-      message: 'Registration successful. Please check your email to verify your account.',
-      club: {
-        id: club.id,
-        email: club.email,
-        tenantId: club.tenant_id,
-        emailVerified: club.email_verified
-      }
+      message: 'If an account with this email does not exist, a verification email has been sent. Please check your email to verify your account.'
     })
   } catch (error) {
     if (error instanceof z.ZodError) {

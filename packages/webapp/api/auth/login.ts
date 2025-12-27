@@ -8,6 +8,7 @@ import { checkLoginAttempts, recordLoginAttempt } from '../../src/lib/auth/rateL
 import { verifyTOTP } from '../../src/lib/auth/totp.js'
 import { logger } from '../../src/lib/utils/logger.js'
 import { setCorsHeaders } from '../../src/lib/utils/cors.js'
+import { verifyRecaptchaToken } from '../../src/lib/auth/recaptcha.js'
 
 // Support both email/password (admins) and username/PIN (coaches)
 const loginSchema = z.object({
@@ -19,7 +20,9 @@ const loginSchema = z.object({
   username: z.string().min(1, 'Username is required').optional(),
   pin: z.string().min(6, 'PIN must be 6 digits').max(6, 'PIN must be 6 digits').optional(),
   // 2FA
-  totpCode: z.string().optional()
+  totpCode: z.string().optional(),
+  // reCAPTCHA token (optional, but recommended)
+  recaptchaToken: z.string().optional()
 }).refine(
   (data) => (data.email && data.password) || (data.username && data.pin),
   {
@@ -87,13 +90,35 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     const isPINLogin = !!(body.username && body.pin)
     const isEmailLogin = !!(body.email && body.password)
 
+    // Verify reCAPTCHA token if provided (bot detection)
+    if (body.recaptchaToken) {
+      const recaptchaResult = await verifyRecaptchaToken(body.recaptchaToken, 'login')
+      if (!recaptchaResult.success) {
+        logger.warn('reCAPTCHA verification failed', {
+          score: recaptchaResult.score,
+          error: recaptchaResult.error,
+          ipAddress
+        })
+        // Don't block login, but log for monitoring
+        // In production, you might want to block low scores
+      }
+    }
+
     // Check rate limiting (use email or username as identifier)
     const rateLimitIdentifier = body.email || body.username || ''
     const rateLimit = await checkLoginAttempts(sql, rateLimitIdentifier, ipAddress)
     if (!rateLimit.allowed) {
+      const reasonMessage =
+        rateLimit.reason === 'ip'
+          ? 'Too many login attempts from this IP address'
+          : rateLimit.reason === 'progressive'
+            ? 'Account locked due to repeated failed login attempts. Lockout duration increases with each lockout.'
+            : 'Too many login attempts for this account'
+      
       return res.status(429).json({
-        error: 'Too many login attempts',
-        lockoutUntil: rateLimit.lockoutUntil
+        error: reasonMessage,
+        lockoutUntil: rateLimit.lockoutUntil,
+        remainingAttempts: rateLimit.remainingAttempts
       })
     }
 
@@ -256,10 +281,20 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     // Record successful login
     await recordLoginAttempt(sql, club.id, rateLimitIdentifier, ipAddress, true)
 
+    // Set secure HttpOnly cookies if enabled (environment variable)
+    const useHttpOnlyCookies = process.env.USE_HTTPONLY_COOKIES === 'true'
+    if (useHttpOnlyCookies) {
+      const { setAccessTokenCookie, setRefreshTokenCookie } = await import(
+        '../../src/lib/auth/cookies.js'
+      )
+      setAccessTokenCookie(accessToken, res)
+      setRefreshTokenCookie(refreshToken, res)
+    }
+
     return res.status(200).json({
       success: true,
-      accessToken,
-      refreshToken,
+      accessToken: useHttpOnlyCookies ? undefined : accessToken, // Don't send in body if using cookies
+      refreshToken: useHttpOnlyCookies ? undefined : refreshToken, // Don't send in body if using cookies
       club: {
         id: club.id,
         email: club.email,

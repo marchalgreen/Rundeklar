@@ -5,6 +5,7 @@ import { Button, PINInput } from '../../components/ui'
 import type { PINInputRef } from '../../components/auth/PINInput'
 import { PageCard } from '../../components/ui'
 import { User, Lock, Mail } from 'lucide-react'
+import { executeRecaptcha } from '../../lib/auth/recaptcha'
 
 export default function LoginPage() {
   const { login, loginWithPIN } = useAuth()
@@ -39,6 +40,9 @@ export default function LoginPage() {
     setLoading(true)
 
     try {
+      // Execute reCAPTCHA for bot detection
+      const recaptchaToken = await executeRecaptcha('login')
+
       if (loginMethod === 'pin') {
         if (pin.length !== 6) {
           setError('PIN skal være 6 cifre')
@@ -46,9 +50,9 @@ export default function LoginPage() {
           setLoading(false)
           return
         }
-        await loginWithPIN(username, pin)
+        await loginWithPIN(username, pin, recaptchaToken || undefined)
       } else {
-        await login(email, password, totpCode || undefined)
+        await login(email, password, totpCode || undefined, recaptchaToken || undefined)
       }
       
       // Navigate to coach page after successful login

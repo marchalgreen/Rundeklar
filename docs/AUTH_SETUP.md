@@ -45,6 +45,29 @@ Add these environment variables to your `.env.local` file in `packages/webapp/` 
   - Number of time steps to allow for clock skew
   - Default: 1 (30 seconds before/after)
 
+- `VITE_RECAPTCHA_SITE_KEY` - reCAPTCHA v3 site key (frontend)
+  - Get from: https://www.google.com/recaptcha/admin
+  - Required for bot detection on login
+
+- `RECAPTCHA_SECRET_KEY` - reCAPTCHA v3 secret key (backend)
+  - Get from: https://www.google.com/recaptcha/admin
+  - Required for bot detection verification
+
+- `RECAPTCHA_SCORE_THRESHOLD` - Minimum reCAPTCHA score (default: 0.5)
+  - Range: 0.0 to 1.0
+  - Lower scores indicate bot-like behavior
+
+- `USE_HTTPONLY_COOKIES` - Use HttpOnly cookies for tokens (default: false)
+  - Set to `true` to enable secure cookie storage
+  - Protects against XSS attacks
+
+- `MAX_LOGIN_ATTEMPTS_PER_ACCOUNT` - Max login attempts per account (default: 5)
+- `MAX_LOGIN_ATTEMPTS_PER_IP` - Max login attempts per IP (default: 20)
+- `RATE_LIMIT_WINDOW_MINUTES` - Rate limit time window (default: 15)
+- `INITIAL_LOCKOUT_DURATION_MINUTES` - Initial lockout duration (default: 15)
+- `MAX_LOCKOUT_DURATION_MINUTES` - Maximum lockout duration (default: 1440)
+- `PROGRESSIVE_LOCKOUT_MULTIPLIER` - Progressive lockout multiplier (default: 2.0)
+
 ## Database Migration
 
 Run the migration to create authentication tables in your Neon database:

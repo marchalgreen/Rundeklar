@@ -44,12 +44,17 @@ export async function verifyPassword(password: string, hash: string): Promise<bo
 /**
  * Validate password strength
  * @param password - Password to validate
+ * @param checkBreach - Whether to check password against breach database (default: true)
  * @returns Object with isValid and errors array
  */
-export function validatePasswordStrength(password: string): {
+export async function validatePasswordStrength(
+  password: string,
+  checkBreach: boolean = true
+): Promise<{
   isValid: boolean
   errors: string[]
-} {
+  breachCount?: number
+}> {
   const errors: string[] = []
 
   if (password.length < 8) {
@@ -71,9 +76,30 @@ export function validatePasswordStrength(password: string): {
     errors.push('Password must contain at least one special character')
   }
 
+  // Check password breach database if enabled
+  let breachCount = 0
+  if (checkBreach && errors.length === 0) {
+    try {
+      const { checkPasswordBreach } = await import('./passwordBreach.js')
+      const breachCheck = await checkPasswordBreach(password)
+      if (breachCheck.isBreached) {
+        breachCount = breachCheck.breachCount
+        errors.push(
+          `This password has been found in ${breachCount} data breach${breachCount > 1 ? 'es' : ''}. Please choose a different password.`
+        )
+      }
+    } catch (error) {
+      // Fail open: if breach check fails, don't block password
+      // Log error but continue validation
+      const { logger } = await import('../utils/logger.js')
+      logger.warn('Password breach check failed, allowing password', error)
+    }
+  }
+
   return {
     isValid: errors.length === 0,
-    errors
+    errors,
+    breachCount: breachCount > 0 ? breachCount : undefined
   }
 }
 

@@ -57,3 +57,6 @@ CREATE POLICY "Allow tenant delete access on match_results" ON match_results
 
 
 
+
+
+

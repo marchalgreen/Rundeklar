@@ -65,3 +65,6 @@ Hvis API adgang opnås:
 - Synkronisering sker sandsynligvis via API'et (server-side)
 - Vi kan kontakte Badminton Danmark eller nembadminton.dk's udvikler (Daniel Fly Nygaard) for mere information
 
+
+
+

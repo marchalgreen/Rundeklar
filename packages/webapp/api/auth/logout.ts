@@ -4,6 +4,7 @@ import { hashRefreshToken } from '../../src/lib/auth/jwt.js'
 import { getPostgresClient, getDatabaseUrl } from './db-helper.js'
 import { logger } from '../../src/lib/utils/logger.js'
 import { setCorsHeaders } from '../../src/lib/utils/cors.js'
+import { clearAuthCookies, extractTokenFromRequest } from '../../src/lib/auth/cookies.js'
 
 const logoutSchema = z.object({
   refreshToken: z.string().min(1, 'Refresh token is required')
@@ -31,6 +32,12 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       DELETE FROM club_sessions
       WHERE token_hash = ${tokenHash}
     `
+
+    // Clear HttpOnly cookies if enabled
+    const useHttpOnlyCookies = process.env.USE_HTTPONLY_COOKIES === 'true'
+    if (useHttpOnlyCookies) {
+      clearAuthCookies(res)
+    }
 
     return res.status(200).json({
       success: true,

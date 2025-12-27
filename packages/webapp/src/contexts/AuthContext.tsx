@@ -125,8 +125,16 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       if (response.ok) {
         const data = await response.json()
         localStorage.setItem(ACCESS_TOKEN_KEY, data.accessToken)
-        if (isDev) {
-          logger.debug('[Auth] Token refresh successful', retryCount > 0 ? `(after ${retryCount} retries)` : '')
+        // Token rotation: Update refresh token if new one provided
+        if (data.refreshToken) {
+          localStorage.setItem(REFRESH_TOKEN_KEY, data.refreshToken)
+          if (isDev) {
+            logger.debug('[Auth] Token refresh successful with rotation', retryCount > 0 ? `(after ${retryCount} retries)` : '')
+          }
+        } else {
+          if (isDev) {
+            logger.debug('[Auth] Token refresh successful', retryCount > 0 ? `(after ${retryCount} retries)` : '')
+          }
         }
         return true
       } else if (response.status === 401 && retryCount < MAX_RETRIES) {
@@ -271,7 +279,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   }, [tenantId, getApiUrl, setTokens])
 
   // Login with username/PIN (for coaches)
-  const loginWithPIN = useCallback(async (username: string, pin: string) => {
+  const loginWithPIN = useCallback(async (username: string, pin: string, recaptchaToken?: string) => {
     // Normalize username to lowercase for case-insensitive matching
     const normalizedUsername = username.toLowerCase().trim()
     
@@ -283,7 +291,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       body: JSON.stringify({
         username: normalizedUsername,
         pin,
-        tenantId
+        tenantId,
+        recaptchaToken
       })
     })
 
