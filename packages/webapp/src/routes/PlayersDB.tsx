@@ -8,7 +8,7 @@
 
 import React, { useCallback, useLayoutEffect, useMemo, useRef, useState } from 'react'
 import type { Player, PlayerCategory, PlayerGender, PlayerCreateInput, PlayerUpdateInput } from '@rundeklar/common'
-import { Pencil, Plus, Trash2, UsersRound, Info, Download } from 'lucide-react'
+import { Pencil, Plus, Trash2, UsersRound, Info, Download, Upload } from 'lucide-react'
 import { Badge, Button, EmptyState, PageCard, Tooltip } from '../components/ui'
 import { DataTable, TableSearch, type Column } from '../components/ui/Table'
 import { EditablePartnerCell, PlayerForm } from '../components/players'
@@ -44,6 +44,8 @@ const PlayersPage = () => {
   const [isSheetOpen, setIsSheetOpen] = useState(false)
   const [dialogMode, setDialogMode] = useState<'create' | 'edit'>('create')
   const [currentPlayer, setCurrentPlayer] = useState<Player | null>(null)
+  const [isImporting, setIsImporting] = useState(false)
+  const fileInputRef = useRef<HTMLInputElement>(null)
   const [sort, setSort] = useState<{ columnId: string; direction: 'asc' | 'desc' } | undefined>({
     columnId: 'name',
     direction: 'asc'
@@ -359,6 +361,292 @@ const PlayersPage = () => {
   }, [players, allPlayersForDropdown, notify])
 
   /**
+   * Parses CSV content into array of row arrays.
+   * Handles quoted fields, escaped quotes, and newlines.
+   */
+  const parseCSV = useCallback((csvContent: string): string[][] => {
+    const rows: string[][] = []
+    let currentRow: string[] = []
+    let currentField = ''
+    let insideQuotes = false
+    
+    for (let i = 0; i < csvContent.length; i++) {
+      const char = csvContent[i]
+      const nextChar = csvContent[i + 1]
+      
+      if (char === '"') {
+        if (insideQuotes && nextChar === '"') {
+          // Escaped quote
+          currentField += '"'
+          i++ // Skip next quote
+        } else {
+          // Toggle quote state
+          insideQuotes = !insideQuotes
+        }
+      } else if (char === ',' && !insideQuotes) {
+        // Field separator
+        currentRow.push(currentField.trim())
+        currentField = ''
+      } else if ((char === '\n' || char === '\r') && !insideQuotes) {
+        // Row separator (skip \r\n)
+        if (char === '\n' || (char === '\r' && nextChar !== '\n')) {
+          if (currentField || currentRow.length > 0) {
+            currentRow.push(currentField.trim())
+            rows.push(currentRow)
+            currentRow = []
+            currentField = ''
+          }
+        }
+      } else {
+        currentField += char
+      }
+    }
+    
+    // Add last field and row
+    if (currentField || currentRow.length > 0) {
+      currentRow.push(currentField.trim())
+      rows.push(currentRow)
+    }
+    
+    return rows
+  }, [])
+
+  /**
+   * Validates and converts CSV row to PlayerCreateInput.
+   */
+  const parsePlayerRow = useCallback((row: string[], headers: string[], rowIndex: number): { player: PlayerCreateInput | null; errors: string[] } => {
+    const errors: string[] = []
+    
+    // Find column indices
+    const nameIdx = headers.indexOf('Navn')
+    const aliasIdx = headers.indexOf('Kaldenavn')
+    const levelSingleIdx = headers.indexOf('Rangliste Single')
+    const levelDoubleIdx = headers.indexOf('Rangliste Double')
+    const levelMixIdx = headers.indexOf('Rangliste Mix')
+    const genderIdx = headers.indexOf('Køn')
+    const categoryIdx = headers.indexOf('Primær kategori')
+    const trainingGroupsIdx = headers.indexOf('Træningsgrupper')
+    const statusIdx = headers.indexOf('Status')
+    
+    // Validate required field
+    if (nameIdx === -1 || !row[nameIdx]?.trim()) {
+      errors.push(`Række ${rowIndex + 1}: Navn er påkrævet`)
+      return { player: null, errors }
+    }
+    
+    const name = row[nameIdx].trim()
+    
+    // Parse optional fields
+    const alias = aliasIdx >= 0 && row[aliasIdx]?.trim() ? row[aliasIdx].trim() : undefined
+    const levelSingle = levelSingleIdx >= 0 && row[levelSingleIdx]?.trim() ? parseInt(row[levelSingleIdx].trim(), 10) : undefined
+    const levelDouble = levelDoubleIdx >= 0 && row[levelDoubleIdx]?.trim() ? parseInt(row[levelDoubleIdx].trim(), 10) : undefined
+    const levelMix = levelMixIdx >= 0 && row[levelMixIdx]?.trim() ? parseInt(row[levelMixIdx].trim(), 10) : undefined
+    
+    // Validate gender
+    let gender: PlayerGender | undefined = undefined
+    if (genderIdx >= 0 && row[genderIdx]?.trim()) {
+      const genderValue = row[genderIdx].trim()
+      if (genderValue === 'Herre' || genderValue === 'Dame') {
+        gender = genderValue as PlayerGender
+      } else {
+        errors.push(`Række ${rowIndex + 1}: Ugyldig køn værdi "${genderValue}" (skal være "Herre" eller "Dame")`)
+      }
+    }
+    
+    // Validate category
+    let primaryCategory: PlayerCategory | undefined = undefined
+    if (categoryIdx >= 0 && row[categoryIdx]?.trim()) {
+      const categoryValue = row[categoryIdx].trim()
+      if (categoryValue === 'Single' || categoryValue === 'Double' || categoryValue === 'Begge') {
+        primaryCategory = categoryValue as PlayerCategory
+      } else {
+        errors.push(`Række ${rowIndex + 1}: Ugyldig kategori værdi "${categoryValue}" (skal være "Single", "Double" eller "Begge")`)
+      }
+    }
+    
+    // Parse training groups (semicolon-separated)
+    let trainingGroups: string[] | undefined = undefined
+    if (trainingGroupsIdx >= 0 && row[trainingGroupsIdx]?.trim()) {
+      trainingGroups = row[trainingGroupsIdx]
+        .split(';')
+        .map(g => g.trim())
+        .filter(g => g.length > 0)
+    }
+    
+    // Parse status (default to active)
+    const active = statusIdx >= 0 && row[statusIdx]?.trim() 
+      ? row[statusIdx].trim().toLowerCase() === 'aktiv'
+      : true
+    
+    // Validate levels are numbers if provided
+    if (levelSingleIdx >= 0 && row[levelSingleIdx]?.trim() && isNaN(levelSingle!)) {
+      errors.push(`Række ${rowIndex + 1}: Ugyldig rangliste single værdi "${row[levelSingleIdx]}"`)
+    }
+    if (levelDoubleIdx >= 0 && row[levelDoubleIdx]?.trim() && isNaN(levelDouble!)) {
+      errors.push(`Række ${rowIndex + 1}: Ugyldig rangliste double værdi "${row[levelDoubleIdx]}"`)
+    }
+    if (levelMixIdx >= 0 && row[levelMixIdx]?.trim() && isNaN(levelMix!)) {
+      errors.push(`Række ${rowIndex + 1}: Ugyldig rangliste mix værdi "${row[levelMixIdx]}"`)
+    }
+    
+    const player: PlayerCreateInput = {
+      name,
+      ...(alias && { alias }),
+      ...(levelSingle !== undefined && !isNaN(levelSingle) && { levelSingle }),
+      ...(levelDouble !== undefined && !isNaN(levelDouble) && { levelDouble }),
+      ...(levelMix !== undefined && !isNaN(levelMix) && { levelMix }),
+      ...(gender && { gender }),
+      ...(primaryCategory && { primaryCategory }),
+      ...(trainingGroups && trainingGroups.length > 0 && { trainingGroups }),
+      active
+    }
+    
+    return { player, errors }
+  }, [])
+
+  /**
+   * Handles CSV file import.
+   */
+  const handleImportCSV = useCallback(async (file: File) => {
+    setIsImporting(true)
+    
+    try {
+      // Read file content
+      const text = await file.text()
+      
+      // Remove BOM if present
+      const content = text.charCodeAt(0) === 0xFEFF ? text.slice(1) : text
+      
+      // Parse CSV
+      const rows = parseCSV(content)
+      
+      if (rows.length < 2) {
+        throw new Error('CSV filen skal indeholde mindst en header række og en data række')
+      }
+      
+      const headers = rows[0]
+      const dataRows = rows.slice(1)
+      
+      // Validate headers
+      if (!headers.includes('Navn')) {
+        throw new Error('CSV filen skal indeholde en "Navn" kolonne')
+      }
+      
+      // Parse and validate all rows
+      const playersToCreate: PlayerCreateInput[] = []
+      const allErrors: string[] = []
+      
+      for (let i = 0; i < dataRows.length; i++) {
+        const { player, errors } = parsePlayerRow(dataRows[i], headers, i)
+        if (errors.length > 0) {
+          allErrors.push(...errors)
+        }
+        if (player) {
+          playersToCreate.push(player)
+        }
+      }
+      
+      // Show validation errors if any
+      if (allErrors.length > 0) {
+        notify({
+          variant: 'danger',
+          title: 'Valideringsfejl i CSV fil',
+          description: `${allErrors.length} fejl fundet. Første fejl: ${allErrors[0]}`,
+        })
+        setIsImporting(false)
+        return
+      }
+      
+      if (playersToCreate.length === 0) {
+        notify({
+          variant: 'info',
+          title: 'Ingen spillere at importere',
+          description: 'CSV filen indeholder ingen gyldige spillere'
+        })
+        setIsImporting(false)
+        return
+      }
+      
+      // Create players in batches to avoid overwhelming the API
+      const batchSize = 10
+      let created = 0
+      let failed = 0
+      const failedErrors: string[] = []
+      
+      for (let i = 0; i < playersToCreate.length; i += batchSize) {
+        const batch = playersToCreate.slice(i, i + batchSize)
+        const results = await Promise.allSettled(
+          batch.map(player => createPlayer(player))
+        )
+        
+        results.forEach((result, idx) => {
+          if (result.status === 'fulfilled') {
+            created++
+          } else {
+            failed++
+            failedErrors.push(`${batch[idx].name}: ${result.reason?.message || 'Ukendt fejl'}`)
+          }
+        })
+      }
+      
+      // Refresh player list
+      await refetch()
+      
+      // Show results
+      if (failed === 0) {
+        notify({
+          variant: 'success',
+          title: 'Import gennemført',
+          description: `${created} spillere importeret succesfuldt`
+        })
+      } else {
+        notify({
+          variant: 'danger',
+          title: 'Delvis import gennemført',
+          description: `${created} spillere importeret, ${failed} fejlede. Første fejl: ${failedErrors[0]}`
+        })
+      }
+    } catch (err) {
+      notify({
+        variant: 'danger',
+        title: 'Import fejlede',
+        description: err instanceof Error ? err.message : 'Kunne ikke importere CSV fil'
+      })
+    } finally {
+      setIsImporting(false)
+      // Reset file input
+      if (fileInputRef.current) {
+        fileInputRef.current.value = ''
+      }
+    }
+  }, [parseCSV, parsePlayerRow, createPlayer, refetch, notify])
+
+  /**
+   * Triggers file input click.
+   */
+  const triggerFileInput = useCallback(() => {
+    fileInputRef.current?.click()
+  }, [])
+
+  /**
+   * Handles file input change.
+   */
+  const handleFileChange = useCallback((event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0]
+    if (file) {
+      if (!file.name.endsWith('.csv')) {
+        notify({
+          variant: 'danger',
+          title: 'Ugyldig filtype',
+          description: 'Kun CSV filer kan importeres'
+        })
+        return
+      }
+      void handleImportCSV(file)
+    }
+  }, [handleImportCSV, notify])
+
+  /**
    * Memoized table column definitions with sort/filter logic.
    */
   const columns: Column<Player>[] = useMemo(
@@ -613,6 +901,24 @@ const PlayersPage = () => {
             />
             Vis inaktive
           </label>
+          <input
+            ref={fileInputRef}
+            type="file"
+            accept=".csv"
+            onChange={handleFileChange}
+            className="hidden"
+            aria-label="Import CSV fil"
+          />
+          <Button
+            variant="secondary"
+            size="sm"
+            onClick={triggerFileInput}
+            disabled={isImporting || loading}
+          >
+            <Upload size={16} />
+            <span className="hidden sm:inline">{isImporting ? 'Importerer...' : 'Importer CSV'}</span>
+            <span className="sm:hidden">{isImporting ? '...' : 'Import'}</span>
+          </Button>
           <Button
             variant="secondary"
             size="sm"
