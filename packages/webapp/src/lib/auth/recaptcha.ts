@@ -3,7 +3,15 @@
  * Uses Google reCAPTCHA v3 which runs in the background
  */
 
-const RECAPTCHA_SITE_KEY = import.meta.env.VITE_RECAPTCHA_SITE_KEY || ''
+// RECAPTCHA_SITE_KEY can be used in both browser and server contexts
+// In browser: import.meta.env.VITE_RECAPTCHA_SITE_KEY
+// In Node.js: process.env.VITE_RECAPTCHA_SITE_KEY or process.env.RECAPTCHA_SITE_KEY
+const RECAPTCHA_SITE_KEY = 
+  (typeof import.meta !== 'undefined' && import.meta.env?.VITE_RECAPTCHA_SITE_KEY) ||
+  (typeof process !== 'undefined' && process.env?.VITE_RECAPTCHA_SITE_KEY) ||
+  (typeof process !== 'undefined' && process.env?.RECAPTCHA_SITE_KEY) ||
+  ''
+
 // NOTE: RECAPTCHA_SECRET_KEY should only be used server-side (in API routes)
 // In browser context, we use VITE_ prefix for environment variables
 const RECAPTCHA_SECRET_KEY = typeof process !== 'undefined' && process.env 
@@ -132,9 +140,10 @@ export async function verifyRecaptchaToken(
     // Lower scores indicate bot-like behavior
     const score = data.score || 0.0
     const threshold = parseFloat(
-      (typeof process !== 'undefined' && process.env 
-        ? process.env.RECAPTCHA_SCORE_THRESHOLD 
-        : import.meta.env.VITE_RECAPTCHA_SCORE_THRESHOLD) || '0.5'
+      (typeof process !== 'undefined' && process.env?.RECAPTCHA_SCORE_THRESHOLD) ||
+      (typeof import.meta !== 'undefined' && import.meta.env?.VITE_RECAPTCHA_SCORE_THRESHOLD) ||
+      (typeof process !== 'undefined' && process.env?.VITE_RECAPTCHA_SCORE_THRESHOLD) ||
+      '0.5'
     )
 
     return {

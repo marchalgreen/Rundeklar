@@ -51,10 +51,15 @@ if (!envLoaded) {
   console.warn('⚠️  No .env.local file found. Looking in:', possiblePaths)
 }
 
-// Fallback: Use VITE_DATABASE_URL if DATABASE_URL is not set (for compatibility)
+// Fallback: Use VITE_ prefixed vars if non-prefixed versions are not set (for compatibility)
 if (!process.env.DATABASE_URL && process.env.VITE_DATABASE_URL) {
   process.env.DATABASE_URL = process.env.VITE_DATABASE_URL
   console.log('📝 Using VITE_DATABASE_URL as DATABASE_URL')
+}
+
+// Also map VITE_RECAPTCHA_SITE_KEY to RECAPTCHA_SITE_KEY for server-side usage
+if (!process.env.RECAPTCHA_SITE_KEY && process.env.VITE_RECAPTCHA_SITE_KEY) {
+  process.env.RECAPTCHA_SITE_KEY = process.env.VITE_RECAPTCHA_SITE_KEY
 }
 
 const app = express()
