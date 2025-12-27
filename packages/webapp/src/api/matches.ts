@@ -1334,11 +1334,27 @@ const autoArrangeMatches = async (round?: number, unavailablePlayerIds?: Set<str
 }
 
 /**
- * Moves a player to a court/slot or removes from court (supports swapping).
- * @param payload - Move payload (playerId, toCourtIdx, toSlot, optional swapWithPlayerId)
- * @param round - Optional round number (defaults to 1)
- * @throws Error if player not checked in, slot occupied, or court full
- * @remarks Supports swapping: if target slot is occupied, swaps players.
+ * Moves a player to a different court/slot or swaps players.
+ * 
+ * Handles complex scenarios including:
+ * - Moving player from bench to court
+ * - Moving player between courts
+ * - Moving player within same court (slot change)
+ * - Swapping two players between positions
+ * - Extended capacity courts (up to 8 players)
+ * 
+ * @param payload - Move operation payload containing playerId, target court/slot, and optional swap info
+ * @param round - Optional round number (defaults to 1) for round-specific match filtering
+ * @throws {ValidationError} If payload validation fails
+ * @throws {SessionError} If no active session exists
+ * @throws {Error} If target slot is occupied or court is full
+ * @throws {DatabaseError} If database operation fails
+ * 
+ * @remarks
+ * - Automatically creates match if target court has no match for the round
+ * - Automatically deletes match if it becomes empty after move
+ * - Supports extended capacity courts (up to 8 players) when any slot >= 4 exists
+ * - Handles player swapping by moving occupying player to source location
  */
 const movePlayer = async (payload: MatchMovePayload, round?: number): Promise<void> => {
   const parsed = z
@@ -1550,6 +1566,11 @@ const movePlayer = async (payload: MatchMovePayload, round?: number): Promise<vo
 
 /**
  * Marks a match as finished by setting endedAt timestamp.
+ * 
+ * @param matchId - ID of the match to mark as finished
+ * @returns Updated match with endedAt timestamp set
+ * @throws {DatabaseError} If database operation fails
+ * @throws {SessionError} If match not found
  */
 const markMatchFinished = async (matchId: string): Promise<Match> => {
   const endedAt = new Date().toISOString()

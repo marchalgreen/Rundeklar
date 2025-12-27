@@ -128,6 +128,12 @@ export const readLastGroupId = (): string[] => {
 
 /**
  * Derives training groups from players.trainingGroups values.
+ * 
+ * Groups are extracted from player metadata and sorted alphabetically.
+ * Each group includes a count of players belonging to it.
+ * 
+ * @returns Array of training groups sorted alphabetically by Danish locale
+ * @throws Propagates errors from API calls
  */
 export const fetchTrainingGroups = async (): Promise<Group[]> => {
   const players = await api.players.list({})
@@ -154,6 +160,20 @@ export const fetchTrainingGroups = async (): Promise<Group[]> => {
 
 /**
  * Lists players for a group (or all) with optional search term.
+ * 
+ * Supports filtering by:
+ * - Search query (name/alias matching)
+ * - Specific group membership
+ * - Exclusion of players from specific groups (for cross-group search)
+ * - Result limit
+ * 
+ * @param opts - Search options
+ * @param opts.q - Optional search query to filter by name/alias
+ * @param opts.groupId - Optional group ID to filter by (only players in this group)
+ * @param opts.excludeGroupId - Optional group ID(s) to exclude (single string or array)
+ * @param opts.limit - Maximum number of results (defaults to 50)
+ * @returns Array of player lite objects matching the criteria
+ * @throws Propagates errors from API calls
  */
 export const searchPlayers = async (opts: { q?: string; groupId?: string | null; excludeGroupId?: string | string[]; limit?: number }): Promise<PlayerLite[]> => {
   const { q, groupId, excludeGroupId, limit = 50 } = opts
@@ -217,7 +237,13 @@ export const startSession = async (payload: StartSessionPayload): Promise<Active
   return { sessionId: session.id, startedAt: session.date, groupIds }
 }
 
-/** Ends the current active session. */
+/**
+ * Ends the current active session.
+ * 
+ * @param matchesData - Optional array of court assignments for all rounds to save before ending
+ * @throws Propagates errors from API calls
+ * @remarks Automatically creates a statistics snapshot when session ends.
+ */
 export const endActiveSession = async (matchesData?: Array<{ round: number; matches: CourtWithPlayers[] }>): Promise<void> => {
   await api.session.endActive(matchesData)
 }
