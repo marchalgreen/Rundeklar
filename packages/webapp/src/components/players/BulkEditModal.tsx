@@ -4,11 +4,12 @@
  * Allows updating training groups, active status, and other fields for selected players.
  */
 
-import React, { useState, useCallback, useMemo } from 'react'
+import React, { useState, useCallback } from 'react'
 import type { Player } from '@rundeklar/common'
 import { X } from 'lucide-react'
 import { Button } from '../ui'
 import { fetchTrainingGroups } from '../../services/coachLandingApi'
+import type { Group } from '../../routes/landing/types'
 
 interface BulkEditModalProps {
   isOpen: boolean
@@ -27,7 +28,7 @@ export const BulkEditModal: React.FC<BulkEditModalProps> = ({
   onSave
 }) => {
   const [trainingGroups, setTrainingGroups] = useState<string[]>([])
-  const [availableGroups, setAvailableGroups] = useState<string[]>([])
+  const [availableGroups, setAvailableGroups] = useState<Group[]>([])
   const [activeStatus, setActiveStatus] = useState<boolean | null>(null)
   const [isSaving, setIsSaving] = useState(false)
   const [newGroupInput, setNewGroupInput] = useState('')
@@ -62,11 +63,11 @@ export const BulkEditModal: React.FC<BulkEditModalProps> = ({
     setTrainingGroups(trainingGroups.filter(g => g !== groupToRemove))
   }, [trainingGroups])
 
-  const handleToggleGroup = useCallback((group: string) => {
-    if (trainingGroups.includes(group)) {
-      handleRemoveGroup(group)
+  const handleToggleGroup = useCallback((groupName: string) => {
+    if (trainingGroups.includes(groupName)) {
+      handleRemoveGroup(groupName)
     } else {
-      setTrainingGroups([...trainingGroups, group])
+      setTrainingGroups([...trainingGroups, groupName])
     }
   }, [trainingGroups, handleRemoveGroup])
 
@@ -178,16 +179,16 @@ export const BulkEditModal: React.FC<BulkEditModalProps> = ({
               <div className="flex flex-wrap gap-2 mb-3">
                 {availableGroups.map((group) => (
                   <button
-                    key={group}
+                    key={group.id}
                     type="button"
-                    onClick={() => handleToggleGroup(group)}
+                    onClick={() => handleToggleGroup(group.name)}
                     className={`px-3 py-1.5 rounded-md text-xs font-medium transition-colors ${
-                      trainingGroups.includes(group)
+                      trainingGroups.includes(group.name)
                         ? 'bg-[hsl(var(--primary))] text-white'
                         : 'bg-[hsl(var(--surface-2))] text-[hsl(var(--foreground))] hover:bg-[hsl(var(--surface-glass)/.85)]'
                     }`}
                   >
-                    {group}
+                    {group.name}
                   </button>
                 ))}
               </div>
