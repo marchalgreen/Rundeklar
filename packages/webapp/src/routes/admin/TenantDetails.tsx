@@ -3,6 +3,8 @@ import { PageCard } from '../../components/ui'
 import { Button } from '../../components/ui'
 import { formatCoachUsername } from '../../lib/formatting'
 import { logger } from '../../lib/utils/logger'
+import { EditTenantModal } from '../../components/admin/EditTenantModal'
+import { CreateAdminModal } from '../../components/admin/CreateAdminModal'
 
 interface TenantDetails {
   id: string
@@ -45,6 +47,8 @@ export default function TenantDetailsPage({ tenantId, onClose }: TenantDetailsPa
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [activeTab, setActiveTab] = useState<'details' | 'admins' | 'coaches'>('details')
+  const [isEditTenantModalOpen, setIsEditTenantModalOpen] = useState(false)
+  const [isCreateAdminModalOpen, setIsCreateAdminModalOpen] = useState(false)
 
   const fetchTenantDetails = useCallback(async () => {
     try {
@@ -191,7 +195,7 @@ export default function TenantDetailsPage({ tenantId, onClose }: TenantDetailsPa
             </p>
           </div>
           <div className="flex gap-2">
-            <Button variant="secondary" onClick={() => {/* TODO: Open edit modal */}}>
+            <Button variant="secondary" onClick={() => setIsEditTenantModalOpen(true)}>
               Rediger
             </Button>
             <Button variant="secondary" onClick={handleDeleteTenant}>
@@ -282,7 +286,7 @@ export default function TenantDetailsPage({ tenantId, onClose }: TenantDetailsPa
         <div className="space-y-4">
           <div className="flex items-center justify-between">
             <h3 className="text-lg font-semibold">Administratorer</h3>
-            <Button variant="secondary" onClick={() => {/* TODO: Open create admin modal */}}>
+            <Button variant="secondary" onClick={() => setIsCreateAdminModalOpen(true)}>
               Opret Administrator
             </Button>
           </div>
@@ -354,6 +358,28 @@ export default function TenantDetailsPage({ tenantId, onClose }: TenantDetailsPa
             </div>
           )}
         </div>
+      )}
+
+      {/* Modals */}
+      {tenant && (
+        <>
+          <EditTenantModal
+            isOpen={isEditTenantModalOpen}
+            onClose={() => setIsEditTenantModalOpen(false)}
+            tenant={tenant}
+            onSuccess={() => {
+              fetchTenantDetails()
+            }}
+          />
+          <CreateAdminModal
+            isOpen={isCreateAdminModalOpen}
+            onClose={() => setIsCreateAdminModalOpen(false)}
+            tenantId={tenantId}
+            onSuccess={() => {
+              fetchAdmins()
+            }}
+          />
+        </>
       )}
     </PageCard>
   )
