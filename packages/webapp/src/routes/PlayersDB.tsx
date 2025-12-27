@@ -8,7 +8,7 @@
 
 import React, { useCallback, useLayoutEffect, useMemo, useRef, useState } from 'react'
 import type { Player, PlayerCategory, PlayerGender, PlayerCreateInput, PlayerUpdateInput } from '@rundeklar/common'
-import { Pencil, Plus, Trash2, UsersRound, Info, Download, Upload } from 'lucide-react'
+import { Pencil, Plus, Trash2, UsersRound, Info, Download, Upload, HelpCircle, FileText } from 'lucide-react'
 import { Badge, Button, EmptyState, PageCard, Tooltip } from '../components/ui'
 import { DataTable, TableSearch, type Column } from '../components/ui/Table'
 import { EditablePartnerCell, PlayerForm } from '../components/players'
@@ -647,6 +647,99 @@ const PlayersPage = () => {
   }, [handleImportCSV, notify])
 
   /**
+   * Downloads an example CSV file with correct format.
+   */
+  const downloadExampleCSV = useCallback(() => {
+    const headers = [
+      'Navn',
+      'Kaldenavn',
+      'Rangliste Single',
+      'Rangliste Double',
+      'Rangliste Mix',
+      'Køn',
+      'Primær kategori',
+      'Træningsgrupper',
+      'Double makker',
+      'Mix makker',
+      'Status',
+      'Oprettet'
+    ]
+
+    // Example rows with various data types
+    const exampleRows = [
+      [
+        'Lars Nielsen',
+        'Lasse',
+        '5',
+        '4',
+        '5',
+        'Herre',
+        'Double',
+        'A-gruppe; B-gruppe',
+        '',
+        '',
+        'Aktiv',
+        ''
+      ],
+      [
+        'Anna Hansen',
+        '',
+        '3',
+        '3',
+        '2',
+        'Dame',
+        'Begge',
+        'A-gruppe',
+        '',
+        '',
+        'Aktiv',
+        ''
+      ],
+      [
+        'Peter Madsen',
+        'Pete',
+        '',
+        '',
+        '',
+        'Herre',
+        'Single',
+        '',
+        '',
+        '',
+        'Inaktiv',
+        ''
+      ]
+    ]
+
+    const csvContent = [
+      headers.join(','),
+      ...exampleRows.map((row) => row.map((cell) => {
+        const cellStr = String(cell ?? '')
+        if (cellStr.includes(',') || cellStr.includes('"') || cellStr.includes('\n')) {
+          return `"${cellStr.replace(/"/g, '""')}"`
+        }
+        return cellStr
+      }).join(','))
+    ].join('\n')
+
+    const blob = new Blob(['\ufeff' + csvContent], { type: 'text/csv;charset=utf-8;' })
+    const url = URL.createObjectURL(blob)
+    const link = document.createElement('a')
+    link.href = url
+    link.download = 'eksempel_spillere.csv'
+    document.body.appendChild(link)
+    link.click()
+    document.body.removeChild(link)
+    URL.revokeObjectURL(url)
+
+    notify({
+      variant: 'success',
+      title: 'Eksempel CSV downloadet',
+      description: 'Du kan nu redigere filen og uploade den'
+    })
+  }, [notify])
+
+  /**
    * Memoized table column definitions with sort/filter logic.
    */
   const columns: Column<Player>[] = useMemo(
@@ -909,31 +1002,45 @@ const PlayersPage = () => {
             className="hidden"
             aria-label="Import CSV fil"
           />
+          <div className="flex items-center gap-2">
+            <Button
+              variant="secondary"
+              size="md"
+              onClick={triggerFileInput}
+              disabled={isImporting || loading}
+            >
+              <Upload size={18} />
+              <span className="hidden sm:inline">{isImporting ? 'Importerer...' : 'Importer CSV'}</span>
+              <span className="sm:hidden">{isImporting ? '...' : 'Import'}</span>
+            </Button>
+            <Tooltip content="Download eksempel CSV fil med korrekt format">
+              <Button
+                variant="ghost"
+                size="md"
+                onClick={downloadExampleCSV}
+                className="p-2"
+                aria-label="Download eksempel CSV"
+              >
+                <FileText size={18} />
+              </Button>
+            </Tooltip>
+          </div>
           <Button
             variant="secondary"
-            size="sm"
-            onClick={triggerFileInput}
-            disabled={isImporting || loading}
-          >
-            <Upload size={16} />
-            <span className="hidden sm:inline">{isImporting ? 'Importerer...' : 'Importer CSV'}</span>
-            <span className="sm:hidden">{isImporting ? '...' : 'Import'}</span>
-          </Button>
-          <Button
-            variant="secondary"
-            size="sm"
+            size="md"
             onClick={exportToCSV}
             disabled={players.length === 0 || loading}
           >
-            <Download size={16} />
+            <Download size={18} />
             <span className="hidden sm:inline">Eksporter CSV</span>
             <span className="sm:hidden">Export</span>
           </Button>
           <Button
             variant="secondary"
+            size="md"
             onClick={openCreate}
           >
-            <Plus size={16} />
+            <Plus size={18} />
             <span>Ny spiller</span>
           </Button>
           </div>
