@@ -496,9 +496,13 @@ test.describe('Match Program Page', () => {
       
       if (exists && await enterResultButton.isEnabled()) {
         await enterResultButton.click()
-        await page.waitForTimeout(500)
+        
+        // Wait for modal to appear
+        const modal = page.locator('[role="dialog"]')
+        await modal.waitFor({ state: 'visible', timeout: 5000 }).catch(() => {})
         
         const inputs = page.locator('input[type="number"]')
+        await inputs.first().waitFor({ state: 'visible', timeout: 3000 }).catch(() => {})
         const inputCount = await inputs.count()
         
         if (inputCount >= 4) {
@@ -508,16 +512,15 @@ test.describe('Match Program Page', () => {
           await inputs.nth(2).fill('21')
           await inputs.nth(3).fill('19')
           
-          await page.waitForTimeout(500)
-          
           // Press Enter on last input
           await inputs.nth(3).press('Enter')
-          await page.waitForTimeout(1000)
           
-          // Modal should close if validation passed
-          const modal = page.locator('[role="dialog"]')
+          // Wait for modal to close or stay open (depending on validation)
+          await modal.waitFor({ state: 'hidden', timeout: 5000 }).catch(() => {})
+          await page.waitForLoadState('networkidle', { timeout: 2000 }).catch(() => {})
+          
+          // Modal may or may not close depending on validation state
           const modalExists = await helpers.elementExists(modal)
-          // May or may not close depending on validation state
           expect(modalExists !== undefined).toBe(true)
         }
       }
@@ -537,10 +540,10 @@ test.describe('Match Program Page', () => {
         
         if (editExists) {
           await editButton.click()
-          await page.waitForTimeout(500)
           
-          // Modal should open with existing scores
+          // Wait for modal to open with existing scores
           const modal = page.locator('[role="dialog"]')
+          await modal.waitFor({ state: 'visible', timeout: 5000 }).catch(() => {})
           const modalExists = await helpers.elementExists(modal)
           expect(modalExists).toBe(true)
         }
@@ -559,7 +562,10 @@ test.describe('Match Program Page', () => {
       
       if (exists && await enterResultButton.isEnabled()) {
         await enterResultButton.click()
-        await page.waitForTimeout(500)
+        
+        // Wait for modal to appear
+        const modal = page.locator('[role="dialog"]')
+        await modal.waitFor({ state: 'visible', timeout: 5000 }).catch(() => {})
         
         // Look for delete button (only visible if result exists)
         const deleteButton = page.getByRole('button', { name: /slet|delete/i })
@@ -567,20 +573,21 @@ test.describe('Match Program Page', () => {
         
         if (deleteExists) {
           await deleteButton.click()
-          await page.waitForTimeout(300)
           
-          // Confirmation dialog should appear
+          // Wait for confirmation dialog to appear
           const confirmButton = page.getByRole('button', { name: /slet|delete/i }).filter({ 
             hasText: /slet|delete/i 
           }).last()
+          await confirmButton.waitFor({ state: 'visible', timeout: 3000 }).catch(() => {})
           const confirmExists = await helpers.elementExists(confirmButton)
           
           if (confirmExists) {
             await confirmButton.click()
-            await page.waitForTimeout(1000)
             
-            // Modal should close
-            const modal = page.locator('[role="dialog"]')
+            // Wait for modal to close
+            await modal.waitFor({ state: 'hidden', timeout: 5000 }).catch(() => {})
+            await page.waitForLoadState('networkidle', { timeout: 2000 }).catch(() => {})
+            
             const modalExists = await helpers.elementExists(modal)
             expect(modalExists).toBe(false)
           }
@@ -599,9 +606,13 @@ test.describe('Match Program Page', () => {
       
       if (exists && await enterResultButton.isEnabled()) {
         await enterResultButton.click()
-        await page.waitForTimeout(500)
+        
+        // Wait for modal to appear
+        const modal = page.locator('[role="dialog"]')
+        await modal.waitFor({ state: 'visible', timeout: 5000 }).catch(() => {})
         
         const inputs = page.locator('input[type="number"]')
+        await inputs.first().waitFor({ state: 'visible', timeout: 3000 }).catch(() => {})
         const inputCount = await inputs.count()
         
         if (inputCount >= 4) {
@@ -611,10 +622,9 @@ test.describe('Match Program Page', () => {
           await inputs.nth(2).fill('21')
           await inputs.nth(3).fill('19')
           
-          await page.waitForTimeout(500)
-          
-          // Save button should be enabled
+          // Wait for validation - save button should be enabled
           const saveButton = page.getByRole('button', { name: /gem|save/i })
+          await saveButton.waitFor({ state: 'visible', timeout: 2000 }).catch(() => {})
           const saveExists = await helpers.elementExists(saveButton)
           
           if (saveExists) {
@@ -637,9 +647,13 @@ test.describe('Match Program Page', () => {
       
       if (exists && await enterResultButton.isEnabled()) {
         await enterResultButton.click()
-        await page.waitForTimeout(500)
+        
+        // Wait for modal to appear
+        const modal = page.locator('[role="dialog"]')
+        await modal.waitFor({ state: 'visible', timeout: 5000 }).catch(() => {})
         
         const inputs = page.locator('input[type="number"]')
+        await inputs.first().waitFor({ state: 'visible', timeout: 3000 }).catch(() => {})
         const inputCount = await inputs.count()
         
         if (inputCount >= 2) {
@@ -647,18 +661,16 @@ test.describe('Match Program Page', () => {
           await inputs.nth(0).fill('21')
           // Leave second input empty
           
-          await page.waitForTimeout(500)
-          
           // Try to save
           const saveButton = page.getByRole('button', { name: /gem|save/i })
           const saveExists = await helpers.elementExists(saveButton)
           
           if (saveExists) {
             await saveButton.click()
-            await page.waitForTimeout(300)
             
-            // Should show error about both players needing scores
+            // Wait for validation error to appear
             const errorMessage = page.locator('text=/begge.*skal.*have|both.*must.*have/i')
+            await errorMessage.waitFor({ state: 'visible', timeout: 2000 }).catch(() => {})
             const hasError = await helpers.elementExists(errorMessage)
             expect(hasError !== undefined).toBe(true)
           }
