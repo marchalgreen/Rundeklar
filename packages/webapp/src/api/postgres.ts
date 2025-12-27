@@ -2323,7 +2323,8 @@ export const insertBackupData = async (state: DatabaseState): Promise<void> => {
       VALUES (
         ${player.id}, ${player.name}, ${player.alias ?? null}, 
         ${player.levelSingle ?? player.level ?? null}, ${player.levelDouble ?? null}, ${player.levelMix ?? null}, 
-        ${player.gender ?? null}, ${player.primaryCategory ?? null}, ${player.active ?? true}, 
+        ${player.gender ?? null}, ${player.primaryCategory ?? null}, ${player.trainingGroups ?? []}, 
+        ${player.active ?? true}, 
         ${player.preferredDoublesPartners ?? []}, ${player.preferredMixedPartners ?? []}, 
         ${player.createdAt}, ${tenantId}
       )
