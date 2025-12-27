@@ -578,8 +578,9 @@ const CheckInPage = () => {
                   ))}
                 </div>
               )}
-            </div>
-          )}
+              </>
+            )}
+          </div>
         </PageCard>
 
         {/* Players overview */}
