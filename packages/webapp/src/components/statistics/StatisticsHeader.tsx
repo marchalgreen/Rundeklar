@@ -1,10 +1,12 @@
 import React, { memo } from 'react'
-import { ArrowLeft } from 'lucide-react'
+import { ArrowLeft, Download } from 'lucide-react'
+import { Button } from '../ui'
 import type { ViewMode } from '../../hooks/statistics/useStatisticsView'
 
 interface StatisticsHeaderProps {
   viewMode: ViewMode
   onBack: () => void
+  onExport?: () => void
 }
 
 /**
@@ -16,7 +18,8 @@ interface StatisticsHeaderProps {
  */
 export const StatisticsHeader: React.FC<StatisticsHeaderProps> = memo(({
   viewMode,
-  onBack
+  onBack,
+  onExport
 }) => {
   const title = viewMode === 'training' ? 'Træning & fremmøde' : 'Individuel statistik'
   const description = viewMode === 'training'
@@ -44,6 +47,19 @@ export const StatisticsHeader: React.FC<StatisticsHeaderProps> = memo(({
             </p>
           </div>
         </div>
+        {onExport && (
+          <div className="flex-shrink-0">
+            <Button
+              variant="secondary"
+              size="sm"
+              onClick={onExport}
+            >
+              <Download size={16} />
+              <span className="hidden sm:inline">Eksporter CSV</span>
+              <span className="sm:hidden">Export</span>
+            </Button>
+          </div>
+        )}
       </div>
     </header>
   )
