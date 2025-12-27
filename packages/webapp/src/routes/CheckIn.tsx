@@ -7,7 +7,7 @@
 
 import React, { useCallback, useEffect, useMemo, useState } from 'react'
 import type { Player, CheckedInPlayer } from '@rundeklar/common'
-import { UsersRound } from 'lucide-react'
+import { UsersRound, CheckSquare, Square } from 'lucide-react'
 import { PageCard, EmptyState, Button } from '../components/ui'
 import { TableSearch } from '../components/ui/Table'
 import { PlayerCard, CheckedInPlayerCard, LetterFilters, AnimatedList, NotesModal } from '../components/checkin'
@@ -17,6 +17,7 @@ import coachLandingApi from '../services/coachLandingApi'
 import CrossGroupSearchModal from '../components/checkin/CrossGroupSearchModal'
 import api from '../api'
 import { normalizeGroupIds } from '../lib/groupSelection'
+import { useToast } from '../components/ui/Toast'
 
 /**
  * Check-in page component.
@@ -27,6 +28,8 @@ import { normalizeGroupIds } from '../lib/groupSelection'
  * ```
  */
 const CheckInPage = () => {
+  const { notify } = useToast()
+  
   // Data hooks
   const { session, loading: sessionLoading } = useSession()
   const { players, loading: playersLoading, refetch: refetchPlayers } = usePlayers({ active: true })
@@ -61,6 +64,9 @@ const CheckInPage = () => {
   const [isNotesModalForCheckedIn, setIsNotesModalForCheckedIn] = useState(false)
   // Pending notes for players not yet checked in
   const [pendingNotes, setPendingNotes] = useState<Map<string, string | null>>(new Map())
+  // Bulk selection state
+  const [selectedPlayerIds, setSelectedPlayerIds] = useState<Set<string>>(new Set())
+  const [isBulkCheckingIn, setIsBulkCheckingIn] = useState(false)
   // Derived prevent-pick set (extra allowed + already checked-in)
   const pickedIdsSet = useMemo(() => {
     const ids = new Set<string>(extraAllowedIds)
@@ -178,6 +184,132 @@ const CheckInPage = () => {
     },
     [checkIn, session]
   )
+
+  /**
+   * Toggles player selection for bulk operations.
+   */
+  const togglePlayerSelection = useCallback((playerId: string) => {
+    setSelectedPlayerIds((prev) => {
+      const newSet = new Set(prev)
+      if (newSet.has(playerId)) {
+        newSet.delete(playerId)
+      } else {
+        newSet.add(playerId)
+      }
+      return newSet
+    })
+  }, [])
+
+  /**
+   * Toggles select all players.
+   */
+  const toggleSelectAll = useCallback(() => {
+    if (selectedPlayerIds.size === filteredPlayers.length) {
+      // Deselect all
+      setSelectedPlayerIds(new Set())
+    } else {
+      // Select all
+      setSelectedPlayerIds(new Set(filteredPlayers.map(p => p.id)))
+    }
+  }, [filteredPlayers, selectedPlayerIds.size])
+
+  /**
+   * Handles bulk check-in of selected players.
+   */
+  const handleBulkCheckIn = useCallback(async () => {
+    if (!session || selectedPlayerIds.size === 0) return
+
+    setIsBulkCheckingIn(true)
+    const selectedPlayers = filteredPlayers.filter(p => selectedPlayerIds.has(p.id))
+    
+    try {
+      // Check in all selected players sequentially to avoid overwhelming the API
+      let successCount = 0
+      let failCount = 0
+
+      for (const player of selectedPlayers) {
+        // Add animation state
+        setAnimatingOut((prev) => new Set(prev).add(player.id))
+        setJustCheckedIn((prev) => new Set(prev).add(player.id))
+
+        // Wait for animation
+        await new Promise((resolve) => setTimeout(resolve, UI_CONSTANTS.CHECK_IN_ANIMATION_DURATION_MS))
+
+        const notes = pendingNotes.get(player.id) ?? null
+        const maxRounds = oneRoundOnlyPlayers.has(player.id) ? 1 : undefined
+        const success = await checkIn(player.id, maxRounds, notes)
+
+        if (success) {
+          successCount++
+          // Clear pending notes
+          setPendingNotes((prev) => {
+            const newMap = new Map(prev)
+            newMap.delete(player.id)
+            return newMap
+          })
+          // Add animation state for moving into checked-in section
+          setAnimatingIn((prev) => new Set(prev).add(player.id))
+          setAnimatingOut((prev) => {
+            const newSet = new Set(prev)
+            newSet.delete(player.id)
+            return newSet
+          })
+          // Remove visual feedback after animation
+          setTimeout(() => {
+            setJustCheckedIn((prev) => {
+              const newSet = new Set(prev)
+              newSet.delete(player.id)
+              return newSet
+            })
+            setAnimatingIn((prev) => {
+              const newSet = new Set(prev)
+              newSet.delete(player.id)
+              return newSet
+            })
+          }, UI_CONSTANTS.ANIMATION_CLEANUP_DELAY_MS)
+        } else {
+          failCount++
+          // Remove visual feedback on error
+          setJustCheckedIn((prev) => {
+            const newSet = new Set(prev)
+            newSet.delete(player.id)
+            return newSet
+          })
+          setAnimatingOut((prev) => {
+            const newSet = new Set(prev)
+            newSet.delete(player.id)
+            return newSet
+          })
+        }
+      }
+
+      // Clear selection after bulk check-in
+      setSelectedPlayerIds(new Set())
+
+      // Show results
+      if (failCount === 0) {
+        notify({
+          variant: 'success',
+          title: 'Bulk check-in gennemført',
+          description: `${successCount} spillere checked ind succesfuldt`
+        })
+      } else {
+        notify({
+          variant: 'danger',
+          title: 'Delvis bulk check-in gennemført',
+          description: `${successCount} spillere checked ind, ${failCount} fejlede`
+        })
+      }
+    } catch (err) {
+      notify({
+        variant: 'danger',
+        title: 'Bulk check-in fejlede',
+        description: err instanceof Error ? err.message : 'Kunne ikke checke spillere ind'
+      })
+    } finally {
+      setIsBulkCheckingIn(false)
+    }
+  }, [session, selectedPlayerIds, filteredPlayers, checkIn, pendingNotes, oneRoundOnlyPlayers, notify])
 
   /**
    * Handles player check-out with animation feedback.
@@ -525,6 +657,8 @@ const CheckInPage = () => {
                     onOneRoundOnlyChange={handleOneRoundOnlyChange}
                     onEditNotes={handleEditNotes}
                     pendingNotes={pendingNotes.get(player.id) ?? null}
+                    isSelected={selectedPlayerIds.has(player.id)}
+                    onToggleSelection={togglePlayerSelection}
                   />
                 )}
               />

@@ -14,7 +14,7 @@ import { getPlayerUiVariant, VARIANT_CHANGED_EVENT, type PlayerUiVariant } from 
 import { useEffect, useState, useMemo } from 'react'
 import { formatCategoryLetter, formatPlayerCardName } from '../../lib/formatting'
 import { PLAYER_CATEGORIES } from '../../constants'
-import { Info } from 'lucide-react'
+import { Info, CheckSquare, Square } from 'lucide-react'
 
 /**
  * Props for PlayerCard component.
@@ -46,6 +46,12 @@ interface PlayerCardProps {
   
   /** Optional notes for this player (if they have pending notes before check-in). */
   pendingNotes?: string | null
+  
+  /** Whether player is selected for bulk operations. */
+  isSelected?: boolean
+  
+  /** Callback when selection checkbox is toggled. */
+  onToggleSelection?: (playerId: string) => void
 }
 
 /**
@@ -99,7 +105,9 @@ export const PlayerCard: React.FC<PlayerCardProps> = ({
   onCheckIn,
   onOneRoundOnlyChange,
   onEditNotes,
-  pendingNotes
+  pendingNotes,
+  isSelected = false,
+  onToggleSelection
 }) => {
   const [variant, setVariant] = useState<PlayerUiVariant>(() => getPlayerUiVariant())
   useEffect(() => {
@@ -144,6 +152,23 @@ export const PlayerCard: React.FC<PlayerCardProps> = ({
       }}
     >
       <div className="flex items-center gap-1.5 sm:gap-2 min-w-0 flex-1">
+        {onToggleSelection && (
+          <button
+            type="button"
+            onClick={(e) => {
+              e.stopPropagation()
+              onToggleSelection(player.id)
+            }}
+            className="flex-shrink-0 p-1 rounded hover:bg-[hsl(var(--surface-2)/.5)] transition-colors"
+            aria-label={`${isSelected ? 'Fjern' : 'Vælg'} ${player.name}`}
+          >
+            {isSelected ? (
+              <CheckSquare size={18} className="text-[hsl(var(--primary))]" />
+            ) : (
+              <Square size={18} className="text-[hsl(var(--muted))]" />
+            )}
+          </button>
+        )}
         <InitialsAvatar seed={player.id} name={player.name} gender={player.gender ?? null} />
         <div className="min-w-0 flex-1">
           <div className="flex items-center gap-1.5 sm:gap-2 min-w-0">
