@@ -1,7 +1,10 @@
 import type {
   Player,
   PlayerUpdateInput,
+  PlayerGender,
+  PlayerCategory,
   TrainingSession,
+  TrainingSessionStatus,
   CheckIn,
   Court,
   Match,
@@ -218,9 +221,93 @@ export const createId = () => {
 }
 
 /**
+ * Postgres database row types (snake_case field names as returned from database).
+ */
+interface PostgresPlayerRow {
+  id: string
+  name: string
+  alias: string | null
+  level_single: number | null
+  level_double: number | null
+  level_mix: number | null
+  gender: string | null
+  primary_category: string | null
+  training_group: string[] | null
+  active: boolean
+  preferred_doubles_partners: string[] | null
+  preferred_mixed_partners: string[] | null
+  badmintonplayer_id: string | null
+  created_at: string
+  tenant_id: string
+}
+
+interface PostgresSessionRow {
+  id: string
+  date: string
+  status: string
+  created_at: string
+  tenant_id: string
+  isolation_id?: string | null
+}
+
+interface PostgresCheckInRow {
+  id: string
+  session_id: string
+  player_id: string
+  max_rounds: number | null
+  created_at: string
+  notes: string | null
+  tenant_id: string
+}
+
+interface PostgresCourtRow {
+  id: string
+  idx: number
+  tenant_id: string
+}
+
+interface PostgresMatchRow {
+  id: string
+  session_id: string
+  court_id: string
+  started_at: string
+  ended_at: string | null
+  round: number | null
+  tenant_id: string
+}
+
+interface PostgresMatchPlayerRow {
+  id: string
+  match_id: string
+  player_id: string
+  slot: number
+}
+
+interface PostgresMatchResultRow {
+  id: string
+  match_id: string
+  sport: string
+  score_data: unknown // JSONB - can be string or object
+  winner_team: number | null
+  created_at: string
+  updated_at: string
+}
+
+interface PostgresStatisticsSnapshotRow {
+  id: string
+  session_id: string
+  session_date: string
+  season: string
+  matches: unknown // JSONB array
+  match_players: unknown // JSONB array
+  check_ins: unknown // JSONB array
+  created_at: string
+}
+
+/**
  * Converts a Postgres row to a Player.
  */
-const rowToPlayer = (row: any): Player => ({
+const rowToPlayer = (row: PostgresPlayerRow): Player => ({
   id: row.id,
   name: row.name,
   alias: row.alias,
@@ -228,8 +315,8 @@ const rowToPlayer = (row: any): Player => ({
   levelSingle: row.level_single,
   levelDouble: row.level_double,
   levelMix: row.level_mix,
-  gender: row.gender,
-  primaryCategory: row.primary_category,
+  gender: row.gender as PlayerGender | null,
+  primaryCategory: row.primary_category as PlayerCategory | null,
   trainingGroups: row.training_group || [],
   active: row.active,
   preferredDoublesPartners: row.preferred_doubles_partners || [],
@@ -241,17 +328,17 @@ const rowToPlayer = (row: any): Player => ({
 /**
  * Converts a Postgres row to a TrainingSession.
  */
-const rowToSession = (row: any): TrainingSession => ({
+const rowToSession = (row: PostgresSessionRow): TrainingSession => ({
   id: row.id,
   date: row.date,
-  status: row.status,
+  status: row.status as TrainingSessionStatus,
   createdAt: row.created_at
 })
 
 /**
  * Converts a Postgres row to a CheckIn.
  */
-const rowToCheckIn = (row: any): CheckIn => ({
+const rowToCheckIn = (row: PostgresCheckInRow): CheckIn => ({
   id: row.id,
   sessionId: row.session_id,
   playerId: row.player_id,
@@ -263,7 +350,7 @@ const rowToCheckIn = (row: any): CheckIn => ({
 /**
  * Converts a Postgres row to a Court.
  */
-const rowToCourt = (row: any): Court => ({
+const rowToCourt = (row: PostgresCourtRow): Court => ({
   id: row.id,
   idx: row.idx
 })
@@ -271,7 +358,7 @@ const rowToCourt = (row: any): Court => ({
 /**
  * Converts a Postgres row to a Match.
  */
-const rowToMatch = (row: any): Match => ({
+const rowToMatch = (row: PostgresMatchRow): Match => ({
   id: row.id,
   sessionId: row.session_id,
   courtId: row.court_id,
@@ -283,7 +370,7 @@ const rowToMatch = (row: any): Match => ({
 /**
  * Converts a Postgres row to a MatchPlayer.
  */
-const rowToMatchPlayer = (row: any): MatchPlayer => ({
+const rowToMatchPlayer = (row: PostgresMatchPlayerRow): MatchPlayer => ({
   id: row.id,
   matchId: row.match_id,
   playerId: row.player_id,
@@ -293,7 +380,7 @@ const rowToMatchPlayer = (row: any): MatchPlayer => ({
 /**
  * Converts a Postgres row to a MatchResult.
  */
-const rowToMatchResult = (row: any): MatchResult => {
+const rowToMatchResult = (row: PostgresMatchResultRow): MatchResult => {
   // Parse score_data if it's a string (JSONB from Postgres)
   let scoreData = row.score_data
   if (typeof scoreData === 'string') {
@@ -321,11 +408,12 @@ const rowToMatchResult = (row: any): MatchResult => {
 /**
  * Converts a Postgres row to a StatisticsSnapshot.
  */
-const rowToStatisticsSnapshot = (row: any): StatisticsSnapshot => {
+const rowToStatisticsSnapshot = (row: PostgresStatisticsSnapshotRow): StatisticsSnapshot => {
   // Helper to ensure array format (handles JSONB strings, null, undefined, etc.)
   // CRITICAL: postgres.js returns JSONB values as JavaScript objects/arrays when possible
   // But when stored as JSONB strings (legacy data), they come as strings and need parsing
-  const ensureArray = (value: any, fieldName: string = 'field'): any[] => {
+  // NOTE: Using unknown instead of any for better type safety - value is validated at runtime
+  const ensureArray = (value: unknown, fieldName: string = 'field'): unknown[] => {
     // Already an array - return as-is
     if (Array.isArray(value)) return value
     
@@ -523,13 +611,13 @@ export const loadState = async (): Promise<DatabaseState> => {
     const safeStatistics = Array.isArray(statistics) ? statistics : []
 
     // Convert rows to types and update individual caches
-    const convertedPlayers = safePlayers.map(rowToPlayer)
-    const convertedSessions = safeSessions.map(rowToSession)
-    const convertedCheckIns = safeCheckIns.map(rowToCheckIn)
-    const convertedCourts = safeCourts.map(rowToCourt)
-    const convertedMatches = safeMatches.map(rowToMatch)
-    const convertedMatchPlayers = safeMatchPlayers.map(rowToMatchPlayer)
-    const convertedStatistics = safeStatistics.map(rowToStatisticsSnapshot)
+    const convertedPlayers = (safePlayers as PostgresPlayerRow[]).map(rowToPlayer)
+    const convertedSessions = (safeSessions as PostgresSessionRow[]).map(rowToSession)
+    const convertedCheckIns = (safeCheckIns as PostgresCheckInRow[]).map(rowToCheckIn)
+    const convertedCourts = (safeCourts as PostgresCourtRow[]).map(rowToCourt)
+    const convertedMatches = (safeMatches as PostgresMatchRow[]).map(rowToMatch)
+    const convertedMatchPlayers = (safeMatchPlayers as PostgresMatchPlayerRow[]).map(rowToMatchPlayer)
+    const convertedStatistics = (safeStatistics as PostgresStatisticsSnapshotRow[]).map(rowToStatisticsSnapshot)
 
     // Update individual table caches
     tableCaches.players = convertedPlayers
@@ -644,7 +732,7 @@ export const getPlayers = async (): Promise<Player[]> => {
   const sql = getPostgres()
   const tenantId = getTenantId()
   const players = await sql`SELECT * FROM players WHERE tenant_id = ${tenantId} ORDER BY name`
-  const converted = players.map(rowToPlayer)
+  const converted = (players as PostgresPlayerRow[]).map(rowToPlayer)
   
   // Update cache
   tableCaches.players = converted
@@ -674,7 +762,7 @@ export const createPlayer = async (player: Omit<Player, 'id' | 'createdAt'>): Pr
     
     // Collect all unique training groups
     const existingGroups = new Set<string>()
-    allPlayers.forEach((p: any) => {
+    (allPlayers as Array<{ training_group?: string[] | null }>).forEach((p) => {
       if (p.training_group && Array.isArray(p.training_group)) {
         p.training_group.forEach((group: string) => {
           if (group) existingGroups.add(group)
@@ -723,7 +811,7 @@ export const createPlayer = async (player: Omit<Player, 'id' | 'createdAt'>): Pr
     )
     RETURNING *
   `
-  const converted = rowToPlayer(created)
+  const converted = rowToPlayer(created as PostgresPlayerRow)
   
   // Optimistic cache update - no need to invalidate, just update cache
   if (tableCaches.players) {
@@ -821,13 +909,14 @@ export const updatePlayer = async (id: string, updates: PlayerUpdateInput['patch
   if (Object.keys(updateData).length === 0) {
     // No updates, just fetch the player
     const [player] = await sql`SELECT * FROM players WHERE id = ${id} AND tenant_id = ${tenantId}`
-    return rowToPlayer(player)
+    return rowToPlayer(player as PostgresPlayerRow)
   }
 
   // Build SET clause dynamically - using sql.unsafe for dynamic field names
   // This is safe because we control the input and validate field names
   const setClauses: string[] = []
-  const values: any[] = []
+  // NOTE: Using unknown[] for better type safety - values are validated at runtime
+  const values: unknown[] = []
   let paramIndex = 1
   
   for (const [key, value] of Object.entries(updateData)) {
@@ -847,8 +936,11 @@ export const updatePlayer = async (id: string, updates: PlayerUpdateInput['patch
   const [updated] = await sql.unsafe(
     `UPDATE players SET ${setClauses.join(', ')} WHERE tenant_id = $${paramIndex} AND id = $${paramIndex + 1} RETURNING *`,
     values
-  )
+  ) as [PostgresPlayerRow] | []
 
+  if (!updated) {
+    throw new Error('Player not found')
+  }
   const converted = rowToPlayer(updated)
   
   // Optimistic cache update
@@ -933,7 +1025,7 @@ export const createSession = async (session: Omit<TrainingSession, 'id' | 'creat
     VALUES (${session.date}, ${session.status}, ${tenantId}, ${isolationId})
     RETURNING *
   `
-  const converted = rowToSession(created)
+  const converted = rowToSession(created as PostgresSessionRow)
   
   // Optimistic cache update
   if (tableCaches.sessions) {
@@ -954,7 +1046,12 @@ export const updateSession = async (id: string, updates: Partial<Omit<TrainingSe
   const tenantId = getTenantId()
   const isolationId = await getIsolationIdForCurrentTenant()
   
-  const updateData: any = {}
+  interface SessionUpdateData {
+    date?: string
+    status?: string
+  }
+  
+  const updateData: SessionUpdateData = {}
   if (updates.date !== undefined) updateData.date = updates.date
   if (updates.status !== undefined) updateData.status = updates.status
 
@@ -965,18 +1062,19 @@ export const updateSession = async (id: string, updates: Partial<Omit<TrainingSe
       if (!session) {
         throw new Error('Session not found or isolation mismatch')
       }
-      return rowToSession(session)
+      return rowToSession(session as PostgresSessionRow)
     } else {
       const [session] = await sql`SELECT * FROM training_sessions WHERE id = ${id} AND tenant_id = ${tenantId} AND (isolation_id IS NULL OR isolation_id = '')`
       if (!session) {
         throw new Error('Session not found')
       }
-      return rowToSession(session)
+      return rowToSession(session as PostgresSessionRow)
     }
   }
 
   const setClauses: string[] = []
-  const values: any[] = []
+  // NOTE: Using unknown[] for better type safety - values are validated at runtime
+  const values: unknown[] = []
   let paramIndex = 1
   
   for (const [key, value] of Object.entries(updateData)) {
@@ -991,7 +1089,7 @@ export const updateSession = async (id: string, updates: Partial<Omit<TrainingSe
     const [updated] = await sql.unsafe(
       `UPDATE training_sessions SET ${setClauses.join(', ')} WHERE tenant_id = $${paramIndex} AND isolation_id = $${paramIndex + 1} AND id = $${paramIndex + 2} RETURNING *`,
       values
-    )
+    ) as [PostgresSessionRow] | []
     if (!updated) {
       throw new Error('Session not found or isolation mismatch')
     }
@@ -1149,7 +1247,7 @@ export const createCheckIn = async (checkIn: Omit<CheckIn, 'id' | 'createdAt'>):
     if (existing.length === 0) {
       throw new Error('Failed to create or find check-in')
     }
-    const converted = rowToCheckIn(existing[0])
+    const converted = rowToCheckIn(existing[0] as PostgresCheckInRow)
     
     // Update cache with existing check-in
     if (tableCaches.checkIns) {
@@ -1168,7 +1266,7 @@ export const createCheckIn = async (checkIn: Omit<CheckIn, 'id' | 'createdAt'>):
     return converted
   }
   
-  const converted = rowToCheckIn(result[0])
+  const converted = rowToCheckIn(result[0] as PostgresCheckInRow)
   
   // Optimistic cache update
   if (tableCaches.checkIns) {
@@ -1195,7 +1293,12 @@ export const updateCheckIn = async (id: string, updates: Partial<Pick<CheckIn, '
   const tenantId = getTenantId()
   const isolationId = await getIsolationIdForCurrentTenant()
   
-  const updateData: any = {}
+  interface CheckInUpdateData {
+    max_rounds?: number | null
+    notes?: string | null
+  }
+  
+  const updateData: CheckInUpdateData = {}
   if (updates.maxRounds !== undefined) updateData.max_rounds = updates.maxRounds
   if (updates.notes !== undefined) updateData.notes = updates.notes
 
@@ -1209,12 +1312,13 @@ export const updateCheckIn = async (id: string, updates: Partial<Pick<CheckIn, '
     if (!checkIn) {
       throw new Error('Check-in not found')
     }
-    return rowToCheckIn(checkIn)
+    return rowToCheckIn(checkIn as PostgresCheckInRow)
   }
 
   // Build UPDATE query with isolation check
   const setClauses: string[] = []
-  const values: any[] = []
+  // NOTE: Using unknown[] for better type safety - values are validated at runtime
+  const values: unknown[] = []
   let paramIndex = 1
   
   for (const [key, value] of Object.entries(updateData)) {
@@ -1229,7 +1333,7 @@ export const updateCheckIn = async (id: string, updates: Partial<Pick<CheckIn, '
     const [updated] = await sql.unsafe(
       `UPDATE check_ins SET ${setClauses.join(', ')} WHERE tenant_id = $${paramIndex} AND isolation_id = $${paramIndex + 1} AND id = $${paramIndex + 2} RETURNING *`,
       values
-    )
+    ) as [PostgresCheckInRow] | []
     if (!updated) {
       throw new Error('Check-in not found or isolation mismatch')
     }
@@ -1250,7 +1354,7 @@ export const updateCheckIn = async (id: string, updates: Partial<Pick<CheckIn, '
     const [updated] = await sql.unsafe(
       `UPDATE check_ins SET ${setClauses.join(', ')} WHERE tenant_id = $${paramIndex} AND (isolation_id IS NULL OR isolation_id = '') AND id = $${paramIndex + 1} RETURNING *`,
       values
-    )
+    ) as [PostgresCheckInRow] | []
     if (!updated) {
       throw new Error('Check-in not found')
     }
@@ -1304,7 +1408,7 @@ export const getCourts = async (): Promise<Court[]> => {
   const sql = getPostgres()
   const tenantId = getTenantId()
   const courts = await sql`SELECT * FROM courts WHERE tenant_id = ${tenantId} ORDER BY idx`
-  const converted = courts.map(rowToCourt)
+  const converted = (courts as PostgresCourtRow[]).map(rowToCourt)
   
   // Update cache
   tableCaches.courts = converted
@@ -1326,7 +1430,7 @@ export const createCourt = async (court: Omit<Court, 'id'>): Promise<Court> => {
     VALUES (${court.idx}, ${tenantId})
     RETURNING *
   `
-  const converted = rowToCourt(created)
+  const converted = rowToCourt(created as PostgresCourtRow)
   
   // Optimistic cache update
   if (tableCaches.courts) {
@@ -1461,7 +1565,7 @@ export const createMatch = async (match: Omit<Match, 'id'>): Promise<Match> => {
     )
     RETURNING *
   `
-  const converted = rowToMatch(created)
+  const converted = rowToMatch(created as PostgresMatchRow)
   
   // Optimistic cache update
   if (tableCaches.matches) {
@@ -1480,7 +1584,15 @@ export const createMatch = async (match: Omit<Match, 'id'>): Promise<Match> => {
 export const updateMatch = async (id: string, updates: Partial<Omit<Match, 'id'>>): Promise<Match> => {
   const sql = getPostgres()
   
-  const updateData: any = {}
+  interface MatchUpdateData {
+    session_id?: string
+    court_id?: string
+    started_at?: string
+    ended_at?: string | null
+    round?: number | null
+  }
+  
+  const updateData: MatchUpdateData = {}
   if (updates.sessionId !== undefined) updateData.session_id = updates.sessionId
   if (updates.courtId !== undefined) updateData.court_id = updates.courtId
   if (updates.startedAt !== undefined) updateData.started_at = updates.startedAt
@@ -1491,11 +1603,12 @@ export const updateMatch = async (id: string, updates: Partial<Omit<Match, 'id'>
 
   if (Object.keys(updateData).length === 0) {
     const [match] = await sql`SELECT * FROM matches WHERE id = ${id} AND tenant_id = ${tenantId}`
-    return rowToMatch(match)
+    return rowToMatch(match as PostgresMatchRow)
   }
 
   const setClauses: string[] = []
-  const values: any[] = []
+  // NOTE: Using unknown[] for better type safety - values are validated at runtime
+  const values: unknown[] = []
   let paramIndex = 1
   
   for (const [key, value] of Object.entries(updateData)) {
@@ -1509,8 +1622,11 @@ export const updateMatch = async (id: string, updates: Partial<Omit<Match, 'id'>
   const [updated] = await sql.unsafe(
     `UPDATE matches SET ${setClauses.join(', ')} WHERE tenant_id = $${paramIndex} AND id = $${paramIndex + 1} RETURNING *`,
     values
-  )
+  ) as [PostgresMatchRow] | []
 
+  if (!updated) {
+    throw new Error('Match not found')
+  }
   const converted = rowToMatch(updated)
   
   // Optimistic cache update
@@ -1646,7 +1762,7 @@ export const createMatchPlayer = async (matchPlayer: Omit<MatchPlayer, 'id'>): P
     )
     RETURNING *
   `
-  const converted = rowToMatchPlayer(created)
+  const converted = rowToMatchPlayer(created as PostgresMatchPlayerRow)
   
   // Optimistic cache update
   if (tableCaches.matchPlayers) {
@@ -1665,7 +1781,13 @@ export const createMatchPlayer = async (matchPlayer: Omit<MatchPlayer, 'id'>): P
 export const updateMatchPlayer = async (id: string, updates: Partial<Omit<MatchPlayer, 'id'>>): Promise<MatchPlayer> => {
   const sql = getPostgres()
   
-  const updateData: any = {}
+  interface MatchPlayerUpdateData {
+    match_id?: string
+    player_id?: string
+    slot?: number
+  }
+  
+  const updateData: MatchPlayerUpdateData = {}
   if (updates.matchId !== undefined) updateData.match_id = updates.matchId
   if (updates.playerId !== undefined) updateData.player_id = updates.playerId
   if (updates.slot !== undefined) updateData.slot = updates.slot
@@ -1674,11 +1796,12 @@ export const updateMatchPlayer = async (id: string, updates: Partial<Omit<MatchP
 
   if (Object.keys(updateData).length === 0) {
     const [matchPlayer] = await sql`SELECT * FROM match_players WHERE id = ${id} AND tenant_id = ${tenantId}`
-    return rowToMatchPlayer(matchPlayer)
+    return rowToMatchPlayer(matchPlayer as PostgresMatchPlayerRow)
   }
 
   const setClauses: string[] = []
-  const values: any[] = []
+  // NOTE: Using unknown[] for better type safety - values are validated at runtime
+  const values: unknown[] = []
   let paramIndex = 1
   
   for (const [key, value] of Object.entries(updateData)) {
@@ -1692,8 +1815,11 @@ export const updateMatchPlayer = async (id: string, updates: Partial<Omit<MatchP
   const [updated] = await sql.unsafe(
     `UPDATE match_players SET ${setClauses.join(', ')} WHERE tenant_id = $${paramIndex} AND id = $${paramIndex + 1} RETURNING *`,
     values
-  )
+  ) as [PostgresMatchPlayerRow] | []
 
+  if (!updated) {
+    throw new Error('Match player not found')
+  }
   const converted = rowToMatchPlayer(updated)
   
   // Optimistic cache update
@@ -1814,7 +1940,7 @@ export const createStatisticsSnapshot = async (snapshot: Omit<StatisticsSnapshot
       tenantId
     ]
   )
-  const converted = rowToStatisticsSnapshot(created)
+  const converted = rowToStatisticsSnapshot(created as PostgresStatisticsSnapshotRow)
   
   // Optimistic cache update
   if (tableCaches.statistics) {
@@ -2002,7 +2128,7 @@ export const createMatchResult = async (
     RETURNING *
   `
   
-  const converted = rowToMatchResult(created)
+  const converted = rowToMatchResult(created as PostgresMatchResultRow)
   
   // Optimistic cache update
   if (tableCaches.matchResults) {
@@ -2041,11 +2167,12 @@ export const updateMatchResult = async (
     if (!result) {
       throw new Error('Match result not found')
     }
-    return rowToMatchResult(result)
+    return rowToMatchResult(result as PostgresMatchResultRow)
   }
   
   const setClauses: string[] = []
-  const values: any[] = []
+  // NOTE: Using unknown[] for better type safety - values are validated at runtime
+  const values: unknown[] = []
   let paramIndex = 1
   
   for (const [key, value] of Object.entries(updateData)) {
@@ -2068,7 +2195,7 @@ export const updateMatchResult = async (
     throw new Error('Match result not found')
   }
   
-  const converted = rowToMatchResult(updated)
+  const converted = rowToMatchResult(updated as PostgresMatchResultRow)
   
   // Optimistic cache update
   if (tableCaches.matchResults) {
