@@ -7,7 +7,8 @@
 
 import React, { useEffect, useMemo, useState, useCallback } from 'react'
 import type { Player, PlayerCategory, PlayerGender } from '@rundeklar/common'
-import { Button } from '../ui'
+import { Info } from 'lucide-react'
+import { Button, Tooltip } from '../ui'
 import { formatPlayerName } from '../../lib/formatting'
 import { PLAYER_CATEGORIES, PLAYER_GENDERS } from '../../constants'
 import { fetchTrainingGroups } from '../../services/coachLandingApi'
@@ -88,9 +89,13 @@ export const PlayerForm: React.FC<PlayerFormProps> = ({
   const addNewGroup = useCallback(() => {
     const name = newGroupInput.trim()
     if (!name) return
+    // Add to available groups list (local state only - will be persisted when player is saved)
+    // Note: Training groups exist only as metadata on players, so they will be visible
+    // to other users once this player is saved with the new group
     if (!availableGroups.includes(name)) {
       setAvailableGroups((prev) => [...prev, name])
     }
+    // Add to selected groups for this player
     if (!formState.trainingGroups.includes(name)) {
       formSetters.setTrainingGroups([...formState.trainingGroups, name])
     }
@@ -228,9 +233,25 @@ export const PlayerForm: React.FC<PlayerFormProps> = ({
           </label>
 
           <div className="space-y-4">
-            <h4 className="text-sm font-medium text-[hsl(var(--foreground))]">Rangliste</h4>
+            <div className="flex items-center gap-2">
+              <h4 className="text-sm font-medium text-[hsl(var(--foreground))]">Rangliste (BadmintonPlayer.dk)</h4>
+              <Tooltip 
+                content="Rangliste niveauer fra BadmintonPlayer.dk. Højere tal = højere niveau. Bruges til matchmaking og statistikker. Kan hentes automatisk hvis spiller har BadmintonPlayer.dk ID."
+                position="top"
+              >
+                <Info className="h-4 w-4 text-[hsl(var(--muted))] hover:text-[hsl(var(--foreground))]" />
+              </Tooltip>
+            </div>
             <label className="flex flex-col gap-2 text-sm">
-              <span className="font-medium text-[hsl(var(--foreground))]">Rangliste Single</span>
+              <div className="flex items-center gap-1.5">
+                <span className="font-medium text-[hsl(var(--foreground))]">Rangliste Single</span>
+                <Tooltip 
+                  content="Niveau for single badminton. Højere tal = højere niveau."
+                  position="top"
+                >
+                  <Info className="h-3.5 w-3.5 text-[hsl(var(--muted))] hover:text-[hsl(var(--foreground))]" />
+                </Tooltip>
+              </div>
               <input
                 type="number"
                 value={formState.levelSingle}
@@ -239,7 +260,15 @@ export const PlayerForm: React.FC<PlayerFormProps> = ({
               />
             </label>
             <label className="flex flex-col gap-2 text-sm">
-              <span className="font-medium text-[hsl(var(--foreground))]">Rangliste Double</span>
+              <div className="flex items-center gap-1.5">
+                <span className="font-medium text-[hsl(var(--foreground))]">Rangliste Double</span>
+                <Tooltip 
+                  content="Niveau for double badminton. Højere tal = højere niveau."
+                  position="top"
+                >
+                  <Info className="h-3.5 w-3.5 text-[hsl(var(--muted))] hover:text-[hsl(var(--foreground))]" />
+                </Tooltip>
+              </div>
               <input
                 type="number"
                 value={formState.levelDouble}
@@ -248,7 +277,15 @@ export const PlayerForm: React.FC<PlayerFormProps> = ({
               />
             </label>
             <label className="flex flex-col gap-2 text-sm">
-              <span className="font-medium text-[hsl(var(--foreground))]">Rangliste Mix</span>
+              <div className="flex items-center gap-1.5">
+                <span className="font-medium text-[hsl(var(--foreground))]">Rangliste Mix</span>
+                <Tooltip 
+                  content="Niveau for mixed double badminton. Højere tal = højere niveau."
+                  position="top"
+                >
+                  <Info className="h-3.5 w-3.5 text-[hsl(var(--muted))] hover:text-[hsl(var(--foreground))]" />
+                </Tooltip>
+              </div>
               <input
                 type="number"
                 value={formState.levelMix}
