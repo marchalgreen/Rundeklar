@@ -4,7 +4,7 @@ Note on precedence: This document defers to `prompts/agentPrompts/guards.md` for
 
 ## Overview
 
-This application is a multi-tenant badminton training management system built with React, TypeScript, and Supabase. It follows a modular, layered architecture with clear separation of concerns.
+This application is a multi-tenant badminton training management system built with React, TypeScript, and Postgres (Vercel Neon). It follows a modular, layered architecture with clear separation of concerns. Database access is proxied through Vercel API routes for security and tenant isolation.
 
 ## Architecture Layers
 
@@ -43,9 +43,9 @@ This application is a multi-tenant badminton training management system built wi
 
 **Structure**:
 - `api/index.ts` - Main API client with domain-specific modules
-- `api/supabase.ts` - Supabase client configuration
+- `api/postgres.ts` - Postgres database operations (browser-compatible, proxies through Vercel API routes)
 - `api/stats.ts` - Statistics-specific API functions
-- `api/storage.ts` - Storage operations
+- `api/db.ts` - Vercel serverless function that proxies Postgres queries
 
 **Principles**:
 - All data access goes through this layer
@@ -53,20 +53,22 @@ This application is a multi-tenant badminton training management system built wi
 - Provides consistent error handling
 - No business logic in API layer
 
-### 4. Data Access Layer (`src/lib/supabase.ts`)
+### 4. Data Access Layer (`src/lib/postgres.ts`, `api/db.ts`)
 
-**Purpose**: Low-level database operations and Supabase client management.
+**Purpose**: Low-level database operations and Postgres client management.
 
 **Structure**:
-- `lib/supabase.ts` - Supabase client creation and tenant management
+- `lib/postgres.ts` - Postgres client proxy (browser-compatible)
+- `api/db.ts` - Vercel serverless function that executes Postgres queries
 - `lib/tenant.ts` - Tenant configuration and path utilities
 
 **Principles**:
 - Only database operations and client management
 - No business logic
 - Handles tenant isolation
+- Browser queries are proxied through Vercel API routes for security
 
-### 5. Domain Layer (`@herlev-hjorten/common`)
+### 5. Domain Layer (`@rundeklar/common`)
 
 **Purpose**: Shared types and domain models.
 
@@ -90,10 +92,16 @@ Custom Hook (Business Logic)
   ↓
 API Service (Data Access)
   ↓
-Supabase Client (Database)
+Postgres Client Proxy (Browser)
+  ↓
+Vercel API Route (api/db.ts)
+  ↓
+Postgres Database (Neon)
   ↓
 Response flows back up
 ```
+
+**Note**: Browser cannot directly access Postgres, so all queries are proxied through Vercel serverless functions (`api/db.ts`) which run in Node.js environment where `postgres.js` works.
 
 ## Key Patterns
 
@@ -238,7 +246,7 @@ services/
 - Utilities: Direct function calls
 
 ### Integration Tests
-- API layer: Mock Supabase client
+- API layer: Mock Postgres client or Vercel API routes
 - Custom hooks: Test with real API mocks
 
 ### E2E Tests

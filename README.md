@@ -1,6 +1,6 @@
 # Rundeklar – Webapp
 
-En letvægts webapplikation til den lokale badmintonklub. Alt kører i browseren og gemmes lokalt i IndexedDB; ingen server eller desktop-wrapper er nødvendig.
+En webapplikation til den lokale badmintonklub. Applikationen bruger Postgres database (Vercel Neon) via Vercel API routes til data persistence.
 
 ## Funktioner
 - **Spilleradministration** med søgning, CRUD og aktiv/inaktiv-toggle
@@ -9,8 +9,9 @@ En letvægts webapplikation til den lokale badmintonklub. Alt kører i browseren
 - Auto-seed af 40 demo-spillere og 8 baner for hurtig demo
 
 ## Tech Stack
-– Vite + React 19 + TypeScript + Tailwind CSS
-- IndexedDB administreret via Dexie & dexie-react-hooks
+- Vite + React 19 + TypeScript + Tailwind CSS
+- Postgres database (Vercel Neon) via Vercel API routes
+- Multi-tenant architecture med tenant isolation
 - Zod til inputvalidering
 - Delt typer i `packages/common`
 
@@ -18,6 +19,8 @@ En letvægts webapplikation til den lokale badmintonklub. Alt kører i browseren
 ### Krav
 - Node.js ≥ 20
 - pnpm ≥ 9
+- Vercel CLI (for lokal udvikling med API routes)
+- Postgres database (Vercel Neon anbefalet)
 
 ### Installation
 ```bash
@@ -25,10 +28,23 @@ pnpm install
 ```
 
 ### Udvikling
+
+For lokal udvikling skal du køre både Vite dev server og Vercel API routes:
+
 ```bash
+# Terminal 1: Start Vite dev server
 pnpm dev
+
+# Terminal 2: Start Vercel API routes (for database access)
+cd packages/webapp
+vercel dev
 ```
-Starter Vite-devserver på http://127.0.0.1:5173 med hot reloading.
+
+Vite dev server kører på http://127.0.0.1:5173 og Vercel API routes på http://127.0.0.1:3000.
+
+**Miljøvariabler:**
+- Opret `.env.local` i `packages/webapp/` med `DATABASE_URL` (Postgres connection string)
+- Se `.env.example` for eksempel konfiguration
 
 ### Produktion
 ```bash
@@ -54,13 +70,26 @@ Kører Vitest-tests for matchmaker-logikken.
 ```
 packages/
   common/   → delte TypeScript-typer
-  webapp/   → Vite + React-klient, Dexie API, matcher mv.
+  webapp/   → Vite + React-klient, Postgres API, matcher mv.
+    api/    → Vercel serverless functions (database proxy)
+    src/    → React applikation
 ```
 
+## Database Setup
+
+Applikationen bruger Postgres database (Vercel Neon anbefalet) via Vercel API routes.
+
+### Database Schema
+- Anvend migrations fra `database/migrations/` på din Postgres database
+- Schema understøtter multi-tenant architecture med tenant isolation
+
+### Tenant Configuration
+- Tenant configs findes i `packages/webapp/src/config/tenants/`
+- Hver tenant har sin egen konfiguration med database connection string
+
 ## Noter
-- Appen seedes automatisk første gang IndexedDB initialiseres.
-- Alle operationer kører lokalt i browseren; rydning af site-data nulstiller databasen.
 - Matchmaker-logikken er isoleret i `packages/webapp/src/lib/matchmaker.ts` og dækket af Vitest.
+- Alle database queries går gennem Vercel API routes (`api/db.ts`) for sikkerhed og tenant isolation.
 
 ## Engineering Guidelines Index (source of truth & precedence)
 
