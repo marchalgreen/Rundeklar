@@ -4,7 +4,7 @@ import { ArrowUpDown, Search } from 'lucide-react'
 
 export type Column<T> = {
   id: string
-  header: string
+  header: string | React.ReactNode
   cell?: (row: T) => React.ReactNode
   accessor?: (row: T) => React.ReactNode
   align?: 'left' | 'center' | 'right'
