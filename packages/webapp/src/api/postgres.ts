@@ -770,7 +770,7 @@ export const updatePlayer = async (id: string, updates: PlayerUpdateInput['patch
   if (updates.level !== undefined) updateData.level_single = updates.level // Backward compatibility
   if (updates.gender !== undefined) updateData.gender = updates.gender
   if (updates.primaryCategory !== undefined) updateData.primary_category = updates.primaryCategory
-  if (updates.trainingGroups !== undefined) updateData.training_groups = updates.trainingGroups ?? null
+  if (updates.trainingGroups !== undefined) updateData.training_group = updates.trainingGroups ?? null
   if (updates.active !== undefined) updateData.active = updates.active
   if (updates.preferredDoublesPartners !== undefined) updateData.preferred_doubles_partners = updates.preferredDoublesPartners ?? null
   if (updates.preferredMixedPartners !== undefined) updateData.preferred_mixed_partners = updates.preferredMixedPartners ?? null
