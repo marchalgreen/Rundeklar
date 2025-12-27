@@ -13,7 +13,7 @@ import { formatPlayerName } from '../../lib/formatting'
 import { normalizeError } from '../../lib/errors'
 import { PLAYER_GENDERS } from '../../constants'
 import { useToast } from '../ui/Toast'
-import { Tooltip } from '../ui'
+import { Tooltip, Button } from '../ui'
 
 /**
  * Props for EditablePartnerCell component.
@@ -69,28 +69,28 @@ const PartnerOverrideDialog: React.FC<{
         </span>
       </div>
       <div className="flex gap-3 justify-end">
-        <button
-          type="button"
+        <Button
+          variant="secondary"
+          size="sm"
           onClick={(e) => {
             e.preventDefault()
             e.stopPropagation()
             onCancel()
           }}
-          className="px-4 py-2 text-sm rounded bg-[hsl(var(--surface-2))] text-[hsl(var(--foreground))] hover:bg-[hsl(var(--surface-glass)/.85)] transition-colors"
         >
           Annuller
-        </button>
-        <button
-          type="button"
+        </Button>
+        <Button
+          variant="primary"
+          size="sm"
           onClick={(e) => {
             e.preventDefault()
             e.stopPropagation()
             onConfirm()
           }}
-          className="px-4 py-2 text-sm rounded bg-[hsl(var(--primary))] text-white hover:opacity-90 transition-opacity cursor-pointer"
         >
           Overskriv
-        </button>
+        </Button>
       </div>
     </div>
   </div>

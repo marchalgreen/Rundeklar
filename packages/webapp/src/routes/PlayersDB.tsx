@@ -623,14 +623,13 @@ const PlayersPage = () => {
             <span className="hidden sm:inline">Eksporter CSV</span>
             <span className="sm:hidden">Export</span>
           </Button>
-          <button
-            type="button"
+          <Button
+            variant="secondary"
             onClick={openCreate}
-            className="inline-flex items-center justify-center gap-2 h-11 px-5 rounded-lg text-sm font-medium whitespace-nowrap bg-[hsl(var(--surface-glass)/.85)] text-[hsl(var(--foreground))] hover:bg-[hsl(var(--surface-glass)/.95)] ring-1 ring-[hsl(var(--line)/.12)] transition-all duration-200 ease-[cubic-bezier(.2,.8,.2,1)] motion-reduce:transition-none focus-visible:ring-2 focus-visible:ring-[hsl(var(--ring))] outline-none disabled:opacity-60 disabled:cursor-not-allowed"
           >
             <Plus size={16} />
             <span>Ny spiller</span>
-          </button>
+          </Button>
           </div>
         </div>
       </header>

@@ -271,14 +271,15 @@ const StartSessionControls: React.FC<{
         {addedPlayers.length > 0 && (
           <div className="flex flex-wrap gap-1.5 sm:gap-2 mt-1">
             {addedPlayers.map((p) => (
-              <button
+              <Button
                 key={p.id}
+                variant="secondary"
+                size="sm"
                 onClick={() => onRemovePlayer(p.id)}
-                className={`px-2 sm:px-2.5 py-1 rounded-md text-xs bg-[hsl(var(--surface-2))] ring-1 ring-[hsl(var(--line)/.12)] ${ringFocus}`}
                 aria-label={`Fjern ${p.displayName}`}
               >
                 {p.displayName}
-              </button>
+              </Button>
             ))}
           </div>
         )}
