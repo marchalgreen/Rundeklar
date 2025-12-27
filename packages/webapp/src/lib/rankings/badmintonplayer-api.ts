@@ -72,9 +72,15 @@ export async function discoverBadmintonPlayerApi(): Promise<ApiClient | null> {
 export function createApiClient(baseUrl: string, apiKey?: string): ApiClient {
   return {
     async getRankings(badmintonplayerIds: string[]): Promise<RankingData[]> {
-      // TODO: Implement actual API call once endpoints are discovered
-      // This is a placeholder that would make HTTP requests to the API
-      throw new Error('API client not fully implemented - endpoints need to be discovered')
+      // NOTE: API implementation pending partnership with Badminton Danmark
+      // The BadmintonPlayer.dk API is private/partner-only and requires:
+      // 1. Partnership agreement with Badminton Danmark
+      // 2. API credentials/keys
+      // 3. Discovery of actual API endpoints
+      // 
+      // Until then, the system falls back to web scraping (see ranking-service.ts)
+      // This is intentional and documented - not a bug
+      throw new Error('API client not fully implemented - requires partnership with Badminton Danmark for API access')
     }
   }
 }

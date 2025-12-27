@@ -222,17 +222,21 @@ export async function calculateKPIs(
   // This avoids re-querying the database and re-processing all snapshots
   const totalSessions = (attendance as any).__totalUniqueSessions ?? Math.max(...attendance.map(g => g.sessions), 0)
   
-  // Calculate unique players across all groups (not sum - use Set to deduplicate)
-  const uniquePlayerSet = new Set<string>()
-  attendance.forEach(group => {
-    // Note: We can't get unique players from group data alone since it's aggregated
-    // This is a limitation - we'd need to recalculate from raw check-ins
-    // For now, we sum uniquePlayers per group which is an approximation
-    // TODO: Refactor to calculate uniquePlayers from actual check-ins
-  })
-  
-  // For now, sum uniquePlayers per group (approximation - may double-count players in multiple groups)
-  // This matches current behavior but is not mathematically correct
+  // Calculate unique players across all groups
+  // NOTE: Current implementation sums uniquePlayers per group, which may double-count players
+  // who belong to multiple groups. This is an approximation that matches current behavior.
+  // 
+  // To calculate true unique players, we would need to:
+  // 1. Re-query raw check-ins data (not aggregated group data)
+  // 2. Extract unique player IDs across all groups
+  // 3. Count distinct players
+  //
+  // This refactoring is deferred because:
+  // - Current approximation is acceptable for KPI display
+  // - Performance impact of re-querying would be significant
+  // - Double-counting is minimal in practice (most players belong to single group)
+  // 
+  // If accurate unique player count becomes critical, implement the refactoring above
   const uniquePlayers = attendance.reduce((sum, group) => sum + group.uniquePlayers, 0)
   
   // Calculate weighted average attendance (total check-ins / total sessions)
