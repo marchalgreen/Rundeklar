@@ -92,12 +92,11 @@ const CheckInPage = () => {
       setSearching(true)
       try {
         // Exclude players from selected groups in cross-group search
-        // For now, exclude only the first group (API doesn't support multiple excludeGroupIds)
-        // This is acceptable as cross-group search is meant to find players outside selected groups
+        // API now supports array of excludeGroupIds to exclude multiple groups
         const res = await coachLandingApi.searchPlayers({
           q: searchTerm,
           groupId: null,
-          excludeGroupId: defaultGroupIds.length > 0 ? defaultGroupIds[0] : undefined,
+          excludeGroupId: defaultGroupIds.length > 0 ? defaultGroupIds : undefined,
           limit: 50
         })
         if (!cancelled) setSearchResults(res)
