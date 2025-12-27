@@ -6,7 +6,6 @@ import StatisticsPage from './routes/Statistics'
 import LandingPage from './routes/LandingPage'
 import MarketingLandingPage from './routes/MarketingLandingPage'
 import MarketingSignupPage from './routes/marketing/MarketingSignupPage'
-import PrismTestPage from './routes/PrismTest'
 import LoginPage from './routes/auth/Login'
 import RegisterPage from './routes/auth/Register'
 import VerifyEmailPage from './routes/auth/VerifyEmail'
@@ -497,7 +496,6 @@ const AppContent = () => {
                 {(currentPage === 'rounds' || currentPage === 'match-program') && <MatchProgramPage />}
                 {currentPage === 'players' && <PlayersPage />}
                 {currentPage === 'statistics' && <StatisticsPage />}
-                {currentPage === 'prism-test' && <PrismTestPage />}
                 {currentPage === ('admin' as Page) && (
                   <ProtectedRoute requireMinRole={UserRole.ADMIN}>
                     <AdminPage />
