@@ -16,7 +16,21 @@ import type {
 import { getCurrentTenantConfig } from '../lib/postgres'
 import { logger } from '../lib/utils/logger'
 
-async function executeQuery(query: string, params: any[] = []): Promise<any[]> {
+/**
+ * Executes a parameterized SQL query through Vercel API route proxy.
+ * 
+ * @param query - SQL query string with $1, $2, etc. placeholders
+ * @param params - Array of parameter values to substitute
+ * @returns Promise resolving to array of result rows
+ * 
+ * @remarks
+ * This function proxies queries to Vercel serverless functions because postgres.js
+ * doesn't work in browsers. The API route runs in Node.js environment where postgres.js works.
+ * 
+ * Type safety: Result is typed as unknown[] because database schema can vary.
+ * Callers should validate/type assert results based on expected schema.
+ */
+async function executeQuery(query: string, params: unknown[] = []): Promise<unknown[]> {
   // Get current tenant ID for security
   let tenantId: string
   try {
@@ -44,7 +58,7 @@ async function executeQuery(query: string, params: any[] = []): Promise<any[]> {
   if (!response.ok) {
     const errorText = await response.text()
     let errorMessage = 'Database query failed'
-    let errorDetails: any = null
+    let errorDetails: unknown = null
     try {
       const errorJson = JSON.parse(errorText)
       errorMessage = errorJson.error || errorMessage
@@ -94,8 +108,10 @@ function createSqlProxy() {
   }
   
   // Add unsafe method to the function object
-  // TODO: refine type - postgres client proxy requires dynamic method attachment
-  ;(sqlFunction as any).unsafe = (query: string, params: any[] = []) => {
+  // NOTE: Dynamic method attachment required for postgres client proxy compatibility
+  // The unsafe method allows executing raw SQL queries without parameterization
+  // Type assertion needed because TypeScript cannot infer dynamic method attachment
+  ;(sqlFunction as typeof sqlFunction & { unsafe: (query: string, params?: unknown[]) => Promise<unknown[]> }).unsafe = (query: string, params: unknown[] = []) => {
     return executeQuery(query, params)
   }
   
@@ -695,31 +711,45 @@ export const createPlayer = async (player: Omit<Player, 'id' | 'createdAt'>): Pr
  */
 export const updatePlayer = async (id: string, updates: PlayerUpdateInput['patch']): Promise<Player> => {
   const sql = getPostgres()
-  // TODO: refine type - need camelCase to snake_case mapping for database fields
-  const updatesAny = updates as any
   
-  // Build update object dynamically
-  // TODO: refine type - dynamic object construction for database update
-  const updateData: any = {}
+  // Build update object dynamically with camelCase to snake_case mapping
+  // NOTE: Database uses snake_case, but TypeScript types use camelCase
+  // Type assertion needed because we're mapping between naming conventions
+  type DatabaseUpdateData = {
+    name?: string
+    alias?: string | null
+    level_single?: number | null
+    level_double?: number | null
+    level_mix?: number | null
+    gender?: PlayerGender | null
+    primary_category?: PlayerCategory | null
+    training_groups?: string[] | null
+    active?: boolean
+    preferred_doubles_partners?: string[] | null
+    preferred_mixed_partners?: string[] | null
+    badmintonplayer_id?: string | null
+  }
+  
+  const updateData: DatabaseUpdateData = {}
   
   if (updates.name !== undefined) updateData.name = updates.name
   if (updates.alias !== undefined) updateData.alias = updates.alias
-  if (updatesAny.levelSingle !== undefined) updateData.level_single = updatesAny.levelSingle
-  if (updatesAny.levelDouble !== undefined) updateData.level_double = updatesAny.levelDouble
-  if (updatesAny.levelMix !== undefined) updateData.level_mix = updatesAny.levelMix
+  if (updates.levelSingle !== undefined) updateData.level_single = updates.levelSingle
+  if (updates.levelDouble !== undefined) updateData.level_double = updates.levelDouble
+  if (updates.levelMix !== undefined) updateData.level_mix = updates.levelMix
   if (updates.level !== undefined) updateData.level_single = updates.level // Backward compatibility
   if (updates.gender !== undefined) updateData.gender = updates.gender
   if (updates.primaryCategory !== undefined) updateData.primary_category = updates.primaryCategory
-  if (updatesAny.trainingGroups !== undefined) updateData.training_group = updatesAny.trainingGroups ?? []
+  if (updates.trainingGroups !== undefined) updateData.training_groups = updates.trainingGroups ?? null
   if (updates.active !== undefined) updateData.active = updates.active
-  if (updatesAny.preferredDoublesPartners !== undefined) updateData.preferred_doubles_partners = updatesAny.preferredDoublesPartners ?? []
-  if (updatesAny.preferredMixedPartners !== undefined) updateData.preferred_mixed_partners = updatesAny.preferredMixedPartners ?? []
-  if (updatesAny.badmintonplayerId !== undefined) updateData.badmintonplayer_id = updatesAny.badmintonplayerId ?? null
+  if (updates.preferredDoublesPartners !== undefined) updateData.preferred_doubles_partners = updates.preferredDoublesPartners ?? null
+  if (updates.preferredMixedPartners !== undefined) updateData.preferred_mixed_partners = updates.preferredMixedPartners ?? null
+  if (updates.badmintonplayerId !== undefined) updateData.badmintonplayer_id = updates.badmintonplayerId ?? null
 
   const tenantId = getTenantId()
 
   // Validate training group limits if training groups are being updated
-  if (updatesAny.trainingGroups !== undefined) {
+  if (updates.trainingGroups !== undefined) {
     // Get all unique training groups from all players in this tenant
     const allPlayers = await sql`
       SELECT training_group
@@ -728,8 +758,9 @@ export const updatePlayer = async (id: string, updates: PlayerUpdateInput['patch
     `
     
     // Collect all unique training groups
+    // NOTE: Database returns snake_case field names, type assertion needed for dynamic field access
     const existingGroups = new Set<string>()
-    allPlayers.forEach((player: any) => {
+    allPlayers.forEach((player: { training_group?: string[] | null }) => {
       if (player.training_group && Array.isArray(player.training_group)) {
         player.training_group.forEach((group: string) => {
           if (group) existingGroups.add(group)
@@ -738,7 +769,7 @@ export const updatePlayer = async (id: string, updates: PlayerUpdateInput['patch
     })
     
     // Check if new groups are being added
-    const newGroups = updatesAny.trainingGroups as string[] | null
+    const newGroups = updates.trainingGroups
     if (newGroups && Array.isArray(newGroups)) {
       const groupsToAdd = newGroups.filter(group => group && !existingGroups.has(group))
       
