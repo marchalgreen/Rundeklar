@@ -244,7 +244,7 @@ export const PlayerForm: React.FC<PlayerFormProps> = ({
             </div>
             <label className="flex flex-col gap-2 text-sm">
               <div className="flex items-center gap-1.5">
-                <span className="font-medium text-[hsl(var(--foreground))]">Rangliste Single</span>
+              <span className="font-medium text-[hsl(var(--foreground))]">Rangliste Single</span>
                 <Tooltip 
                   content="Niveau for single badminton. Højere tal = højere niveau."
                   position="top"
@@ -261,7 +261,7 @@ export const PlayerForm: React.FC<PlayerFormProps> = ({
             </label>
             <label className="flex flex-col gap-2 text-sm">
               <div className="flex items-center gap-1.5">
-                <span className="font-medium text-[hsl(var(--foreground))]">Rangliste Double</span>
+              <span className="font-medium text-[hsl(var(--foreground))]">Rangliste Double</span>
                 <Tooltip 
                   content="Niveau for double badminton. Højere tal = højere niveau."
                   position="top"
@@ -278,7 +278,7 @@ export const PlayerForm: React.FC<PlayerFormProps> = ({
             </label>
             <label className="flex flex-col gap-2 text-sm">
               <div className="flex items-center gap-1.5">
-                <span className="font-medium text-[hsl(var(--foreground))]">Rangliste Mix</span>
+              <span className="font-medium text-[hsl(var(--foreground))]">Rangliste Mix</span>
                 <Tooltip 
                   content="Niveau for mixed double badminton. Højere tal = højere niveau."
                   position="top"
