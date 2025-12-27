@@ -22,26 +22,50 @@ export default function TenantsPage() {
 
   const fetchTenants = async () => {
     try {
+      setLoading(true)
+      setError(null)
       const token = localStorage.getItem('auth_access_token')
+      
+      if (!token) {
+        throw new Error('Ikke logget ind. Log venligst ind igen.')
+      }
+      
       const apiUrl = import.meta.env.DEV 
         ? 'http://127.0.0.1:3000/api/admin/tenants'
         : '/api/admin/tenants'
       
       const response = await fetch(apiUrl, {
         headers: {
-          'Authorization': `Bearer ${token}`
-        }
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        },
+        cache: 'no-store' // Prevent caching
       })
 
+      // Check content type before parsing
+      const contentType = response.headers.get('content-type')
+      const isJson = contentType?.includes('application/json')
+
       if (!response.ok) {
-        const errorData = await response.json()
-        throw new Error(errorData.error || 'Failed to fetch tenants')
+        if (isJson) {
+          const errorData = await response.json()
+          throw new Error(errorData.error || `Failed to fetch tenants (${response.status})`)
+        } else {
+          // Response is HTML (404 page, etc.)
+          throw new Error(`API endpoint not found (${response.status}). Please ensure the API server is running and has been restarted.`)
+        }
+      }
+
+      if (!isJson) {
+        throw new Error('API returned non-JSON response. Please check that the API server is running.')
       }
 
       const data = await response.json()
       setTenants(data.tenants || [])
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to load tenants')
+      const errorMessage = err instanceof Error ? err.message : 'Failed to load tenants'
+      setError(errorMessage)
+      setTenants([])
     } finally {
       setLoading(false)
     }

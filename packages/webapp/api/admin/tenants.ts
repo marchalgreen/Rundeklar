@@ -33,6 +33,8 @@ const updateTenantSchema = z.object({
 })
 
 export default async function handler(req: AuthenticatedRequest, res: VercelResponse) {
+  // Always set JSON content type first to ensure all responses are JSON
+  res.setHeader('Content-Type', 'application/json')
   setCorsHeaders(res, req.headers.origin)
   
   if (req.method === 'OPTIONS') {

@@ -6,6 +6,8 @@ import { logger } from '../../src/lib/utils/logger.js'
 import { setCorsHeaders } from '../../src/lib/utils/cors.js'
 
 export default async function handler(req: AuthenticatedRequest, res: VercelResponse) {
+  // Always set JSON content type first to ensure all responses are JSON
+  res.setHeader('Content-Type', 'application/json')
   setCorsHeaders(res)
 
   if (req.method === 'OPTIONS') {
@@ -16,6 +18,7 @@ export default async function handler(req: AuthenticatedRequest, res: VercelResp
     await requireAuth(req)
     requireSuperAdmin(req)
   } catch (error) {
+    logger.error('Authentication failed in coaches endpoint', error)
     return res.status(401).json({ error: 'Unauthorized' })
   }
 
@@ -59,8 +62,9 @@ export default async function handler(req: AuthenticatedRequest, res: VercelResp
       })
     } catch (error) {
       logger.error('Failed to fetch all coaches', error)
+      const errorMessage = error instanceof Error ? error.message : 'Failed to fetch coaches'
       return res.status(500).json({ 
-        error: error instanceof Error ? error.message : 'Failed to fetch coaches' 
+        error: errorMessage
       })
     }
   }
