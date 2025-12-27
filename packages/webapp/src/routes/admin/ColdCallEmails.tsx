@@ -395,10 +395,8 @@ export default function ColdCallEmailsPage() {
                   </div>
                 </div>
               </div>
-            </div>
+            </PageCard>
           )}
-        </div>
-      </PageCard>
 
       {/* Email History */}
       <PageCard>
