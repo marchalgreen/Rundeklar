@@ -8,16 +8,18 @@
 
 import React, { useCallback, useLayoutEffect, useMemo, useRef, useState } from 'react'
 import type { Player, PlayerCategory, PlayerGender, PlayerCreateInput, PlayerUpdateInput } from '@rundeklar/common'
-import { Pencil, Plus, Trash2, UsersRound, Info, Download, Upload, HelpCircle, FileText, CheckSquare, Square, Edit } from 'lucide-react'
+import { Pencil, Plus, Trash2, UsersRound, Info, Download, Upload, HelpCircle, FileText, CheckSquare, Square, Edit, ArrowUpDown } from 'lucide-react'
 import { Badge, Button, EmptyState, PageCard, Tooltip } from '../components/ui'
 import { DataTable, TableSearch, type Column } from '../components/ui/Table'
 import { EditablePartnerCell, PlayerForm } from '../components/players'
 import { EditableTrainingGroupsCell } from '../components/players/EditableTrainingGroupsCell'
 import { BulkEditModal } from '../components/players/BulkEditModal'
+import { PlayerCard as PlayerCardMobile } from '../components/players/PlayerCard'
 import { usePlayers, useSelection, useScrollRestoration } from '../hooks'
 import { formatDate } from '../lib/formatting'
 import { PLAYER_CATEGORIES } from '../constants'
 import { useToast } from '../components/ui/Toast'
+import api from '../api'
 
 /**
  * Players page component.
@@ -227,6 +229,37 @@ const PlayersPage = () => {
       })
     },
     [updatePlayer, scrollRestoration.saveScrollPosition]
+  )
+
+  /**
+   * Deletes a player.
+   */
+  const handleDelete = useCallback(
+    async (player: Player) => {
+      if (!confirm(`Er du sikker på, at du vil slette ${player.name}? Denne handling kan ikke fortrydes.`)) {
+        return
+      }
+
+      // Save scroll position before delete
+      scrollRestoration.saveScrollPosition()
+
+      try {
+        await api.players.delete(player.id)
+        await refetch()
+        notify({
+          variant: 'success',
+          title: 'Spiller slettet',
+          description: `${player.name} er nu slettet`
+        })
+      } catch (err) {
+        notify({
+          variant: 'danger',
+          title: 'Kunne ikke slette spiller',
+          description: err instanceof Error ? err.message : 'Der opstod en fejl'
+        })
+      }
+    },
+    [refetch, notify, scrollRestoration.saveScrollPosition]
   )
 
   // Scroll restoration is handled by useScrollRestoration hook
@@ -1030,6 +1063,22 @@ const PlayersPage = () => {
     [allPlayersForDropdown, refetch, toggleActive, updatePrimaryCategory, openEdit, scrollRestoration.saveScrollPosition, selection, players]
   )
 
+  // Sort data for mobile card view
+  const sortedData = useMemo(() => {
+    if (!sort) return players
+    const column = columns.find((col) => col.id === sort.columnId)
+    if (!column || !column.sortValue) return players
+    const copy = [...players]
+    copy.sort((a, b) => {
+      const aValue = column.sortValue!(a)
+      const bValue = column.sortValue!(b)
+      if (aValue < bValue) return sort.direction === 'asc' ? -1 : 1
+      if (aValue > bValue) return sort.direction === 'asc' ? 1 : -1
+      return 0
+    })
+    return copy
+  }, [players, columns, sort])
+
   return (
     <section className="flex flex-col gap-4 sm:gap-6 pt-2 sm:pt-4 xl:pt-2">
       <header className="flex flex-col gap-2 sm:gap-3 mb-2 lg:mb-1.5">
@@ -1124,21 +1173,92 @@ const PlayersPage = () => {
         {loading ? (
           <div className="py-16 text-center text-[hsl(var(--muted))]">Henter spillere...</div>
         ) : (
-          <DataTable
-            data={players}
-            columns={columns}
-            initialSort={{ columnId: 'name', direction: 'asc' }}
-            sort={sort}
-            onSortChange={setSort}
-            emptyState={
-              <EmptyState
-                icon={<UsersRound />}
-                title="Ingen spillere"
-                helper="Tilføj klubbens spillere for at komme i gang."
-                action={<Button onClick={openCreate}>Ny spiller</Button>}
+          <>
+            {/* Desktop: Table view */}
+            <div className="hidden md:block">
+              <DataTable
+                data={players}
+                columns={columns}
+                initialSort={{ columnId: 'name', direction: 'asc' }}
+                sort={sort}
+                onSortChange={setSort}
+                emptyState={
+                  <EmptyState
+                    icon={<UsersRound />}
+                    title="Ingen spillere"
+                    helper="Tilføj klubbens spillere for at komme i gang."
+                    action={<Button onClick={openCreate}>Ny spiller</Button>}
+                  />
+                }
               />
-            }
-          />
+            </div>
+            
+            {/* Mobile: Card view */}
+            <div className="md:hidden space-y-3">
+              {players.length === 0 ? (
+                <EmptyState
+                  icon={<UsersRound />}
+                  title="Ingen spillere"
+                  helper="Tilføj klubbens spillere for at komme i gang."
+                  action={<Button onClick={openCreate}>Ny spiller</Button>}
+                />
+              ) : (
+                <>
+                  {/* Sort controls for mobile */}
+                  <div className="flex items-center justify-between gap-2 pb-2 border-b border-[hsl(var(--line)/.12)]">
+                    <span className="text-sm text-[hsl(var(--muted))]">
+                      {players.length} {players.length === 1 ? 'spiller' : 'spillere'}
+                    </span>
+                    <select
+                      value={sort?.columnId || 'name'}
+                      onChange={(e) => {
+                        const columnId = e.target.value
+                        const currentDirection = sort?.columnId === columnId ? sort.direction : 'asc'
+                        setSort({ columnId, direction: currentDirection })
+                      }}
+                      className="text-sm px-2 py-1 rounded border border-[hsl(var(--line)/.12)] bg-[hsl(var(--surface))] text-[hsl(var(--foreground))]"
+                    >
+                      <option value="name">Navn</option>
+                      <option value="levelSingle">Rangliste Single</option>
+                      <option value="levelDouble">Rangliste Double</option>
+                      <option value="levelMix">Rangliste Mix</option>
+                      <option value="createdAt">Oprettet</option>
+                    </select>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        if (sort) {
+                          setSort({
+                            ...sort,
+                            direction: sort.direction === 'asc' ? 'desc' : 'asc'
+                          })
+                        }
+                      }}
+                      className="p-1 rounded hover:bg-[hsl(var(--surface-2)/.5)] transition-colors"
+                      aria-label="Sorteringsretning"
+                    >
+                      <ArrowUpDown size={16} className="text-[hsl(var(--muted))]" />
+                    </button>
+                  </div>
+                  
+                  {/* Player cards */}
+                  <div className="space-y-3">
+                    {sortedData.map((player) => (
+                      <PlayerCardMobile
+                        key={player.id}
+                        player={player}
+                        isSelected={selection.isSelected(player.id)}
+                        onToggleSelection={selection.toggle}
+                        onEdit={openEdit}
+                        onDelete={handleDelete}
+                        allPlayers={allPlayersForDropdown}
+                      />
+                    ))}
+                  </div>
+                </>
+              )}
+            </div>
+          </>
         )}
       </PageCard>
 

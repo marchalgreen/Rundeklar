@@ -5,4 +5,5 @@
 export { EditablePartnerCell } from './EditablePartnerCell'
 export { PlayerForm } from './PlayerForm'
 export { BulkEditModal } from './BulkEditModal'
+export { PlayerCard } from './PlayerCard'
 

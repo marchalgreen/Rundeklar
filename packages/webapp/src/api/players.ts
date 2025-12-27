@@ -1,6 +1,6 @@
 import { z } from 'zod'
 import type { Player, PlayerCreateInput, PlayerListFilters, PlayerUpdateInput } from '@rundeklar/common'
-import { createPlayer as createPlayerInDb, getPlayers, updatePlayer as updatePlayerInDb } from './postgres'
+import { createPlayer as createPlayerInDb, getPlayers, updatePlayer as updatePlayerInDb, deletePlayer as deletePlayerInDb } from './postgres'
 import { normalizeError, ValidationError } from '../lib/errors'
 
 /**
@@ -157,9 +157,20 @@ const updatePlayer = async (input: PlayerUpdateInput): Promise<Player> => {
   }
 }
 
+/**
+ * Deletes a player.
+ * 
+ * @param id - Player ID to delete
+ * @throws {DatabaseError} If database operation fails
+ */
+const deletePlayer = async (id: string): Promise<void> => {
+  await deletePlayerInDb(id)
+}
+
 /** Players API — CRUD operations for players. */
 export const playersApi = {
   list: listPlayers,
   create: createPlayer,
-  update: updatePlayer
+  update: updatePlayer,
+  delete: deletePlayer
 }
