@@ -37,9 +37,9 @@ export async function fetchWithAuth(
   let response: Response
   try {
     response = await fetch(url, {
-      ...options,
-      headers
-    })
+    ...options,
+    headers
+  })
   } catch (fetchError) {
     // Handle network errors (connection refused, etc.)
     const isConnectionRefused = fetchError instanceof TypeError && 

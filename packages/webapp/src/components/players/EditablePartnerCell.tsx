@@ -449,13 +449,13 @@ export const EditablePartnerCell: React.FC<EditablePartnerCellProps> = ({
           }
           position="top"
         >
-          <button
-            type="button"
-            onClick={() => setIsEditing(true)}
-            className="w-full text-xs rounded bg-[hsl(var(--surface))] px-2 py-1 ring-1 ring-[hsl(var(--line)/.14)] hover:ring-2 hover:ring-[hsl(var(--ring))] transition-colors text-left"
-          >
-            {partner ? formatPlayerName(partner.name, partner.alias) : 'Ingen'}
-          </button>
+        <button
+          type="button"
+          onClick={() => setIsEditing(true)}
+          className="w-full text-xs rounded bg-[hsl(var(--surface))] px-2 py-1 ring-1 ring-[hsl(var(--line)/.14)] hover:ring-2 hover:ring-[hsl(var(--ring))] transition-colors text-left"
+        >
+          {partner ? formatPlayerName(partner.name, partner.alias) : 'Ingen'}
+        </button>
         </Tooltip>
       </div>
       </>

@@ -53,12 +53,12 @@ async function executeQuery(query: string, params: unknown[] = []): Promise<unkn
   let response: Response
   try {
     response = await fetch(apiUrl, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({ query, params, tenantId }),
-    })
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({ query, params, tenantId }),
+  })
   } catch (fetchError) {
     // Handle network errors (connection refused, etc.)
     const isConnectionRefused = fetchError instanceof TypeError && fetchError.message.includes('fetch')
