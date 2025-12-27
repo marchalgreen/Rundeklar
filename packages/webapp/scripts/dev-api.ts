@@ -250,6 +250,7 @@ Promise.all([
   setupMarketingRoutes(),
   setupAnalyticsRoutes()
 ]).then(() => {
+  // Check if port is already in use
   const server = app.listen(PORT, () => {
     console.log(`🚀 API server running on http://127.0.0.1:${PORT}`)
     console.log(`📡 API endpoints:`)
@@ -269,6 +270,18 @@ Promise.all([
     console.log(`💡 Frontend will start automatically via concurrently\n`)
   })
 
+  server.on('error', (error: NodeJS.ErrnoException) => {
+    if (error.code === 'EADDRINUSE') {
+      console.error(`❌ Port ${PORT} is already in use.`)
+      console.error(`   Another process might be running on port ${PORT}.`)
+      console.error(`   Try: lsof -ti:${PORT} | xargs kill -9`)
+      process.exit(1)
+    } else {
+      console.error('❌ Server error:', error)
+      process.exit(1)
+    }
+  })
+
   // Graceful shutdown
   const shutdown = () => {
     console.log('\n🛑 Shutting down API server...')
@@ -286,7 +299,11 @@ Promise.all([
   process.on('SIGINT', shutdown)
   process.on('SIGTERM', shutdown)
 }).catch((error) => {
-  console.error('Failed to load routes:', error)
+  console.error('❌ Failed to load routes:', error)
+  if (error instanceof Error) {
+    console.error('Error message:', error.message)
+    console.error('Error stack:', error.stack)
+  }
   process.exit(1)
 })
 
