@@ -68,19 +68,19 @@
 ### Sprint 3: Nice-to-Have Features (1 pending)
 
 #### Epic 3.1: Import/Export Funktionalitet
-- ⏳ **feature-statistics-export** - Statistics Export
+- 🔄 **feature-statistics-export** - Statistics Export (DEFERRED - ikke prioriteret)
   - **Effort:** 2 dage
   - **Beskrivelse:** Tilføj mulighed for at eksportere statistikker til CSV/PDF. Tilføj export button til statistics views, export til CSV/PDF, inkluder charts som billeder hvis muligt
   - **File:** `packages/webapp/src/routes/Statistics.tsx`
-  - **Note:** CSV export er allerede implementeret, mangler PDF export og chart images
+  - **Note:** CSV export er allerede implementeret, mangler PDF export og chart images. Ikke prioriteret - fokus på test stability.
 
 ### Sprint 5: Testing & Documentation (1-2 pending)
 
 #### Epic 5.1: Test Coverage
-- ⚠️ **test-unit-hooks** - Unit Tests for Hooks (PARTIAL)
-  - **Effort:** 1-2 dage
-  - **Beskrivelse:** Tilføj unit test for useScrollRestoration (useSelection har allerede test)
-  - **Files:** `packages/webapp/src/hooks/useScrollRestoration.ts`
+- ✅ **test-unit-hooks** - Unit Tests for Hooks (COMPLETED)
+  - **Effort:** 1-2 dage (COMPLETED)
+  - **Beskrivelse:** Unit test for useScrollRestoration er implementeret
+  - **Files:** `packages/webapp/tests/unit/hooks/useScrollRestoration.test.ts`
 
 - ⏳ **test-e2e-stabilization** - E2E Test Stabilization
   - **Effort:** 2-3 dage
@@ -148,5 +148,5 @@
 - Type safety: De fleste any types er fixet eller dokumenteret
 - JSDoc dokumentation er forbedret for API funktioner
 
-**Næste skridt:** Fokus på Statistics Export og en enkelt unit test for useScrollRestoration.
+**Næste skridt:** Fokus på E2E test stabilization - erstat waitForTimeout med proper waiting strategies.
 
