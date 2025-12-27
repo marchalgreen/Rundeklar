@@ -6,7 +6,7 @@
  * partner editing and form management.
  */
 
-import React, { useCallback, useLayoutEffect, useMemo, useRef, useState } from 'react'
+import React, { useCallback, useLayoutEffect, useMemo, useRef, useState, useEffect } from 'react'
 import type { Player, PlayerCategory, PlayerGender, PlayerCreateInput, PlayerUpdateInput } from '@rundeklar/common'
 import { Pencil, Plus, Trash2, UsersRound, Info, Download, Upload, HelpCircle, FileText, CheckSquare, Square, Edit, ArrowUpDown } from 'lucide-react'
 import { Badge, Button, EmptyState, PageCard, Tooltip } from '../components/ui'
@@ -19,6 +19,7 @@ import { usePlayers, useSelection, useScrollRestoration } from '../hooks'
 import { formatDate } from '../lib/formatting'
 import { PLAYER_CATEGORIES } from '../constants'
 import { useToast } from '../components/ui/Toast'
+import { FixedSizeList as List } from 'react-window'
 import api from '../api'
 
 /**
@@ -597,8 +598,8 @@ const PlayersPage = () => {
           variant: 'danger',
           title: 'Delvis import gennemført',
           description: `${created} spillere importeret, ${failed} fejlede. Første fejl: ${failedErrors[0]}`
-        })
-      }
+      })
+    }
     } catch (err) {
       notify({
         variant: 'danger',
@@ -839,6 +840,7 @@ const PlayersPage = () => {
         header: 'Navn',
         sortable: true,
         sortValue: (row: Player) => row.name.toLowerCase(),
+        width: '200px',
         cell: (row: Player) => (
           <div className="flex flex-col">
             <span className="font-semibold text-[hsl(var(--foreground))]">{row.name}</span>
@@ -863,6 +865,7 @@ const PlayersPage = () => {
         ),
         align: 'center',
         sortable: true,
+        width: '140px',
         sortValue: (row) => (row.levelSingle ?? null) ?? 0,
         accessor: (row: Player) => (row.levelSingle ?? null) ?? '–'
       },
@@ -881,6 +884,7 @@ const PlayersPage = () => {
         ),
         align: 'center',
         sortable: true,
+        width: '140px',
         sortValue: (row) => (row.levelDouble ?? null) ?? 0,
         accessor: (row: Player) => (row.levelDouble ?? null) ?? '–'
       },
@@ -899,6 +903,7 @@ const PlayersPage = () => {
         ),
         align: 'center',
         sortable: true,
+        width: '140px',
         sortValue: (row) => (row.levelMix ?? null) ?? 0,
         accessor: (row: Player) => (row.levelMix ?? null) ?? '–'
       },
@@ -907,6 +912,7 @@ const PlayersPage = () => {
         header: 'Køn',
         align: 'center',
         sortable: true,
+        width: '100px',
         sortValue: (row: Player) => row.gender ?? '',
         accessor: (row: Player) => row.gender ?? '–'
       },
@@ -915,6 +921,7 @@ const PlayersPage = () => {
         header: 'Primær kategori',
         align: 'center',
         sortable: true,
+        width: '180px',
         sortValue: (row: Player) => row.primaryCategory ?? '',
         cell: (row: Player) => (
           <div className="flex items-center justify-center gap-1">
@@ -953,6 +960,7 @@ const PlayersPage = () => {
         header: 'Træningsgrupper',
         align: 'center',
         sortable: true,
+        width: '180px',
         sortValue: (row: Player) => {
           const groups = row.trainingGroups ?? []
           return groups.join(' | ')
@@ -1023,6 +1031,7 @@ const PlayersPage = () => {
         id: 'createdAt',
         header: 'Oprettet',
         sortable: true,
+        width: '120px',
         sortValue: (row) => new Date(row.createdAt).getTime(),
         accessor: (row: Player) => formatDate(row.createdAt, true)
       },
@@ -1030,6 +1039,7 @@ const PlayersPage = () => {
         id: 'status',
         header: 'Status',
         align: 'center',
+        width: '100px',
         cell: (row: Player) => (
           <Badge variant={row.active ? 'success' : 'muted'}>{row.active ? 'Aktiv' : 'Inaktiv'}</Badge>
         )
@@ -1038,6 +1048,7 @@ const PlayersPage = () => {
         id: 'actions',
         header: 'Handling',
         align: 'right',
+        width: '120px',
         cell: (row: Player) => (
           <div className="flex items-center justify-end gap-2">
             <Button
@@ -1176,21 +1187,21 @@ const PlayersPage = () => {
           <>
             {/* Desktop: Table view */}
             <div className="hidden md:block">
-              <DataTable
+          <DataTable
                 data={players}
-                columns={columns}
-                initialSort={{ columnId: 'name', direction: 'asc' }}
-                sort={sort}
-                onSortChange={setSort}
-                emptyState={
-                  <EmptyState
-                    icon={<UsersRound />}
-                    title="Ingen spillere"
-                    helper="Tilføj klubbens spillere for at komme i gang."
-                    action={<Button onClick={openCreate}>Ny spiller</Button>}
-                  />
-                }
+            columns={columns}
+            initialSort={{ columnId: 'name', direction: 'asc' }}
+            sort={sort}
+            onSortChange={setSort}
+            emptyState={
+              <EmptyState
+                icon={<UsersRound />}
+                title="Ingen spillere"
+                helper="Tilføj klubbens spillere for at komme i gang."
+                action={<Button onClick={openCreate}>Ny spiller</Button>}
               />
+            }
+          />
             </div>
             
             {/* Mobile: Card view */}
@@ -1241,20 +1252,45 @@ const PlayersPage = () => {
                     </button>
                   </div>
                   
-                  {/* Player cards */}
-                  <div className="space-y-3">
-                    {sortedData.map((player) => (
-                      <PlayerCardMobile
-                        key={player.id}
-                        player={player}
-                        isSelected={selection.isSelected(player.id)}
-                        onToggleSelection={selection.toggle}
-                        onEdit={openEdit}
-                        onDelete={handleDelete}
-                        allPlayers={allPlayersForDropdown}
-                      />
-                    ))}
-                  </div>
+                  {/* Player cards - virtualized for large lists */}
+                  {sortedData.length >= 30 ? (
+                    <div className="h-[calc(100vh-300px)] min-h-[400px]">
+                      <List
+                        height={600}
+                        itemCount={sortedData.length}
+                        itemSize={180}
+                        width="100%"
+                      >
+                        {({ index, style }) => (
+                          <div style={{ ...style, paddingBottom: '12px' }}>
+                            <PlayerCardMobile
+                              key={sortedData[index].id}
+                              player={sortedData[index]}
+                              isSelected={selection.isSelected(sortedData[index].id)}
+                              onToggleSelection={selection.toggle}
+                              onEdit={openEdit}
+                              onDelete={handleDelete}
+                              allPlayers={allPlayersForDropdown}
+                            />
+                          </div>
+                        )}
+                      </List>
+                    </div>
+                  ) : (
+                    <div className="space-y-3">
+                      {sortedData.map((player) => (
+                        <PlayerCardMobile
+                          key={player.id}
+                          player={player}
+                          isSelected={selection.isSelected(player.id)}
+                          onToggleSelection={selection.toggle}
+                          onEdit={openEdit}
+                          onDelete={handleDelete}
+                          allPlayers={allPlayersForDropdown}
+                        />
+                      ))}
+                    </div>
+                  )}
                 </>
               )}
             </div>

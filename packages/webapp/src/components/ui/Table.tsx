@@ -1,6 +1,7 @@
 import React, { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
 import { clsx } from 'clsx'
 import { ArrowUpDown, Search } from 'lucide-react'
+import { FixedSizeList as List } from 'react-window'
 
 export type Column<T> = {
   id: string
@@ -26,18 +27,32 @@ type DataTableProps<T> = {
   sort?: SortState
   onSortChange?: (sort: SortState | undefined) => void
   emptyState: React.ReactNode
+  /** Enable virtualization for large lists (default: true for 50+ items) */
+  enableVirtualization?: boolean
+  /** Row height in pixels for virtualization (default: 48) */
+  rowHeight?: number
 }
 
 /**
- * DataTable component — sortable table with scroll position preservation.
+ * DataTable component — sortable table with scroll position preservation and virtualization.
  * @remarks Preserves scroll position on data updates (especially deletions).
- * Supports controlled or uncontrolled sorting.
+ * Supports controlled or uncontrolled sorting. Automatically enables virtualization for 50+ items.
  */
-export function DataTable<T>({ data, columns, initialSort, sort: controlledSort, onSortChange, emptyState }: DataTableProps<T>) {
+export function DataTable<T>({ 
+  data, 
+  columns, 
+  initialSort, 
+  sort: controlledSort, 
+  onSortChange, 
+  emptyState,
+  enableVirtualization,
+  rowHeight = 48
+}: DataTableProps<T>) {
   const [internalSort, setInternalSort] = useState<SortState | undefined>(initialSort)
   const sort = controlledSort !== undefined ? controlledSort : internalSort
   const setSort = onSortChange || setInternalSort
   const scrollContainerRef = useRef<HTMLDivElement>(null)
+  const headerScrollRef = useRef<HTMLDivElement>(null)
   const previousDataLengthRef = useRef<number>(data.length)
   const scrollPositionRef = useRef<number>(0)
   const savedScrollPositionRef = useRef<number | null>(null)
@@ -59,20 +74,32 @@ export function DataTable<T>({ data, columns, initialSort, sort: controlledSort,
     return copy
   }, [columns, data, sort])
 
-  // Continuously track scroll position
+  // Determine if virtualization should be enabled (must be before useEffect that uses it)
+  // Only enable for very large lists (200+) to preserve the perfect original view for normal use
+  const shouldVirtualize = enableVirtualization !== undefined 
+    ? enableVirtualization 
+    : sortedData.length >= 200
+
+  // Sync horizontal scroll between header and body (only for virtualized tables)
   useEffect(() => {
-    const container = scrollContainerRef.current
-    if (!container) return
+    if (!shouldVirtualize) return
+    
+    const scrollContainer = scrollContainerRef.current
+    const headerContainer = headerScrollRef.current
+    if (!scrollContainer || !headerContainer) return
 
-    const handleScroll = () => {
-      scrollPositionRef.current = container.scrollTop
+    // Sync header horizontal scroll with body scroll
+    const handleBodyScroll = () => {
+      headerContainer.scrollLeft = scrollContainer.scrollLeft
+      scrollPositionRef.current = scrollContainer.scrollTop
     }
 
-    container.addEventListener('scroll', handleScroll, { passive: true })
+    scrollContainer.addEventListener('scroll', handleBodyScroll, { passive: true })
+    
     return () => {
-      container.removeEventListener('scroll', handleScroll)
+      scrollContainer.removeEventListener('scroll', handleBodyScroll)
     }
-  }, [])
+  }, [shouldVirtualize])
 
   // PERF: Save scroll position right before data changes to prevent jump
   // Only save if scroll position is greater than 0 AND we're not preserving scroll from parent
@@ -150,17 +177,73 @@ export function DataTable<T>({ data, columns, initialSort, sort: controlledSort,
     setSort(newSort)
   }
 
+  // Note: react-window handles scrolling internally, so we use fixed heights
+  // that match the max-h classes for consistency
+
+  // Calculate total width for container
+  const totalWidth = useMemo(() => {
+    return columns.reduce((sum, col) => {
+      if (col.width) {
+        const width = parseInt(col.width.replace('px', ''))
+        return sum + width
+      }
+      return sum + 150 // Default width for columns without explicit width
+    }, 0)
+  }, [columns])
+
+  // Render row function for virtualization
+  const renderRow = ({ index, style }: { index: number; style: React.CSSProperties }) => {
+    const row = sortedData[index]
+    return (
+      <div
+        style={style}
+        className={clsx(
+          'flex',
+          index % 2 === 0 ? 'bg-[hsl(var(--surface)/.6)]' : 'bg-[hsl(var(--surface)/.8)]',
+          'hover:bg-[hsl(var(--surface)/.95)] transition-colors border-b border-[hsl(var(--line)/.2)]'
+        )}
+      >
+        {columns.map((column) => (
+          <div
+            key={column.id}
+            style={{ 
+              width: column.width || '150px',
+              minWidth: column.width || '150px',
+              maxWidth: column.width || '150px'
+            }}
+            className={clsx(
+              'px-3 py-2 sm:px-4 sm:py-3 text-sm text-[hsl(var(--foreground))] flex-shrink-0',
+              column.align === 'center' && 'justify-center text-center',
+              column.align === 'right' && 'justify-end text-right'
+            )}
+          >
+            {column.cell ? column.cell(row) : column.accessor ? column.accessor(row) : null}
+          </div>
+        ))}
+      </div>
+    )
+  }
+
   return (
     <div className="overflow-hidden rounded-lg card-glass-active ring-1 ring-[hsl(var(--line)/.12)]">
-      <div ref={scrollContainerRef} data-table-container className="max-h-[400px] sm:max-h-[520px] overflow-auto">
-        <table className="min-w-full divide-y divide-[hsl(var(--line)/.16)] text-sm">
-          <thead className="sticky top-0 z-10 bg-[hsl(var(--surface)/.85)] backdrop-blur">
-            <tr>
+      {shouldVirtualize ? (
+        // Virtualized table layout
+        <div className="flex flex-col">
+          {/* Table header - sticky, synced with body scroll */}
+          <div 
+            ref={headerScrollRef}
+            className="sticky top-0 z-10 bg-[hsl(var(--surface)/.85)] backdrop-blur border-b border-[hsl(var(--line)/.16)] overflow-hidden"
+          >
+            <div className="flex" style={{ minWidth: `${totalWidth}px` }}>
               {columns.map((column) => (
-                <th
+                <div
                   key={column.id}
-                  scope="col"
-                  style={{ width: column.width }}
+                  style={{ 
+                    width: column.width || '150px',
+                    minWidth: column.width || '150px',
+                    maxWidth: column.width || '150px',
+                    flexShrink: 0
+                  }}
                   className={clsx(
                     'px-3 py-2 sm:px-4 sm:py-3 text-left text-[10px] sm:text-xs font-semibold uppercase tracking-wide text-[hsl(var(--muted))]',
                     column.align === 'center' && 'text-center',
@@ -179,44 +262,103 @@ export function DataTable<T>({ data, columns, initialSort, sort: controlledSort,
                   ) : (
                     column.header
                   )}
-                </th>
+                </div>
               ))}
-            </tr>
-          </thead>
-          <tbody ref={tableBodyRef} className="divide-y divide-[hsl(var(--line)/.25)]">
+            </div>
+          </div>
+          {/* Virtualized body - single scroll container for both vertical and horizontal scrolling */}
+          <div 
+            ref={scrollContainerRef}
+            data-table-container 
+            className="max-h-[400px] sm:max-h-[520px] overflow-auto"
+            style={{ width: '100%' }}
+          >
             {sortedData.length === 0 ? (
-              <tr>
-                <td colSpan={columns.length} className="px-4 py-12 text-center text-[hsl(var(--muted))]">
-                  {emptyState}
-                </td>
-              </tr>
+              <div className="px-4 py-12 text-center text-[hsl(var(--muted))]">
+                {emptyState}
+              </div>
             ) : (
-              sortedData.map((row, rowIndex) => (
-                <tr
-                  key={rowIndex}
-                  className={clsx(
-                    rowIndex % 2 === 0 ? 'bg-[hsl(var(--surface)/.6)]' : 'bg-[hsl(var(--surface)/.8)]',
-                    'hover:bg-[hsl(var(--surface)/.95)] transition-colors border-b border-[hsl(var(--line)/.2)]'
-                  )}
+              <div style={{ width: `${totalWidth}px`, height: `${sortedData.length * rowHeight}px` }}>
+                <List
+                  height={400}
+                  itemCount={sortedData.length}
+                  itemSize={rowHeight}
+                  width={totalWidth}
                 >
-                  {columns.map((column) => (
-                    <td
-                      key={column.id}
-                      className={clsx(
-                        'px-3 py-2 sm:px-4 sm:py-3 text-sm text-[hsl(var(--foreground))]',
-                        column.align === 'center' && 'text-center',
-                        column.align === 'right' && 'text-right'
-                      )}
-                    >
-                      {column.cell ? column.cell(row) : column.accessor ? column.accessor(row) : null}
-                    </td>
-                  ))}
-                </tr>
-              ))
+                  {renderRow}
+                </List>
+              </div>
             )}
-          </tbody>
-        </table>
-      </div>
+          </div>
+        </div>
+      ) : (
+        // Non-virtualized table layout (original)
+        <div ref={scrollContainerRef} data-table-container className="max-h-[400px] sm:max-h-[520px] overflow-auto">
+          <table className="min-w-full divide-y divide-[hsl(var(--line)/.16)] text-sm">
+            <thead className="sticky top-0 z-10 bg-[hsl(var(--surface)/.85)] backdrop-blur">
+              <tr>
+                {columns.map((column) => (
+                  <th
+                    key={column.id}
+                    scope="col"
+                    style={{ width: column.width }}
+                    className={clsx(
+                      'px-3 py-2 sm:px-4 sm:py-3 text-left text-[10px] sm:text-xs font-semibold uppercase tracking-wide text-[hsl(var(--muted))]',
+                      column.align === 'center' && 'text-center',
+                      column.align === 'right' && 'text-right'
+                    )}
+                  >
+                    {column.sortable ? (
+                      <button
+                        type="button"
+                        onClick={() => requestSort(column)}
+                        className="inline-flex items-center gap-1 text-xs font-semibold uppercase tracking-wide text-[hsl(var(--muted))] hover:text-[hsl(var(--foreground))]"
+                      >
+                        {column.header}
+                        <ArrowUpDown className="h-3.5 w-3.5" aria-hidden />
+                      </button>
+                    ) : (
+                      column.header
+                    )}
+                  </th>
+                ))}
+              </tr>
+            </thead>
+            <tbody ref={tableBodyRef} className="divide-y divide-[hsl(var(--line)/.25)]">
+              {sortedData.length === 0 ? (
+                <tr>
+                  <td colSpan={columns.length} className="px-4 py-12 text-center text-[hsl(var(--muted))]">
+                    {emptyState}
+                  </td>
+                </tr>
+              ) : (
+                sortedData.map((row, rowIndex) => (
+                  <tr
+                    key={rowIndex}
+                    className={clsx(
+                      rowIndex % 2 === 0 ? 'bg-[hsl(var(--surface)/.6)]' : 'bg-[hsl(var(--surface)/.8)]',
+                      'hover:bg-[hsl(var(--surface)/.95)] transition-colors border-b border-[hsl(var(--line)/.2)]'
+                    )}
+                  >
+                    {columns.map((column) => (
+                      <td
+                        key={column.id}
+                        className={clsx(
+                          'px-3 py-2 sm:px-4 sm:py-3 text-sm text-[hsl(var(--foreground))]',
+                          column.align === 'center' && 'text-center',
+                          column.align === 'right' && 'text-right'
+                        )}
+                      >
+                        {column.cell ? column.cell(row) : column.accessor ? column.accessor(row) : null}
+                      </td>
+                    ))}
+                  </tr>
+                ))
+              )}
+            </tbody>
+          </table>
+        </div>
+      )}
     </div>
   )
 }

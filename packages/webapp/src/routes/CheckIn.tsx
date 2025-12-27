@@ -5,7 +5,7 @@
  * with animations. Uses custom hooks for data management and sub-components for UI.
  */
 
-import React, { useCallback, useEffect, useMemo, useState } from 'react'
+import React, { useCallback, useEffect, useMemo, useState, useRef } from 'react'
 import type { Player, CheckedInPlayer } from '@rundeklar/common'
 import { UsersRound, CheckSquare, Square } from 'lucide-react'
 import { PageCard, EmptyState, Button } from '../components/ui'
@@ -15,6 +15,7 @@ import { useSession, useCheckIns, usePlayers, useWakeLock, useSelection } from '
 import { LETTER_FILTERS, UI_CONSTANTS } from '../constants'
 import coachLandingApi from '../services/coachLandingApi'
 import CrossGroupSearchModal from '../components/checkin/CrossGroupSearchModal'
+import { FixedSizeList as List } from 'react-window'
 import api from '../api'
 import { normalizeGroupIds } from '../lib/groupSelection'
 import { useToast } from '../components/ui/Toast'
@@ -462,6 +463,39 @@ const CheckInPage = () => {
     return { femalePlayers, malePlayers, playersWithoutGender }
   }, [checkedIn])
 
+  /** Flattened list of checked-in players with gender headers for virtualization. */
+  const flattenedCheckedIn = useMemo(() => {
+    const items: Array<{ type: 'header' | 'player'; label?: string; player?: CheckedInPlayer }> = []
+    
+    if (sortedCheckedInByGender.femalePlayers.length > 0) {
+      items.push({ type: 'header', label: `Damer (${sortedCheckedInByGender.femalePlayers.length})` })
+      sortedCheckedInByGender.femalePlayers.forEach(player => {
+        items.push({ type: 'player', player })
+      })
+    }
+    
+    if (sortedCheckedInByGender.malePlayers.length > 0) {
+      items.push({ type: 'header', label: `Herrer (${sortedCheckedInByGender.malePlayers.length})` })
+      sortedCheckedInByGender.malePlayers.forEach(player => {
+        items.push({ type: 'player', player })
+      })
+    }
+    
+    if (sortedCheckedInByGender.playersWithoutGender.length > 0) {
+      if (sortedCheckedInByGender.malePlayers.length > 0 || sortedCheckedInByGender.femalePlayers.length > 0) {
+        items.push({ type: 'header', label: `Uden køn (${sortedCheckedInByGender.playersWithoutGender.length})` })
+      }
+      sortedCheckedInByGender.playersWithoutGender.forEach(player => {
+        items.push({ type: 'player', player })
+      })
+    }
+    
+    return items
+  }, [sortedCheckedInByGender])
+
+  /** Should virtualize checked-in list */
+  const shouldVirtualizeCheckedIn = checkedIn.length >= 20
+
   if (loading) {
     return (
       <section className="mx-auto flex h-full max-w-4xl items-center justify-center p-3 sm:p-4">
@@ -502,84 +536,123 @@ const CheckInPage = () => {
               {checkedIn.length}
             </span>
           </header>
-          <div className="flex flex-col space-y-1.5 sm:space-y-2 pr-1 sm:pr-2 max-h-[calc(100vh-440px)] sm:max-h-[calc(100vh-400px)] xl:max-h-[calc(100vh-360px)] overflow-y-auto scrollbar-thin">
-            {checkedIn.length === 0 ? (
+          {checkedIn.length === 0 ? (
+            <div className="pr-1 sm:pr-2">
               <p className="text-xs text-[hsl(var(--muted))] text-center py-4">Ingen spillere tjekket ind endnu.</p>
-            ) : (
-              <>
-                {/* Female players section */}
-                {sortedCheckedInByGender.femalePlayers.length > 0 && (
-                  <div className="space-y-1.5 sm:space-y-2">
-                    <div className="flex items-center gap-2 py-1">
-                      <div className="flex-1 h-px bg-[hsl(var(--line)/.2)]"></div>
-                      <span className="text-xs sm:text-sm font-semibold text-[hsl(var(--muted))] uppercase tracking-wide px-2">
-                        Damer ({sortedCheckedInByGender.femalePlayers.length})
-                      </span>
-                      <div className="flex-1 h-px bg-[hsl(var(--line)/.2)]"></div>
-                    </div>
-                    {sortedCheckedInByGender.femalePlayers.map((player) => (
-                      <CheckedInPlayerCard
-                        key={player.id}
-                        player={player}
-                        isAnimatingOut={animatingOut.has(player.id)}
-                        isAnimatingIn={animatingIn.has(player.id)}
-                        onCheckOut={handleCheckOut}
-                        onEditNotes={handleEditNotes}
-                      />
-                    ))}
-                  </div>
-                )}
-
-                {/* Male players section */}
-                {sortedCheckedInByGender.malePlayers.length > 0 && (
-                  <div className="space-y-1.5 sm:space-y-2">
-                    <div className="flex items-center gap-2 py-1">
-                      <div className="flex-1 h-px bg-[hsl(var(--line)/.2)]"></div>
-                      <span className="text-xs sm:text-sm font-semibold text-[hsl(var(--muted))] uppercase tracking-wide px-2">
-                        Herrer ({sortedCheckedInByGender.malePlayers.length})
-                      </span>
-                      <div className="flex-1 h-px bg-[hsl(var(--line)/.2)]"></div>
-                    </div>
-                    {sortedCheckedInByGender.malePlayers.map((player) => (
-                      <CheckedInPlayerCard
-                        key={player.id}
-                        player={player}
-                        isAnimatingOut={animatingOut.has(player.id)}
-                        isAnimatingIn={animatingIn.has(player.id)}
-                        onCheckOut={handleCheckOut}
-                        onEditNotes={handleEditNotes}
-                      />
-                    ))}
-                  </div>
-                )}
-
-                {/* Players without gender (fallback) */}
-                {sortedCheckedInByGender.playersWithoutGender.length > 0 && (
-                  <div className="space-y-1.5 sm:space-y-2">
-                    {(sortedCheckedInByGender.malePlayers.length > 0 || sortedCheckedInByGender.femalePlayers.length > 0) && (
-                      <div className="flex items-center gap-2 py-1">
+            </div>
+          ) : shouldVirtualizeCheckedIn ? (
+            // Virtualized list for large lists
+            <div className="pr-1 sm:pr-2 h-[calc(100vh-440px)] sm:h-[calc(100vh-400px)] xl:h-[calc(100vh-360px)] min-h-[300px]">
+              <List
+                height={500}
+                itemCount={flattenedCheckedIn.length}
+                itemSize={60}
+                width="100%"
+              >
+                {({ index, style }) => {
+                  const item = flattenedCheckedIn[index]
+                  if (item.type === 'header') {
+                    return (
+                      <div style={{ ...style, height: '32px' }} className="flex items-center gap-2 py-1">
                         <div className="flex-1 h-px bg-[hsl(var(--line)/.2)]"></div>
                         <span className="text-xs sm:text-sm font-semibold text-[hsl(var(--muted))] uppercase tracking-wide px-2">
-                          Uden køn ({sortedCheckedInByGender.playersWithoutGender.length})
+                          {item.label}
                         </span>
                         <div className="flex-1 h-px bg-[hsl(var(--line)/.2)]"></div>
                       </div>
-                    )}
-                    {sortedCheckedInByGender.playersWithoutGender.map((player) => (
-                <CheckedInPlayerCard
-                  key={player.id}
-                  player={player}
-                  isAnimatingOut={animatingOut.has(player.id)}
-                  isAnimatingIn={animatingIn.has(player.id)}
-                  onCheckOut={handleCheckOut}
-                  onEditNotes={handleEditNotes}
-                />
-                    ))}
+                    )
+                  }
+                  if (!item.player) return null
+                  return (
+                    <div style={{ ...style, height: '64px', paddingBottom: '6px' }}>
+                      <CheckedInPlayerCard
+                        key={item.player.id}
+                        player={item.player}
+                        isAnimatingOut={animatingOut.has(item.player.id)}
+                        isAnimatingIn={animatingIn.has(item.player.id)}
+                        onCheckOut={handleCheckOut}
+                        onEditNotes={handleEditNotes}
+                      />
+                    </div>
+                  )
+                }}
+              </List>
+            </div>
+          ) : (
+            // Non-virtualized list for small lists
+            <div className="flex flex-col space-y-1.5 sm:space-y-2 pr-1 sm:pr-2 max-h-[calc(100vh-440px)] sm:max-h-[calc(100vh-400px)] xl:max-h-[calc(100vh-360px)] overflow-y-auto scrollbar-thin">
+              {/* Female players section */}
+              {sortedCheckedInByGender.femalePlayers.length > 0 && (
+                <div className="space-y-1.5 sm:space-y-2">
+                  <div className="flex items-center gap-2 py-1">
+                    <div className="flex-1 h-px bg-[hsl(var(--line)/.2)]"></div>
+                    <span className="text-xs sm:text-sm font-semibold text-[hsl(var(--muted))] uppercase tracking-wide px-2">
+                      Damer ({sortedCheckedInByGender.femalePlayers.length})
+                    </span>
+                    <div className="flex-1 h-px bg-[hsl(var(--line)/.2)]"></div>
                   </div>
-                )}
-              </>
-            )}
-          </div>
+                  {sortedCheckedInByGender.femalePlayers.map((player) => (
+                    <CheckedInPlayerCard
+                      key={player.id}
+                      player={player}
+                      isAnimatingOut={animatingOut.has(player.id)}
+                      isAnimatingIn={animatingIn.has(player.id)}
+                      onCheckOut={handleCheckOut}
+                      onEditNotes={handleEditNotes}
+                    />
+                  ))}
+                </div>
+              )}
+
+              {/* Male players section */}
+              {sortedCheckedInByGender.malePlayers.length > 0 && (
+                <div className="space-y-1.5 sm:space-y-2">
+                  <div className="flex items-center gap-2 py-1">
+                    <div className="flex-1 h-px bg-[hsl(var(--line)/.2)]"></div>
+                    <span className="text-xs sm:text-sm font-semibold text-[hsl(var(--muted))] uppercase tracking-wide px-2">
+                      Herrer ({sortedCheckedInByGender.malePlayers.length})
+                    </span>
+                    <div className="flex-1 h-px bg-[hsl(var(--line)/.2)]"></div>
+                  </div>
+                  {sortedCheckedInByGender.malePlayers.map((player) => (
+                    <CheckedInPlayerCard
+                      key={player.id}
+                      player={player}
+                      isAnimatingOut={animatingOut.has(player.id)}
+                      isAnimatingIn={animatingIn.has(player.id)}
+                      onCheckOut={handleCheckOut}
+                      onEditNotes={handleEditNotes}
+                    />
+                  ))}
+                </div>
+              )}
+
+              {/* Players without gender (fallback) */}
+              {sortedCheckedInByGender.playersWithoutGender.length > 0 && (
+                <div className="space-y-1.5 sm:space-y-2">
+                  {(sortedCheckedInByGender.malePlayers.length > 0 || sortedCheckedInByGender.femalePlayers.length > 0) && (
+                    <div className="flex items-center gap-2 py-1">
+                      <div className="flex-1 h-px bg-[hsl(var(--line)/.2)]"></div>
+                      <span className="text-xs sm:text-sm font-semibold text-[hsl(var(--muted))] uppercase tracking-wide px-2">
+                        Uden køn ({sortedCheckedInByGender.playersWithoutGender.length})
+                      </span>
+                      <div className="flex-1 h-px bg-[hsl(var(--line)/.2)]"></div>
+                    </div>
+                  )}
+                  {sortedCheckedInByGender.playersWithoutGender.map((player) => (
+                    <CheckedInPlayerCard
+                      key={player.id}
+                      player={player}
+                      isAnimatingOut={animatingOut.has(player.id)}
+                      isAnimatingIn={animatingIn.has(player.id)}
+                      onCheckOut={handleCheckOut}
+                      onEditNotes={handleEditNotes}
+                    />
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
         </PageCard>
 
         {/* Players overview */}
@@ -611,7 +684,40 @@ const CheckInPage = () => {
                 title="Ingen spillere matcher din søgning."
                 helper="Prøv en anden søgning eller vælg et andet bogstav."
               />
+            ) : filteredPlayers.length >= 30 ? (
+              // Virtualized list for large lists
+              <div className="h-[600px]">
+                <List
+                  height={600}
+                  itemCount={filteredPlayers.length}
+                  itemSize={80}
+                  width="100%"
+                >
+                  {({ index, style }) => {
+                    const player = filteredPlayers[index]
+                    return (
+                      <div style={{ ...style, paddingBottom: '8px' }}>
+                        <PlayerCard
+                          key={player.id}
+                          player={player}
+                          oneRoundOnly={oneRoundOnlyPlayers.has(player.id)}
+                          isJustCheckedIn={justCheckedIn.has(player.id)}
+                          isAnimatingOut={animatingOut.has(player.id)}
+                          isAnimatingIn={animatingIn.has(player.id)}
+                          onCheckIn={handleCheckIn}
+                          onOneRoundOnlyChange={handleOneRoundOnlyChange}
+                          onEditNotes={handleEditNotes}
+                          pendingNotes={pendingNotes.get(player.id) ?? null}
+                          isSelected={selection.isSelected(player.id)}
+                          onToggleSelection={selection.toggle}
+                        />
+                      </div>
+                    )
+                  }}
+                </List>
+              </div>
             ) : (
+              // AnimatedList for small lists (preserves animations)
               <AnimatedList
                 items={filteredPlayers}
                 onItemSelect={(player) => {
