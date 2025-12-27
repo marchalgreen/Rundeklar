@@ -160,17 +160,18 @@ export const PlayerSlot: React.FC<PlayerSlotProps> = ({
             )}
           </div>
           {/* Mobile: Move button (alternative to drag-and-drop) */}
-          {onMoveClick && (
+          {onMoveClick && player && (
             <button
               type="button"
               onClick={(e) => {
                 e.stopPropagation()
                 onMoveClick(player, court.courtIdx, slotIndex)
               }}
-              className="md:hidden flex-shrink-0 p-2 rounded-md bg-[hsl(var(--primary)/.1)] hover:bg-[hsl(var(--primary)/.2)] transition-colors text-[hsl(var(--primary))] border border-[hsl(var(--primary)/.3)] active:scale-95"
+              className="md:hidden flex-shrink-0 p-2 rounded-md bg-[hsl(var(--primary)/.15)] hover:bg-[hsl(var(--primary)/.25)] transition-colors text-[hsl(var(--primary))] border-2 border-[hsl(var(--primary)/.4)] active:scale-95 shadow-sm"
               aria-label={`Flyt ${player.name}`}
+              title="Flyt spiller"
             >
-              <Move size={18} />
+              <Move size={18} strokeWidth={2.5} />
             </button>
           )}
         </>
