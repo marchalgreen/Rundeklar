@@ -272,11 +272,11 @@ export default function TenantDetailsPage({ tenantId, onClose }: TenantDetailsPa
           {tenant.features && Object.keys(tenant.features).length > 0 && (
             <div>
               <h3 className="text-sm font-medium text-[hsl(var(--muted))] mb-2">Features</h3>
-              <div className="bg-[hsl(var(--surface-2))] p-4 rounded-md">
+              <PageCard hover={false} className="p-4">
                 <pre className="text-sm overflow-auto">
                   {JSON.stringify(tenant.features, null, 2)}
                 </pre>
-              </div>
+              </PageCard>
             </div>
           )}
         </div>

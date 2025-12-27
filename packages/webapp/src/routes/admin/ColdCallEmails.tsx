@@ -313,8 +313,8 @@ export default function ColdCallEmailsPage() {
           </div>
 
           {showPreview && (
-            <div className="mt-6 rounded-lg bg-[hsl(var(--surface-2))] border border-[hsl(var(--line)/.12)] overflow-hidden">
-              <div className="p-4 border-b border-[hsl(var(--line)/.12)] flex items-center justify-between bg-[hsl(var(--surface))]">
+            <PageCard className="mt-6 overflow-hidden p-0">
+              <div className="p-4 border-b border-[hsl(var(--line)/.12)] flex items-center justify-between">
                 <h3 className="text-sm font-semibold text-[hsl(var(--foreground))]">
                   Email Forhåndsvisning
                 </h3>
