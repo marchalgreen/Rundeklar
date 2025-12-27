@@ -44,7 +44,9 @@
 
 ---
 
-## ⏳ Pending Todos (12)
+## ⏳ Pending Todos (11)
+
+## 🔄 Deferred Todos (1)
 
 ### Sprint 2: Vigtige Forbedringer (3 pending)
 
@@ -72,10 +74,11 @@
   - **Files:** `packages/webapp/src/components/players/EditablePartnerCell.tsx`, `packages/webapp/src/api/postgres.ts`
 
 #### Epic 2.4: UX Forbedringer
-- ⏳ **ux-auto-match-balance** - Auto-match - Balance Scoring
+- 🔄 **ux-auto-match-balance** - Auto-match - Balance Scoring (DEFERRED)
   - **Effort:** 2-3 dage
   - **Beskrivelse:** Overvej at tilføje balance scoring baseret på levels, giv mulighed for at vælge mellem random og balanced
   - **File:** `packages/webapp/src/api/matches.ts`
+  - **Status:** DEFERRED - Skal implementeres på separat branch efter fokuseret dialog. Nuværende løsning fungerer, og tidligere implementeringer har haft problemer.
 
 ### Sprint 3: Nice-to-Have Features (1 pending)
 
@@ -115,14 +118,26 @@
 
 ---
 
+## 🔄 Deferred Todos (1)
+
+### Epic 2.4: UX Forbedringer (Deferred)
+- 🔄 **ux-auto-match-balance** - Auto-match - Balance Scoring (DEFERRED)
+  - **Effort:** 2-3 dage
+  - **Beskrivelse:** Overvej at tilføje balance scoring baseret på levels, giv mulighed for at vælge mellem random og balanced
+  - **File:** `packages/webapp/src/api/matches.ts`
+  - **Status:** DEFERRED - Skal implementeres på separat branch efter fokuseret dialog. Nuværende løsning fungerer, og tidligere implementeringer har haft problemer. Kræver grundig diskussion om implementeringsstrategi først.
+
+---
+
 ## 📊 Statistik
 
 **Total Todos:** 32  
 **Completed:** 20 (62.5%)  
-**Pending:** 12 (37.5%)
+**Pending:** 11 (34.4%)  
+**Deferred:** 1 (3.1%)
 
 **Sprint 1:** ✅ 100% Complete (10/10)  
-**Sprint 2:** ✅ 62.5% Complete (5/8)  
+**Sprint 2:** ✅ 62.5% Complete (5/8, 1 deferred)  
 **Sprint 3:** ✅ 83% Complete (5/6)  
 **Sprint 4:** ✅ 75% Complete (3/4)  
 **Sprint 5:** ✅ 50% Complete (2/4)
@@ -138,14 +153,14 @@
 
 ### Mellem Priority (Sprint 2-3)
 4. **mobile-match-program** - Mobile interaction pattern for match program
-5. **ux-auto-match-balance** - Balance scoring for auto-match
-6. **feature-statistics-export** - PDF export og chart images
+5. **feature-statistics-export** - PDF export og chart images
+
+### Lavest Priority (Deferred - Separat Branch)
+6. **ux-auto-match-balance** - Balance scoring for auto-match (DEFERRED - kræver fokuseret dialog først)
 
 ### Lav Priority (Sprint 4-5)
-7. **refactor-reusable-hooks** - Extract reusable hooks
-8. **test-unit-hooks** - Unit tests for hooks
-9. **test-e2e-stabilization** - E2E test stabilization
-10. **doc-api** - API documentation
+7. **test-e2e-stabilization** - E2E test stabilization
+8. **doc-api** - API documentation
 
 ---
 
