@@ -8,14 +8,15 @@
 
 import React, { useCallback, useLayoutEffect, useMemo, useRef, useState } from 'react'
 import type { Player, PlayerCategory, PlayerGender, PlayerCreateInput, PlayerUpdateInput } from '@rundeklar/common'
-import { Pencil, Plus, Trash2, UsersRound } from 'lucide-react'
-import { Badge, Button, EmptyState, PageCard } from '../components/ui'
+import { Pencil, Plus, Trash2, UsersRound, Info, Download } from 'lucide-react'
+import { Badge, Button, EmptyState, PageCard, Tooltip } from '../components/ui'
 import { DataTable, TableSearch, type Column } from '../components/ui/Table'
 import { EditablePartnerCell, PlayerForm } from '../components/players'
 import { EditableTrainingGroupsCell } from '../components/players/EditableTrainingGroupsCell'
 import { usePlayers } from '../hooks'
 import { formatDate } from '../lib/formatting'
 import { PLAYER_CATEGORIES } from '../constants'
+import { useToast } from '../components/ui/Toast'
 
 /**
  * Players page component.
@@ -26,6 +27,8 @@ import { PLAYER_CATEGORIES } from '../constants'
  * ```
  */
 const PlayersPage = () => {
+  const { notify } = useToast()
+  
   // Data hooks
   const [showInactive, setShowInactive] = useState(false)
   const [search, setSearch] = useState('')
@@ -267,17 +270,93 @@ const PlayersPage = () => {
     }
   }, [loading, players, scrollRestoreKey])
 
+  // Note: Search filtering is handled by API via usePlayers hook with q parameter
+  // No client-side filtering needed - improves performance with large datasets
+
   /**
-   * Memoized filtered players list — applies search term to name/alias.
+   * Exports players to CSV format.
    */
-  const filteredPlayers = useMemo(() => {
-    const term = search.trim().toLowerCase()
-    if (!term) return players
-    return players.filter((player) => {
-      const alias = (player.alias ?? '').toLowerCase()
-      return player.name.toLowerCase().includes(term) || alias.includes(term)
-    })
-  }, [players, search])
+  const exportToCSV = useCallback(() => {
+    try {
+      // CSV headers
+      const headers = [
+        'Navn',
+        'Kaldenavn',
+        'Rangliste Single',
+        'Rangliste Double',
+        'Rangliste Mix',
+        'Køn',
+        'Primær kategori',
+        'Træningsgrupper',
+        'Double makker',
+        'Mix makker',
+        'Status',
+        'Oprettet'
+      ]
+
+      // CSV rows
+      const rows = players.map((player) => {
+        const doublesPartner = player.preferredDoublesPartners?.[0]
+          ? allPlayersForDropdown.find((p) => p.id === player.preferredDoublesPartners?.[0])?.name ?? ''
+          : ''
+        const mixedPartner = player.preferredMixedPartners?.[0]
+          ? allPlayersForDropdown.find((p) => p.id === player.preferredMixedPartners?.[0])?.name ?? ''
+          : ''
+        const trainingGroups = (player.trainingGroups ?? []).join('; ')
+
+        return [
+          player.name,
+          player.alias ?? '',
+          player.levelSingle ?? '',
+          player.levelDouble ?? '',
+          player.levelMix ?? '',
+          player.gender ?? '',
+          player.primaryCategory ?? '',
+          trainingGroups,
+          doublesPartner,
+          mixedPartner,
+          player.active ? 'Aktiv' : 'Inaktiv',
+          player.createdAt ? formatDate(player.createdAt) : ''
+        ]
+      })
+
+      // Combine headers and rows
+      const csvContent = [
+        headers.join(','),
+        ...rows.map((row) => row.map((cell) => {
+          // Escape commas and quotes in cell values
+          const cellStr = String(cell ?? '')
+          if (cellStr.includes(',') || cellStr.includes('"') || cellStr.includes('\n')) {
+            return `"${cellStr.replace(/"/g, '""')}"`
+          }
+          return cellStr
+        }).join(','))
+      ].join('\n')
+
+      // Create blob and download
+      const blob = new Blob(['\ufeff' + csvContent], { type: 'text/csv;charset=utf-8;' }) // BOM for Excel compatibility
+      const url = URL.createObjectURL(blob)
+      const link = document.createElement('a')
+      link.href = url
+      link.download = `spillere_${new Date().toISOString().split('T')[0]}.csv`
+      document.body.appendChild(link)
+      link.click()
+      document.body.removeChild(link)
+      URL.revokeObjectURL(url)
+
+      notify({
+        variant: 'success',
+        title: 'Eksport gennemført',
+        description: `${players.length} spillere eksporteret til CSV`
+      })
+    } catch (err) {
+      notify({
+        variant: 'danger',
+        title: 'Eksport fejlede',
+        description: err instanceof Error ? err.message : 'Kunne ikke eksportere spillere'
+      })
+    }
+  }, [players, allPlayersForDropdown, notify])
 
   /**
    * Memoized table column definitions with sort/filter logic.
@@ -300,7 +379,17 @@ const PlayersPage = () => {
       },
       {
         id: 'levelSingle',
-        header: 'Rangliste Single',
+        header: (
+          <div className="flex items-center gap-1.5">
+            <span>Rangliste Single</span>
+            <Tooltip 
+              content="Rangliste niveau fra BadmintonPlayer.dk. Højere tal = højere niveau. Bruges til matchmaking og statistikker."
+              position="top"
+            >
+              <Info className="h-3.5 w-3.5 text-[hsl(var(--muted))] hover:text-[hsl(var(--foreground))]" />
+            </Tooltip>
+          </div>
+        ),
         align: 'center',
         sortable: true,
         sortValue: (row) => (row.levelSingle ?? null) ?? 0,
@@ -308,7 +397,17 @@ const PlayersPage = () => {
       },
       {
         id: 'levelDouble',
-        header: 'Rangliste Double',
+        header: (
+          <div className="flex items-center gap-1.5">
+            <span>Rangliste Double</span>
+            <Tooltip 
+              content="Rangliste niveau fra BadmintonPlayer.dk for double. Højere tal = højere niveau. Bruges til matchmaking og statistikker."
+              position="top"
+            >
+              <Info className="h-3.5 w-3.5 text-[hsl(var(--muted))] hover:text-[hsl(var(--foreground))]" />
+            </Tooltip>
+          </div>
+        ),
         align: 'center',
         sortable: true,
         sortValue: (row) => (row.levelDouble ?? null) ?? 0,
@@ -316,7 +415,17 @@ const PlayersPage = () => {
       },
       {
         id: 'levelMix',
-        header: 'Rangliste Mix',
+        header: (
+          <div className="flex items-center gap-1.5">
+            <span>Rangliste Mix</span>
+            <Tooltip 
+              content="Rangliste niveau fra BadmintonPlayer.dk for mixed double. Højere tal = højere niveau. Bruges til matchmaking og statistikker."
+              position="top"
+            >
+              <Info className="h-3.5 w-3.5 text-[hsl(var(--muted))] hover:text-[hsl(var(--foreground))]" />
+            </Tooltip>
+          </div>
+        ),
         align: 'center',
         sortable: true,
         sortValue: (row) => (row.levelMix ?? null) ?? 0,
@@ -387,7 +496,17 @@ const PlayersPage = () => {
       },
       {
         id: 'preferredDoublesPartner',
-        header: 'Double makker',
+        header: (
+          <div className="flex items-center gap-1.5">
+            <span>Double makker</span>
+            <Tooltip 
+              content="Foretrukken double makker. Partner-relationer er tovejs - når du vælger en makker, opdateres begge spilleres preferencer automatisk."
+              position="top"
+            >
+              <Info className="h-3.5 w-3.5 text-[hsl(var(--muted))] hover:text-[hsl(var(--foreground))]" />
+            </Tooltip>
+          </div>
+        ),
         align: 'center',
         width: '200px',
         cell: (row: Player) => (
@@ -404,7 +523,17 @@ const PlayersPage = () => {
       },
       {
         id: 'preferredMixedPartner',
-        header: 'Mix makker',
+        header: (
+          <div className="flex items-center gap-1.5">
+            <span>Mix makker</span>
+            <Tooltip 
+              content="Foretrukken mixed double makker. Partner-relationer er tovejs - når du vælger en makker, opdateres begge spilleres preferencer automatisk."
+              position="top"
+            >
+              <Info className="h-3.5 w-3.5 text-[hsl(var(--muted))] hover:text-[hsl(var(--foreground))]" />
+            </Tooltip>
+          </div>
+        ),
         align: 'center',
         width: '200px',
         cell: (row: Player) => (
@@ -484,6 +613,16 @@ const PlayersPage = () => {
             />
             Vis inaktive
           </label>
+          <Button
+            variant="secondary"
+            size="sm"
+            onClick={exportToCSV}
+            disabled={players.length === 0 || loading}
+          >
+            <Download size={16} />
+            <span className="hidden sm:inline">Eksporter CSV</span>
+            <span className="sm:hidden">Export</span>
+          </Button>
           <button
             type="button"
             onClick={openCreate}
@@ -506,7 +645,7 @@ const PlayersPage = () => {
           <div className="py-16 text-center text-[hsl(var(--muted))]">Henter spillere...</div>
         ) : (
           <DataTable
-            data={filteredPlayers}
+            data={players}
             columns={columns}
             initialSort={{ columnId: 'name', direction: 'asc' }}
             sort={sort}
