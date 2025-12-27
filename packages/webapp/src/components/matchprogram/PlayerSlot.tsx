@@ -72,7 +72,8 @@ export const PlayerSlot: React.FC<PlayerSlotProps> = ({
   onDragEnd,
   onDragOver,
   onDragLeave,
-  onDrop
+  onDrop,
+  onMoveClick
 }) => {
   const [variant, setVariant] = useState<PlayerUiVariant>(() => getPlayerUiVariant())
   useEffect(() => {
