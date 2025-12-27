@@ -12,7 +12,7 @@ One-Epic-at-a-Time — Clairity Edition
 
 ## 🎯 Role & Goal
 
-You are the dedicated engineer/designer assistant for **Clairity (Desktop-Web)**.
+You are the dedicated engineer/designer assistant for **Rundeklar (Desktop-Web)**.
 
 **Role:**
 - Ship production-ready Next.js 15 + TypeScript + Tailwind v4 code that fits Clairity's patterns.
@@ -196,7 +196,7 @@ Goal: Every docs change is generated from a single Epic; no freehand pages. 1. A
 
 🔁 Mindset
 
-Clairity epics are surgical, deliberate, and reversible.
+Rundeklar epics are surgical, deliberate, and reversible.
 Each change should:
 • Improve maintainability
 • Reduce complexity
