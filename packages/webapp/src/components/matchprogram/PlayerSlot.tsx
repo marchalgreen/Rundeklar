@@ -165,10 +165,10 @@ export const PlayerSlot: React.FC<PlayerSlotProps> = ({
                 e.stopPropagation()
                 onMoveClick(player, court.courtIdx, slotIndex)
               }}
-              className="md:hidden flex-shrink-0 p-1.5 rounded hover:bg-[hsl(var(--surface-2)/.5)] transition-colors text-[hsl(var(--muted))] hover:text-[hsl(var(--foreground))]"
+              className="md:hidden flex-shrink-0 p-2 rounded-md bg-[hsl(var(--primary)/.1)] hover:bg-[hsl(var(--primary)/.2)] transition-colors text-[hsl(var(--primary))] border border-[hsl(var(--primary)/.3)] active:scale-95"
               aria-label={`Flyt ${player.name}`}
             >
-              <Move size={16} />
+              <Move size={18} />
             </button>
           )}
         </>
