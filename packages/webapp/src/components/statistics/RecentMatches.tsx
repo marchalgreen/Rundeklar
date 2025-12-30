@@ -23,6 +23,15 @@ export const RecentMatches: React.FC<RecentMatchesProps> = ({
 }) => {
   const totalCount = allMatches ? allMatches.length : matches.length
 
+  // Always load all matches if available, show in scrollable container
+  // Must be called before any early returns to satisfy React hooks rules
+  React.useEffect(() => {
+    if (!allMatches && onLoadAll && matches.length > 0) {
+      // Auto-load all matches when component mounts if we have some matches
+      onLoadAll()
+    }
+  }, [allMatches, onLoadAll, matches.length])
+
   if (matches.length === 0 && (!allMatches || allMatches.length === 0)) {
     return (
       <div className="card-glass-active border-hair rounded-lg p-3 sm:p-4 md:p-5 shadow-sm">
@@ -33,14 +42,6 @@ export const RecentMatches: React.FC<RecentMatchesProps> = ({
       </div>
     )
   }
-
-  // Always load all matches if available, show in scrollable container
-  React.useEffect(() => {
-    if (!allMatches && onLoadAll && matches.length > 0) {
-      // Auto-load all matches when component mounts if we have some matches
-      onLoadAll()
-    }
-  }, [allMatches, onLoadAll, matches.length])
 
   const formatScore = (scoreData?: PlayerMatchResult['scoreData'], sport?: string) => {
     if (!scoreData || !sport) return 'Ingen resultat'

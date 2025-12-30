@@ -4,7 +4,7 @@
  * Handles view mode switching, player selection, search state, and related UI state.
  */
 
-import { useState, useEffect, useMemo, useCallback } from 'react'
+import { useState, useEffect, useMemo } from 'react'
 import type { Player } from '@rundeklar/common'
 import type { UsePlayerStatisticsReturn } from './usePlayerStatistics'
 import type { UsePlayerComparisonReturn } from './usePlayerComparison'

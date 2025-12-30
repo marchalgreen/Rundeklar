@@ -5,7 +5,7 @@
  * and related filter operations.
  */
 
-import { useCallback, useState, useMemo, useEffect } from 'react'
+import { useState, useMemo, useEffect } from 'react'
 import type { AttendancePeriod } from '../../lib/statistics/dateRange'
 import { calculateDateRange } from '../../lib/statistics/dateRange'
 import { MAX_COMPARISON_PERIOD_DAYS } from '../../lib/statistics/constants'

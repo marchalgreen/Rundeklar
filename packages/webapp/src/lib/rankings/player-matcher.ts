@@ -134,7 +134,7 @@ export async function getPlayersFromRankingList(
       const path = await import('path')
       const debugPath = path.join(process.cwd(), 'badmintonplayer-debug.html')
       fs.writeFileSync(debugPath, html, 'utf-8')
-      console.log(`[DEBUG] Saved HTML to ${debugPath}`)
+      logger.debug(`Saved HTML to ${debugPath}`)
     }
     
     await browser.close()
@@ -147,20 +147,20 @@ export async function getPlayersFromRankingList(
     const linkCount = $('a[href*="VisSpiller"]').length
     const allLinks = $('a[href*="#"]').length
     
-    console.log(`[DEBUG] Page loaded: ${tableCount} tables, ${linkCount} VisSpiller links, ${allLinks} hash links found`)
+    logger.debug(`Page loaded: ${tableCount} tables, ${linkCount} VisSpiller links, ${allLinks} hash links found`)
     
     // Debug: Log first few links to see structure
     if (linkCount === 0) {
       const firstFewLinks = $('a[href*="#"]').slice(0, 5)
       const sampleHrefs = firstFewLinks.map((_, el) => $(el).attr('href')).get()
-      console.log(`[DEBUG] No VisSpiller links found. Sample links: ${sampleHrefs.join(', ')}`)
+      logger.debug(`No VisSpiller links found. Sample links: ${sampleHrefs.join(', ')}`)
       
       // Also check for any links with numbers in href
       const numericLinks = $('a[href*="#"]').filter((_, el) => {
         const href = $(el).attr('href') || ''
         return /#\d+/.test(href)
       })
-      console.log(`[DEBUG] Found ${numericLinks.length} links with numeric IDs in href`)
+      logger.debug(`Found ${numericLinks.length} links with numeric IDs in href`)
     }
 
     const players: Array<{

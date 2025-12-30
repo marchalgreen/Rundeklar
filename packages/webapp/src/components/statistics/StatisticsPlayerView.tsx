@@ -27,7 +27,7 @@ interface StatisticsPlayerViewProps {
  */
 export const StatisticsPlayerView: React.FC<StatisticsPlayerViewProps> = memo(({
   view,
-  players,
+  players: _players,
   loading,
   playerStatistics,
   playerComparison

@@ -82,7 +82,7 @@ export const GroupTrendsChart: React.FC<GroupTrendsChartProps> = memo(({
 
       return result
     })
-  }, [data, comparisonData, enableComparison, hasComparison])
+  }, [data, hasComparison])
 
   // Create lines for each group with distinct colors
   // Only include lines that have at least one non-zero data point
@@ -137,7 +137,7 @@ export const GroupTrendsChart: React.FC<GroupTrendsChartProps> = memo(({
     })
     
     return result
-  }, [data, comparisonData, enableComparison, chartData, hasComparison])
+  }, [data, chartData, hasComparison])
 
   if (loading) {
     return (

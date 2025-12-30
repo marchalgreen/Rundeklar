@@ -4,7 +4,7 @@
  * Provides data loading and state management for individual player statistics.
  */
 
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useState } from 'react'
 import type { PlayerStatistics, PlayerMatchResult, HeadToHeadResult } from '@rundeklar/common'
 import statsApi from '../../api/stats'
 import { useToast } from '../../components/ui/Toast'

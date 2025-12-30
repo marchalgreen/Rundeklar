@@ -1139,7 +1139,7 @@ export const getPlayerStatistics = async (
       const matchPlayers = matchPlayersByMatch.get(matchResult.matchId) || []
       const { team1, team2 } = getTeamStructure(matchPlayers)
       const playerInTeam1 = team1.includes(playerId)
-      const playerInTeam2 = team2.includes(playerId)
+      const _playerInTeam2 = team2.includes(playerId)
       const playerTeam: 'team1' | 'team2' = playerInTeam1 ? 'team1' : 'team2'
       
       const won = matchResult.winnerTeam === playerTeam

@@ -28,7 +28,7 @@ export function loadRecaptchaScript(): Promise<void> {
     // Check if site key is configured
     if (!RECAPTCHA_SITE_KEY) {
       // Fail open: if reCAPTCHA not configured, allow requests
-      console.warn('reCAPTCHA site key not configured, skipping bot detection')
+      // Site key not configured - silently skip bot detection
       resolve()
       return
     }
@@ -39,7 +39,7 @@ export function loadRecaptchaScript(): Promise<void> {
     script.defer = true
     script.onload = () => resolve()
     script.onerror = () => {
-      console.warn('Failed to load reCAPTCHA script, allowing request')
+      // Failed to load reCAPTCHA script - silently allow request (fail open)
       resolve() // Fail open
     }
     document.head.appendChild(script)
@@ -67,7 +67,7 @@ export async function executeRecaptcha(action: string): Promise<string | null> {
     }
 
     if (typeof (window as any).grecaptcha === 'undefined') {
-      console.warn('reCAPTCHA not loaded, allowing request')
+      // reCAPTCHA not loaded - silently allow request (fail open)
       return null // Fail open
     }
 
@@ -77,7 +77,7 @@ export async function executeRecaptcha(action: string): Promise<string | null> {
 
     return token
   } catch (error) {
-    console.warn('reCAPTCHA execution failed, allowing request', error)
+    // reCAPTCHA execution failed - silently allow request (fail open)
     return null // Fail open
   }
 }
@@ -145,7 +145,6 @@ export async function verifyRecaptchaToken(
       score
     }
   } catch (error) {
-    console.error('reCAPTCHA verification error', error)
     // Fail open: if verification fails, allow request (availability over perfect security)
     return { success: true, score: 1.0 }
   }

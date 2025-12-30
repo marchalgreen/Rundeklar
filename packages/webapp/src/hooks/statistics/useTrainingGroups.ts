@@ -65,7 +65,7 @@ export function useTrainingGroups(
       if (JSON.stringify(groups) !== JSON.stringify(filters.allGroups)) {
         filters.setAllGroups(groups)
       }
-    } catch (err: unknown) {
+    } catch (_err: unknown) {
       // Silently fail - groups will just be empty
       // Don't use console.error per guardrails
       // This is acceptable as groups are optional metadata

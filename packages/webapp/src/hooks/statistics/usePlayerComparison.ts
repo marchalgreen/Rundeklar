@@ -4,7 +4,7 @@
  * Provides data loading and state management for comparing two players.
  */
 
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useState } from 'react'
 import type { PlayerComparison } from '@rundeklar/common'
 import statsApi from '../../api/stats'
 import { useToast } from '../../components/ui/Toast'
