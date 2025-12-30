@@ -16,8 +16,8 @@ interface AuthContextValue {
   club: Club | null
   loading: boolean
   isAuthenticated: boolean
-  login: (email: string, password: string, totpCode?: string) => Promise<void>
-  loginWithPIN: (username: string, pin: string) => Promise<void>
+  login: (email: string, password: string, totpCode?: string, recaptchaToken?: string) => Promise<void>
+  loginWithPIN: (username: string, pin: string, recaptchaToken?: string) => Promise<void>
   logout: () => Promise<void>
   register: (email: string, password: string) => Promise<void>
   refreshToken: (retryCount?: number) => Promise<boolean>
@@ -238,7 +238,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   }, [getAccessToken, getApiUrl, refreshToken, clearTokens])
 
   // Login with email/password (for admins)
-  const login = useCallback(async (email: string, password: string, totpCode?: string) => {
+  const login = useCallback(async (email: string, password: string, totpCode?: string, recaptchaToken?: string) => {
     const response = await fetch(getApiUrl('/login'), {
       method: 'POST',
       headers: {
@@ -248,7 +248,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         email,
         password,
         tenantId,
-        totpCode
+        totpCode,
+        recaptchaToken
       })
     })
 
