@@ -1,6 +1,5 @@
 import type { MatchResult } from '@rundeklar/common'
 import { getStateCopy, getMatchResults, getMatchResultsBySession, getMatches } from '../postgres'
-import { getSeasonFromDate } from './utils'
 
 /**
  * Searches match results based on filters.

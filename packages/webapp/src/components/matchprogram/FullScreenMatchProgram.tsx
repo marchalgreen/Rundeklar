@@ -94,7 +94,7 @@ export const FullScreenMatchProgram: React.FC<FullScreenMatchProgramProps> = ({
   onSlotDrop,
   getMatchForCourt,
   onEnterResult,
-  sport
+  sport: _sport
 }) => {
   // Filter to only show courts with players
   const courtsWithPlayers = courts.filter(court => court.slots.length > 0)

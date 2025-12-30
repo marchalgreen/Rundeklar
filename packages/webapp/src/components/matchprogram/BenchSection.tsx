@@ -113,7 +113,7 @@ export const BenchSection: React.FC<BenchSectionProps> = ({
   onInactiveDrop,
   onMarkAvailable,
   onActivateOneRoundPlayer,
-  onEditNotes
+  onEditNotes: _onEditNotes
 }) => {
   const [variant, setVariant] = useState<PlayerUiVariant>(() => getPlayerUiVariant())
   useEffect(() => {

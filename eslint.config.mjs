@@ -34,6 +34,7 @@ export default [
       ...reactPlugin.configs.recommended.rules,
       'no-console': 'error',
       'react/react-in-jsx-scope': 'off',
+      'react/prop-types': 'off', // Disable prop-types for TypeScript projects
       'react-hooks/rules-of-hooks': 'error',
       'react-hooks/exhaustive-deps': 'warn',
       '@typescript-eslint/no-explicit-any': 'off',

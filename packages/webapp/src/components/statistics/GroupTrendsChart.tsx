@@ -1,7 +1,7 @@
 import React, { useMemo, memo } from 'react'
 import { LineChart, type LineChartData } from '../charts'
 import type { GroupAttendanceOverTime } from '@rundeklar/common'
-import { deduplicateGroupAttendance, createGroupMonthKey } from '../../lib/statistics/deduplication'
+import { deduplicateGroupAttendance } from '../../lib/statistics/deduplication'
 import { darkenHSLColor, getChartColorPalette } from '../../lib/statistics/colorUtils'
 
 interface GroupTrendsChartProps {
@@ -82,7 +82,7 @@ export const GroupTrendsChart: React.FC<GroupTrendsChartProps> = memo(({
 
       return result
     })
-  }, [data, comparisonData, enableComparison])
+  }, [data, comparisonData, enableComparison, hasComparison])
 
   // Create lines for each group with distinct colors
   // Only include lines that have at least one non-zero data point
@@ -137,7 +137,7 @@ export const GroupTrendsChart: React.FC<GroupTrendsChartProps> = memo(({
     })
     
     return result
-  }, [data, comparisonData, enableComparison, chartData])
+  }, [data, comparisonData, enableComparison, chartData, hasComparison])
 
   if (loading) {
     return (

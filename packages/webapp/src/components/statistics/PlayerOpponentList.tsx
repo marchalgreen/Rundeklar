@@ -1,6 +1,6 @@
 import React, { useState } from 'react'
 import type { HeadToHeadResult } from '@rundeklar/common'
-import { ChevronDown, ChevronUp, Users, Target } from 'lucide-react'
+import { ChevronDown, ChevronUp } from 'lucide-react'
 import { HeadToHeadResults } from './HeadToHeadResults'
 
 interface PlayerOpponentListProps {
@@ -77,7 +77,6 @@ export const PlayerOpponentList: React.FC<PlayerOpponentListProps> = ({
             const isExpanded = expandedPlayerIds.has(player.playerId)
             const headToHead = getHeadToHeadData(player.playerId)
             const loading = isLoading(player.playerId)
-            const key = [currentPlayerId, player.playerId].sort().join('_')
             // Determine which player is player1 and which is player2 for display
             const isPlayer1 = currentPlayerId < player.playerId
             const player1Wins = isPlayer1 ? headToHead?.player1Wins ?? 0 : headToHead?.player2Wins ?? 0

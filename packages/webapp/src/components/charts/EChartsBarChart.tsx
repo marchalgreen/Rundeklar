@@ -156,7 +156,7 @@ export const EChartsBarChart: React.FC<EChartsBarChartProps> = ({
       const gradientId = `gradient-${bar.dataKey}-${index}`
       
       // Store gradient function
-      gradientFunctions[gradientId] = (params: any) => {
+      gradientFunctions[gradientId] = (_params: any) => {
         return createGradientFromHSL(resolvedColor)
       }
       
@@ -165,7 +165,7 @@ export const EChartsBarChart: React.FC<EChartsBarChartProps> = ({
       type: 'bar' as const,
       data: data.map(item => item[bar.dataKey] as number),
       itemStyle: {
-          color: (params: any) => createGradientFromHSL(resolvedColor),
+          color: (_params: any) => createGradientFromHSL(resolvedColor),
           borderRadius: [6, 6, 0, 0],
           shadowBlur: 8,
           shadowColor: 'rgba(0, 0, 0, 0.15)',

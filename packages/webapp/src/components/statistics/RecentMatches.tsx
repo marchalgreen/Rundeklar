@@ -16,7 +16,7 @@ interface RecentMatchesProps {
  */
 export const RecentMatches: React.FC<RecentMatchesProps> = ({ 
   matches, 
-  playerName, 
+  playerName: _playerName, 
   allMatches, 
   onLoadAll, 
   loadingAll = false 
@@ -34,6 +34,14 @@ export const RecentMatches: React.FC<RecentMatchesProps> = ({
     )
   }
 
+  // Always load all matches if available, show in scrollable container
+  React.useEffect(() => {
+    if (!allMatches && onLoadAll && matches.length > 0) {
+      // Auto-load all matches when component mounts if we have some matches
+      onLoadAll()
+    }
+  }, [allMatches, onLoadAll, matches.length])
+
   const formatScore = (scoreData?: PlayerMatchResult['scoreData'], sport?: string) => {
     if (!scoreData || !sport) return 'Ingen resultat'
     if (sport === 'badminton' && 'sets' in scoreData) {
@@ -42,14 +50,6 @@ export const RecentMatches: React.FC<RecentMatchesProps> = ({
     }
     return 'N/A'
   }
-
-  // Always load all matches if available, show in scrollable container
-  React.useEffect(() => {
-    if (!allMatches && onLoadAll && matches.length > 0) {
-      // Auto-load all matches when component mounts if we have some matches
-      onLoadAll()
-    }
-  }, [allMatches, onLoadAll, matches.length])
 
   // Use allMatches if available, otherwise use matches
   const matchesToDisplay = allMatches || matches

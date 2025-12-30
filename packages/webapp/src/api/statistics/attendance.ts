@@ -768,8 +768,8 @@ export const getPeriodComparison = async (
   comparisonDateTo: string,
   groupNames?: string[]
 ): Promise<PeriodComparison> => {
-  // Get data for both periods
-  const [currentData, comparisonData] = await Promise.all([
+  // Get data for both periods (currently unused but may be needed for future enhancements)
+  await Promise.all([
     getTrainingGroupAttendance(currentDateFrom, currentDateTo, groupNames),
     getTrainingGroupAttendance(comparisonDateFrom, comparisonDateTo, groupNames)
   ])

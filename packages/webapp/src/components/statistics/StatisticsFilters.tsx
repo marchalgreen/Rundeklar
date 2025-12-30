@@ -1,5 +1,4 @@
 import React from 'react'
-import type { AttendancePeriod } from '../../lib/statistics/dateRange'
 import type { UseStatisticsFiltersReturn } from '../../hooks/statistics/useStatisticsFilters'
 
 interface StatisticsFiltersProps {
@@ -154,7 +153,7 @@ export const StatisticsFilters: React.FC<StatisticsFiltersProps> = ({ filters })
           </div>
           {filters.isComparisonDisabled && (
             <p className="text-xs text-[hsl(var(--muted))] ml-6">
-              Ikke tilgængelig for "Alle sæsoner" eller perioder længere end 1 år
+              Ikke tilgængelig for &quot;Alle sæsoner&quot; eller perioder længere end 1 år
             </p>
           )}
           {enableComparison && !filters.isComparisonDisabled && (

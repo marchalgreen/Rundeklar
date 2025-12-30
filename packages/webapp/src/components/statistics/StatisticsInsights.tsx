@@ -1,6 +1,6 @@
 import React, { useState } from 'react'
 import { Lightbulb, ChevronDown, ChevronUp, AlertCircle, Info, TrendingUp, Target } from 'lucide-react'
-import { generateAllInsights, type Insight, type InsightSeverity } from '../../lib/statistics/insights'
+import { generateAllInsights, type InsightSeverity } from '../../lib/statistics/insights'
 import type { TrainingGroupAttendance, WeekdayAttendance, PlayerCheckInLongTail, TrainingDayComparison } from '@rundeklar/common'
 
 interface StatisticsInsightsProps {

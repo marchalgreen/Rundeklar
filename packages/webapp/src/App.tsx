@@ -52,7 +52,6 @@ const Header = () => {
   const { isAuthenticated, club, logout } = useAuth()
   const { navigate, navigateToAuth } = useNavigation()
   const tenantId = getCurrentTenantId()
-  const isDemoTenant = tenantId === 'demo'
   const logoPath = `${import.meta.env.BASE_URL}${config.logo}`
   const [isMenuOpen, setIsMenuOpen] = useState(false)
   const [isUserMenuOpen, setIsUserMenuOpen] = useState(false)

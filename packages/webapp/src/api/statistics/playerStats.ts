@@ -322,7 +322,8 @@ export const getPlayerComparison = async (
                   .filter(name => name !== 'Ukendt spiller')
 
                 // Partner names for player2 (excluding player2 themselves)
-                const player2Partners = player2TeamMembers
+                // Note: Currently unused but kept for potential future use
+                const _player2Partners = player2TeamMembers
                   .filter((pid) => pid !== playerId2)
                   .map((pid) => {
                     const player = playerMap.get(pid)
@@ -665,7 +666,7 @@ export const getPlayerRecentMatches = async (
 
     const { team1, team2 } = getTeamStructure(matchPlayers)
     const playerInTeam1 = team1.includes(playerId)
-    const playerInTeam2 = team2.includes(playerId)
+    const _playerInTeam2 = team2.includes(playerId)
     const playerTeam: 'team1' | 'team2' = playerInTeam1 ? 'team1' : 'team2'
     
     // Get opponent/partner names
@@ -807,7 +808,7 @@ export const getPlayerAllMatches = async (
 
     const { team1, team2 } = getTeamStructure(matchPlayers)
     const playerInTeam1 = team1.includes(playerId)
-    const playerInTeam2 = team2.includes(playerId)
+    const _playerInTeam2 = team2.includes(playerId)
     const playerTeam: 'team1' | 'team2' = playerInTeam1 ? 'team1' : 'team2'
     
     // Get opponent/partner names
