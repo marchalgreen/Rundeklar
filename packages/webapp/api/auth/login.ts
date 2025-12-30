@@ -72,11 +72,6 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     let sql
     try {
       const databaseUrl = getDatabaseUrl()
-      if (!databaseUrl) {
-        return res.status(500).json({
-          error: 'Database configuration error'
-        })
-      }
       sql = getPostgresClient(databaseUrl)
     } catch (dbError) {
       logger.error('Database connection failed', dbError)
@@ -322,29 +317,49 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       })
     }
 
-    // Log error but don't expose internal details
+    // Log error with detailed information for debugging
     try {
-      console.error('[ERROR] Login handler error:', outerError)
+      logger.error('Login handler error', outerError)
       if (outerError instanceof Error) {
-        console.error('[ERROR] Error message:', outerError.message)
-        console.error('[ERROR] Error stack:', outerError.stack)
+        logger.error('Error details', {
+          message: outerError.message,
+          stack: outerError.stack,
+          name: outerError.name
+        })
+      } else {
+        logger.error('Unknown error type', { error: outerError })
       }
-    } catch {
-      // If even console.error fails, we're in deep trouble
+    } catch (logError) {
+      // If even logging fails, try console.error as fallback
+      try {
+        console.error('[ERROR] Login handler error (logger failed):', outerError)
+        console.error('[ERROR] Logger error:', logError)
+      } catch {
+        // If even console.error fails, we're in deep trouble
+      }
     }
     
     // Always return JSON, never HTML - even for import/runtime errors
     try {
-      res.setHeader('Content-Type', 'application/json')
-      res.setHeader('Access-Control-Allow-Origin', '*')
+      // Ensure headers are set before sending response
+      if (!res.headersSent) {
+        res.setHeader('Content-Type', 'application/json')
+        res.setHeader('Access-Control-Allow-Origin', '*')
+      }
       return res.status(500).json({
         error: 'Login failed',
         message: outerError instanceof Error ? outerError.message : 'An unexpected error occurred'
       })
-    } catch {
-      // If even setting headers fails, return minimal JSON
-      // This should never happen, but if it does, we've done our best
-      return res.status(500).json({ error: 'Server error' })
+    } catch (responseError) {
+      // If even setting headers fails, try to send minimal response
+      try {
+        if (!res.headersSent) {
+          return res.status(500).json({ error: 'Server error' })
+        }
+      } catch {
+        // If we can't send a response at all, log it
+        logger.error('Failed to send error response', responseError)
+      }
     }
   }
 }
