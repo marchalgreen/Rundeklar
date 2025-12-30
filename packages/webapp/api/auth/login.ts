@@ -92,15 +92,23 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
     // Verify reCAPTCHA token if provided (bot detection)
     if (body.recaptchaToken) {
-      const recaptchaResult = await verifyRecaptchaToken(body.recaptchaToken, 'login')
-      if (!recaptchaResult.success) {
-        logger.warn('reCAPTCHA verification failed', {
-          score: recaptchaResult.score,
-          error: recaptchaResult.error,
+      try {
+        const recaptchaResult = await verifyRecaptchaToken(body.recaptchaToken, 'login')
+        if (!recaptchaResult.success) {
+          logger.warn('reCAPTCHA verification failed', {
+            score: recaptchaResult.score,
+            error: recaptchaResult.error,
+            ipAddress
+          })
+          // Don't block login, but log for monitoring
+          // In production, you might want to block low scores
+        }
+      } catch (recaptchaError) {
+        // Fail open: if reCAPTCHA verification throws an error, allow login
+        logger.warn('reCAPTCHA verification error (allowing login)', {
+          error: recaptchaError instanceof Error ? recaptchaError.message : 'Unknown error',
           ipAddress
         })
-        // Don't block login, but log for monitoring
-        // In production, you might want to block low scores
       }
     }
 
