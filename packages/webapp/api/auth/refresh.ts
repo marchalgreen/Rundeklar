@@ -15,6 +15,8 @@ const refreshSchema = z.object({
 })
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
+  // Always set JSON content type and CORS headers first
+  res.setHeader('Content-Type', 'application/json')
   setCorsHeaders(res, req.headers.origin)
 
   if (req.method === 'OPTIONS') {
@@ -28,7 +30,24 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   try {
     const body = refreshSchema.parse(req.body)
 
-    const sql = getPostgresClient(getDatabaseUrl())
+    // Get database connection safely
+    let sql
+    try {
+      const databaseUrl = getDatabaseUrl()
+      if (!databaseUrl) {
+        return res.status(500).json({
+          error: 'Database configuration error'
+        })
+      }
+      sql = getPostgresClient(databaseUrl)
+    } catch (dbError) {
+      logger.error('Database connection failed', dbError)
+      return res.status(500).json({
+        error: 'Database connection failed',
+        message: dbError instanceof Error ? dbError.message : 'Unknown database error'
+      })
+    }
+
     const tokenHash = await hashRefreshToken(body.refreshToken)
 
     // Find session with club details
@@ -107,10 +126,29 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       })
     }
 
-    logger.error('Token refresh error', error)
-    return res.status(500).json({
-      error: error instanceof Error ? error.message : 'Token refresh failed'
-    })
+    // Log error but don't expose internal details
+    try {
+      logger.error('Token refresh error', error)
+      if (error instanceof Error) {
+        console.error('[ERROR] Refresh handler error:', error.message)
+        console.error('[ERROR] Error stack:', error.stack)
+      }
+    } catch {
+      // If even logging fails, we're in deep trouble
+    }
+    
+    // Always return JSON, never HTML - even for import/runtime errors
+    try {
+      res.setHeader('Content-Type', 'application/json')
+      res.setHeader('Access-Control-Allow-Origin', '*')
+      return res.status(500).json({
+        error: 'Token refresh failed',
+        message: error instanceof Error ? error.message : 'An unexpected error occurred'
+      })
+    } catch {
+      // If even setting headers fails, return minimal JSON
+      return res.status(500).json({ error: 'Server error' })
+    }
   }
 }
 

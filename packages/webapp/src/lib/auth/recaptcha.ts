@@ -4,7 +4,15 @@
  */
 
 const RECAPTCHA_SITE_KEY = import.meta.env.VITE_RECAPTCHA_SITE_KEY || ''
-const RECAPTCHA_SECRET_KEY = process.env.RECAPTCHA_SECRET_KEY || ''
+
+// Helper to safely get server-side environment variables
+// Only access process.env when running in Node.js (server-side)
+function getServerEnv(key: string, defaultValue: string = ''): string {
+  if (typeof process !== 'undefined' && process.env) {
+    return process.env[key] || defaultValue
+  }
+  return defaultValue
+}
 
 /**
  * Load reCAPTCHA script if not already loaded
@@ -84,6 +92,9 @@ export async function verifyRecaptchaToken(
   token: string,
   action: string
 ): Promise<{ success: boolean; score: number; error?: string }> {
+  // Get secret key only when running server-side
+  const RECAPTCHA_SECRET_KEY = getServerEnv('RECAPTCHA_SECRET_KEY', '')
+  
   if (!RECAPTCHA_SECRET_KEY) {
     // Fail open if not configured
     return { success: true, score: 1.0 }
@@ -127,7 +138,7 @@ export async function verifyRecaptchaToken(
     // Score threshold: 0.5 (adjust based on your needs)
     // Lower scores indicate bot-like behavior
     const score = data.score || 0.0
-    const threshold = parseFloat(process.env.RECAPTCHA_SCORE_THRESHOLD || '0.5')
+    const threshold = parseFloat(getServerEnv('RECAPTCHA_SCORE_THRESHOLD', '0.5'))
 
     return {
       success: score >= threshold,
