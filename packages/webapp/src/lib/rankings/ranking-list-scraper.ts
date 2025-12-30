@@ -14,7 +14,7 @@
  */
 
 import * as cheerio from 'cheerio'
-import { chromium } from 'playwright'
+import playwright from 'playwright'
 import { logger } from '../utils/logger'
 
 export type RankingListData = {
@@ -41,13 +41,13 @@ export async function scrapeRankingList(
   rankingType: 'single' | 'double' | 'mix',
   gender: 'M' | 'K'
 ): Promise<RankingListData[]> {
-  let browser: Awaited<ReturnType<typeof chromium.launch>> | null = null
+  let browser: Awaited<ReturnType<typeof playwright.chromium.launch>> | null = null
   
   try {
     logger.info(`[Ranking List Scraper] Scraping ${rankingType} ${gender === 'M' ? 'Herre' : 'Dame'} ranking list...`)
     
     // Use Playwright to load the page (needed for hash-based routing)
-    browser = await chromium.launch({ headless: true })
+    browser = await playwright.chromium.launch({ headless: true })
     const context = await browser.newContext({
       userAgent: 'RundeklarRankingBot/1.0 (+https://rundeklar.dk)'
     })

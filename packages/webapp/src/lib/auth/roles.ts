@@ -82,7 +82,6 @@ export function isCoach(role: string | UserRole): boolean {
 export function getRoleDisplayName(role: string | UserRole): string {
   switch (role) {
     case UserRole.SYSADMIN:
-    case 'sysadmin':
     case 'super_admin': // Backward compatibility
       return 'System Administrator'
     case UserRole.ADMIN:

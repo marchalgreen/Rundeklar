@@ -7,7 +7,7 @@
 
 import * as cheerio from 'cheerio'
 import pLimit from 'p-limit'
-import { chromium } from 'playwright'
+import playwright from 'playwright'
 import { logger } from '../utils/logger'
 
 export type RankingData = {
@@ -75,7 +75,7 @@ async function scrapePlayerRankings(
     const playerUrl = `${baseUrl}/DBF/Spiller/VisSpiller/#${numericId}`
     
     // Use Playwright to load the page (needed for hash-based routing)
-    const browser = await chromium.launch({ headless: true })
+    const browser = await playwright.chromium.launch({ headless: true })
     let html: string
     
     try {

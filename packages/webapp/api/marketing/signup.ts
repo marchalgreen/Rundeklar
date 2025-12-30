@@ -103,7 +103,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     const body = signupSchema.parse(req.body)
 
     // Validate password strength
-    const passwordValidation = validatePasswordStrength(body.password)
+    const passwordValidation = await validatePasswordStrength(body.password)
     if (!passwordValidation.isValid) {
       return res.status(400).json({
         error: 'Password does not meet requirements',
