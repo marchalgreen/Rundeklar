@@ -18,7 +18,7 @@
  * const response = await fetchWithAuth('/api/data', { method: 'GET' }, refreshToken, getAccessToken)
  * ```
  */
-import { logger } from '../utils/logger'
+import { logger } from '../utils/logger.js'
 
 export async function fetchWithAuth(
   url: string,

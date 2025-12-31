@@ -1,5 +1,5 @@
 import type { TenantConfig } from '@rundeklar/common'
-import { logger } from './utils/logger'
+import { logger } from './utils/logger.js'
 
 /**
  * Extracts tenant ID from URL path.

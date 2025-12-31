@@ -4,7 +4,7 @@
  * This ensures demo users don't see each other's data.
  */
 
-import { logger } from './utils/logger'
+import { logger } from './utils/logger.js'
 
 const ISOLATION_ID_KEY = 'rundeklar_isolation_id'
 

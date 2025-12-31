@@ -1,6 +1,6 @@
 import { createClient, type SupabaseClient } from '@supabase/supabase-js'
 import type { TenantConfig } from '@rundeklar/common'
-import { logger } from './utils/logger'
+import { logger } from './utils/logger.js'
 
 /**
  * Cache of Supabase clients by tenant ID to avoid creating duplicate instances.
