@@ -3,7 +3,19 @@
  * Uses Google reCAPTCHA v3 which runs in the background
  */
 
-const RECAPTCHA_SITE_KEY = import.meta.env.VITE_RECAPTCHA_SITE_KEY || ''
+// Helper to safely get client-side environment variables
+// Only access import.meta.env when running in browser/Vite environment
+function getClientEnv(key: string, defaultValue: string = ''): string {
+  if (typeof import.meta !== 'undefined' && import.meta.env) {
+    return import.meta.env[key] || defaultValue
+  }
+  return defaultValue
+}
+
+// Get site key safely - only used client-side
+function getRecaptchaSiteKey(): string {
+  return getClientEnv('VITE_RECAPTCHA_SITE_KEY', '')
+}
 
 // Helper to safely get server-side environment variables
 // Only access process.env when running in Node.js (server-side)
@@ -26,6 +38,7 @@ export function loadRecaptchaScript(): Promise<void> {
     }
 
     // Check if site key is configured
+    const RECAPTCHA_SITE_KEY = getRecaptchaSiteKey()
     if (!RECAPTCHA_SITE_KEY) {
       // Fail open: if reCAPTCHA not configured, allow requests
       // Site key not configured - silently skip bot detection
@@ -52,6 +65,7 @@ export function loadRecaptchaScript(): Promise<void> {
  * @returns reCAPTCHA token or null if not configured
  */
 export async function executeRecaptcha(action: string): Promise<string | null> {
+  const RECAPTCHA_SITE_KEY = getRecaptchaSiteKey()
   if (!RECAPTCHA_SITE_KEY) {
     return null // Fail open if not configured
   }
