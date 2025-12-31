@@ -73,7 +73,18 @@ export default async function handler(
 
     // Get tenantId from params (Express) or query (Vercel)
     // In Vercel, dynamic routes like [tenantId] are available in req.query
-    const tenantId = (req.query?.tenantId || req.params?.tenantId) as string
+    // Extract from URL path if not in query/params (fallback for Vercel routing)
+    let tenantId = (req.query?.tenantId || req.params?.tenantId) as string
+    
+    // Fallback: Extract from URL path if not found in query/params
+    // Vercel dynamic routes: /api/[tenantId]/admin/coaches -> req.query.tenantId
+    // But sometimes it might be in the URL path itself
+    if (!tenantId && req.url) {
+      const urlMatch = req.url.match(/\/api\/([^\/]+)\/admin\/coaches/)
+      if (urlMatch && urlMatch[1]) {
+        tenantId = urlMatch[1]
+      }
+    }
     
     // Debug logging
     logger.debug('Coach creation request', {
