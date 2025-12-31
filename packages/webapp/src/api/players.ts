@@ -141,7 +141,7 @@ const updatePlayer = async (input: PlayerUpdateInput): Promise<Player> => {
     if (parsed.patch.active !== undefined) updateData.active = parsed.patch.active
     if (parsed.patch.preferredDoublesPartners !== undefined) updateData.preferredDoublesPartners = parsed.patch.preferredDoublesPartners
     if (parsed.patch.preferredMixedPartners !== undefined) updateData.preferredMixedPartners = parsed.patch.preferredMixedPartners
-    if ((parsed.patch as any).badmintonplayerId !== undefined) updateData.badmintonplayerId = (parsed.patch as any).badmintonplayerId
+    if (parsed.patch.badmintonplayerId !== undefined) updateData.badmintonplayerId = parsed.patch.badmintonplayerId
 
     const updated = await updatePlayerInDb(parsed.id, updateData)
     return normalisePlayer(updated)

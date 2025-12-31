@@ -71,7 +71,7 @@ export async function updatePlayerRankings(
     } else if (tenantConfig?.badmintonplayerRankingLists) {
       // Use fast ranking list scraping (scrapes 6 lists instead of 63 individual profiles)
       logger.info('[Ranking Service] Using fast ranking list scraper (6 lists)')
-      const rankingLists = tenantConfig.badmintonplayerRankingLists as any
+      const rankingLists = tenantConfig.badmintonplayerRankingLists
       const combinedData = await scrapeAllRankingLists({
         singleHerre: rankingLists.singleHerre,
         doubleHerre: rankingLists.doubleHerre,

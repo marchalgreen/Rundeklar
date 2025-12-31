@@ -286,12 +286,20 @@ export async function getAllTenantConfigs(): Promise<TenantConfig[]> {
     try {
       // Only try to query database if we're in a server environment
       if (typeof process !== 'undefined' && process.env.DATABASE_URL) {
-        const { getPostgresClient, getDatabaseUrl } = await import('../../api/auth/db-helper.js')
-        const sql = getPostgresClient(getDatabaseUrl())
-        const deleted = await sql`
-          SELECT tenant_id FROM deleted_tenants
-        `
-        deletedTenantIds = new Set(deleted.map((d: { tenant_id: string }) => d.tenant_id))
+        try {
+          // Dynamic import to avoid bundling in browser
+          // Use absolute path from process.cwd() to avoid path resolution issues
+          const dbHelperPath = join(process.cwd(), 'packages/webapp/api/auth/db-helper.js')
+          const { getPostgresClient, getDatabaseUrl } = await import(dbHelperPath)
+          const sql = getPostgresClient(getDatabaseUrl())
+          const deleted = await sql`
+            SELECT tenant_id FROM deleted_tenants
+          `
+          deletedTenantIds = new Set(deleted.map((d: { tenant_id: string }) => d.tenant_id))
+        } catch (importError) {
+          // If import fails (e.g., in browser or path issues), just continue without database filtering
+          logger.debug('Could not import db-helper (likely browser environment or path issue)', importError)
+        }
       }
     } catch (dbError) {
       // If database query fails, continue without filtering (graceful degradation)
