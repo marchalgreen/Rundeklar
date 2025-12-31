@@ -29,12 +29,13 @@ function buildTenantUrl(tenantId: string, path: string): string {
     return `${APP_URL}/#/${tenantId}${cleanPath}`
   }
 
-  // For production, build subdomain URL
+  // For production, build subdomain URL with hash routing
   // tenantId is already the subdomain (e.g., "herlev-hjorten")
   // Always use https in production
   const protocol = process.env.NODE_ENV === 'production' ? 'https' : (APP_URL.startsWith('https') ? 'https' : 'http')
   const cleanPath = path.startsWith('/') ? path : `/${path}`
-  return `${protocol}://${tenantId}.${BASE_DOMAIN}${cleanPath}`
+  // Use hash routing for SPA navigation
+  return `${protocol}://${tenantId}.${BASE_DOMAIN}/#/${tenantId}${cleanPath}`
 }
 
 /**
