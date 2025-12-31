@@ -6,7 +6,7 @@
  */
 
 import { DATE_CONSTANTS } from '../constants/index.js'
-import { logger } from './utils/logger'
+import { logger } from './utils/logger.js'
 
 /**
  * Formats a date string to Danish locale format.
