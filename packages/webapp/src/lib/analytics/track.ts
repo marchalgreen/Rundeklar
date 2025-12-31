@@ -4,7 +4,7 @@
  * Uses sessionStorage to maintain session_id across page navigations
  */
 
-import { logger } from '../utils/logger'
+import { logger } from '../utils/logger.js'
 
 const SESSION_STORAGE_KEY = 'analytics_session_id'
 const TRACKED_PAGES_KEY = 'analytics_tracked_pages'

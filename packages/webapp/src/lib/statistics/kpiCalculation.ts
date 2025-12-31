@@ -14,7 +14,7 @@
 import type { TrainingGroupAttendance } from '@rundeklar/common'
 import { getStatisticsSnapshots } from '../../api/postgres'
 import statsApi from '../../api/stats'
-import { logger } from '../../lib/utils/logger'
+import { logger } from '../../lib/utils/logger.js'
 import type { AttendancePeriod } from './dateRange'
 
 export interface KPIMetrics {
