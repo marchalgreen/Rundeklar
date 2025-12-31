@@ -3,8 +3,6 @@ import { z } from 'zod'
 import { requireAuth, requireSuperAdmin, AuthenticatedRequest } from '../../../src/lib/auth/middleware.js'
 import { getPostgresClient, getDatabaseUrl } from '../../auth/db-helper.js'
 import { getTenantConfig } from '../../../src/lib/admin/tenant-utils.js'
-import { readFile, writeFile } from 'fs/promises'
-import { join } from 'path'
 import { logger } from '../../../src/lib/utils/logger.js'
 import { setCorsHeaders } from '../../../src/lib/utils/cors.js'
 
@@ -101,7 +99,8 @@ export default async function handler(
         tenant: updatedConfig
       })
     } else if (req.method === 'DELETE') {
-      // Soft delete tenant (mark as deleted in config, don't delete data)
+      // Soft delete tenant (mark as deleted in database, don't delete data)
+      // Note: Cannot write to filesystem in Vercel serverless functions (read-only)
       const config = await getTenantConfig(tenantId)
       
       if (!config) {
@@ -110,19 +109,27 @@ export default async function handler(
         })
       }
       
-      // Add deleted flag to config
-      const deletedConfig = {
-        ...config,
-        deleted: true,
-        deletedAt: new Date().toISOString()
+      // Mark tenant as deleted in database (filesystem is read-only in Vercel)
+      const sql = getPostgresClient(getDatabaseUrl())
+      
+      // Check if already deleted
+      const existing = await sql`
+        SELECT tenant_id FROM deleted_tenants WHERE tenant_id = ${tenantId}
+      `
+      
+      if (existing.length > 0) {
+        return res.status(200).json({
+          success: true,
+          message: `Tenant "${tenantId}" is already marked as deleted`
+        })
       }
       
-      const configPath = join(
-        process.cwd(),
-        'packages/webapp/src/config/tenants',
-        `${tenantId}.json`
-      )
-      await writeFile(configPath, JSON.stringify(deletedConfig, null, 2), 'utf-8')
+      // Insert into deleted_tenants table
+      await sql`
+        INSERT INTO deleted_tenants (tenant_id, deleted_at, deleted_by)
+        VALUES (${tenantId}, NOW(), ${req.email || null})
+        ON CONFLICT (tenant_id) DO NOTHING
+      `
       
       return res.status(200).json({
         success: true,

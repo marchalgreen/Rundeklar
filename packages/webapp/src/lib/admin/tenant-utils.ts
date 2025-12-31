@@ -280,6 +280,25 @@ export async function getAllTenantConfigs(): Promise<TenantConfig[]> {
     const files = await readdir(tenantsDir)
     const configs: TenantConfig[] = []
     
+    // Get list of deleted tenant IDs from database (if available)
+    // This works in serverless functions where filesystem is read-only
+    let deletedTenantIds: Set<string> = new Set()
+    try {
+      // Only try to query database if we're in a server environment
+      if (typeof process !== 'undefined' && process.env.DATABASE_URL) {
+        const { getPostgresClient, getDatabaseUrl } = await import('../../api/auth/db-helper.js')
+        const sql = getPostgresClient(getDatabaseUrl())
+        const deleted = await sql`
+          SELECT tenant_id FROM deleted_tenants
+        `
+        deletedTenantIds = new Set(deleted.map((d: { tenant_id: string }) => d.tenant_id))
+      }
+    } catch (dbError) {
+      // If database query fails, continue without filtering (graceful degradation)
+      // This allows the function to work even if database is unavailable
+      logger.debug('Could not fetch deleted tenants from database', dbError)
+    }
+    
     for (const file of files) {
       if (file.endsWith('.json')) {
         try {
@@ -287,8 +306,8 @@ export async function getAllTenantConfigs(): Promise<TenantConfig[]> {
           const configContent = await readFile(configPath, 'utf-8')
           const config = JSON.parse(configContent) as TenantConfig & { deleted?: boolean }
           
-          // Filter out deleted tenants
-          if (config.deleted) {
+          // Filter out deleted tenants (check both config file flag and database)
+          if (config.deleted || deletedTenantIds.has(config.id)) {
             continue
           }
           
