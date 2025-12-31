@@ -163,13 +163,14 @@ export default async function handler(req: AuthenticatedRequest, res: VercelResp
       return res.status(401).json({ error: error.message })
     }
 
-    if (error instanceof Error && error.message.includes('Super admin access required')) {
+    if (error instanceof Error && (error.message.includes('Super admin') || error.message.includes('System administrator'))) {
       return res.status(403).json({ error: error.message })
     }
 
     logger.error('Tenant management error', error)
     const errorMessage = error instanceof Error ? error.message : 'Tenant management failed'
     const errorStack = error instanceof Error ? error.stack : undefined
+    logger.error('Tenant management error details', { errorMessage, errorStack, error })
     return res.status(500).json({
       error: errorMessage,
       ...(process.env.NODE_ENV === 'development' && { stack: errorStack })

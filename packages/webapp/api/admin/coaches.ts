@@ -19,7 +19,18 @@ export default async function handler(req: AuthenticatedRequest, res: VercelResp
     requireSuperAdmin(req)
   } catch (error) {
     logger.error('Authentication failed in coaches endpoint', error)
-    return res.status(401).json({ error: 'Unauthorized' })
+    if (error instanceof Error) {
+      if (error.message.includes('System administrator')) {
+        return res.status(403).json({ error: 'Forbidden: Super admin access required' })
+      }
+      if (error.message.includes('Authentication') || error.message.includes('token')) {
+        return res.status(401).json({ error: 'Unauthorized' })
+      }
+    }
+    return res.status(500).json({ 
+      error: 'Authentication error',
+      message: error instanceof Error ? error.message : 'Unknown error'
+    })
   }
 
   if (req.method === 'GET') {
@@ -63,8 +74,11 @@ export default async function handler(req: AuthenticatedRequest, res: VercelResp
     } catch (error) {
       logger.error('Failed to fetch all coaches', error)
       const errorMessage = error instanceof Error ? error.message : 'Failed to fetch coaches'
+      const errorStack = error instanceof Error ? error.stack : undefined
+      logger.error('Coaches fetch error details', { errorMessage, errorStack })
       return res.status(500).json({ 
-        error: errorMessage
+        error: errorMessage,
+        ...(process.env.NODE_ENV === 'development' && { stack: errorStack })
       })
     }
   }
