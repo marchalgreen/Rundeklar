@@ -47,7 +47,7 @@ export default async function handler(req: AuthenticatedRequest, res: VercelResp
     requireSuperAdmin(req)
 
     if (req.method === 'GET') {
-      // List all tenants
+      // List all tenants (excluding deleted ones)
       const configs = await getAllTenantConfigs()
       
       // Get user counts for each tenant
@@ -67,12 +67,20 @@ export default async function handler(req: AuthenticatedRequest, res: VercelResp
       
       const countsMap = new Map(userCounts.map((r) => [r.tenant_id, r.count]))
       
-      const tenants = configs.map(config => ({
-        id: config.id,
-        name: config.name,
-        subdomain: config.subdomain,
-        userCount: countsMap.get(config.id) || 0
-      }))
+      // Sort tenants by name for better UX
+      const tenants = configs
+        .map(config => ({
+          id: config.id,
+          name: config.name,
+          subdomain: config.subdomain,
+          userCount: countsMap.get(config.id) || 0
+        }))
+        .sort((a, b) => {
+          // Sort by name, but prioritize tenants with subdomains
+          if (a.subdomain && !b.subdomain) return -1
+          if (!a.subdomain && b.subdomain) return 1
+          return a.name.localeCompare(b.name)
+        })
       
       return res.status(200).json({
         success: true,

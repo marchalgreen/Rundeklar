@@ -285,7 +285,13 @@ export async function getAllTenantConfigs(): Promise<TenantConfig[]> {
         try {
           const configPath = join(tenantsDir, file)
           const configContent = await readFile(configPath, 'utf-8')
-          const config = JSON.parse(configContent) as TenantConfig
+          const config = JSON.parse(configContent) as TenantConfig & { deleted?: boolean }
+          
+          // Filter out deleted tenants
+          if (config.deleted) {
+            continue
+          }
+          
           configs.push(config)
         } catch (error) {
           logger.warn(`Failed to read tenant config ${file}`, error)

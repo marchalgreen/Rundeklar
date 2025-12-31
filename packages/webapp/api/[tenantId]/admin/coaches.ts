@@ -86,27 +86,27 @@ export default async function handler(
       }
     }
     
-    // Debug logging
-    logger.debug('Coach creation request', {
-      url: req.url,
-      query: req.query,
-      params: req.params,
-      extractedTenantId: tenantId
-    })
+    // Debug logging (only in development)
+    if (process.env.NODE_ENV === 'development') {
+      logger.debug('Coach creation request', {
+        url: req.url,
+        query: req.query,
+        params: req.params,
+        extractedTenantId: tenantId
+      })
+    }
     
     if (!tenantId) {
-      logger.error('Tenant ID missing in request', {
+      const errorDetails = process.env.NODE_ENV === 'development' ? {
         url: req.url,
         query: req.query,
         params: req.params
-      })
+      } : undefined
+      
+      logger.error('Tenant ID missing in request', errorDetails)
       return res.status(400).json({
         error: 'Tenant ID is required',
-        debug: {
-          url: req.url,
-          query: req.query,
-          params: req.params
-        }
+        ...(errorDetails && { debug: errorDetails })
       })
     }
 
@@ -235,13 +235,15 @@ export default async function handler(
       // Login still works because we use LOWER() in queries
       const capitalizedUsername = normalizedUsername.charAt(0).toUpperCase() + normalizedUsername.slice(1)
       
-      // Log before insert to debug tenant_id issue
-      logger.info('Creating coach', {
-        tenantId,
-        email: body.email,
-        username: capitalizedUsername,
-        role: 'coach'
-      })
+      // Debug logging (only in development)
+      if (process.env.NODE_ENV === 'development') {
+        logger.debug('Creating coach', {
+          tenantId,
+          email: body.email,
+          username: capitalizedUsername,
+          role: 'coach'
+        })
+      }
       
       // Create coach (store username with proper capitalization)
       const [coach] = await sql`
@@ -264,14 +266,16 @@ export default async function handler(
         RETURNING id, email, username, tenant_id, role
       `
       
-      // Log after insert to verify tenant_id was set correctly
-      logger.info('Coach created', {
-        coachId: coach.id,
-        email: coach.email,
-        username: coach.username,
-        tenant_id: coach.tenant_id,
-        role: coach.role
-      })
+      // Debug logging (only in development)
+      if (process.env.NODE_ENV === 'development') {
+        logger.debug('Coach created', {
+          coachId: coach.id,
+          email: coach.email,
+          username: coach.username,
+          tenant_id: coach.tenant_id,
+          role: coach.role
+        })
+      }
       
       // Send welcome email if requested
       if (body.sendEmail) {

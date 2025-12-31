@@ -142,7 +142,7 @@ export default function CreateCoachFormForSysAdmin({ onSuccess, onCancel }: Crea
             <option value="">Vælg tenant</option>
             {tenants.map((tenant) => (
               <option key={tenant.id} value={tenant.id}>
-                {tenant.name} ({tenant.subdomain})
+                {tenant.name} - {tenant.subdomain || 'ingen subdomain'}.rundeklar.dk
               </option>
             ))}
           </select>
