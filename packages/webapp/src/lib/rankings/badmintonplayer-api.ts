@@ -14,7 +14,7 @@
  * - Conclusion: API is not accessible without partnership/authorization from Badminton Danmark
  */
 
-import { logger } from '../utils/logger'
+import { logger } from '../utils/logger.js'
 
 export type RankingData = {
   badmintonplayerId: string

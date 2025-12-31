@@ -8,7 +8,7 @@
 import * as cheerio from 'cheerio'
 import pLimit from 'p-limit'
 import playwright from 'playwright'
-import { logger } from '../utils/logger'
+import { logger } from '../utils/logger.js'
 
 export type RankingData = {
   badmintonplayerId: string // Official BadmintonID (e.g., "881203-09") - this is what we store

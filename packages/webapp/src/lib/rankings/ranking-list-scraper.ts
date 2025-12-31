@@ -15,7 +15,7 @@
 
 import * as cheerio from 'cheerio'
 import playwright from 'playwright'
-import { logger } from '../utils/logger'
+import { logger } from '../utils/logger.js'
 
 export type RankingListData = {
   numericId: string

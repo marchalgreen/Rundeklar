@@ -7,7 +7,7 @@
 
 import * as cheerio from 'cheerio'
 import { chromium } from 'playwright'
-import { logger } from '../utils/logger'
+import { logger } from '../utils/logger.js'
 
 export type PlayerMatch = {
   playerId: string // Database player ID

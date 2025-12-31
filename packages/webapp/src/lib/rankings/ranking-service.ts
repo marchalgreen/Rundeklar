@@ -4,11 +4,11 @@
  * Coordinates API/scraper logic and updates database with ranking data.
  */
 
-import type { RankingData } from './badmintonplayer-scraper'
-import { discoverBadmintonPlayerApi } from './badmintonplayer-api'
-import { scrapeRankings } from './badmintonplayer-scraper'
-import { scrapeAllRankingLists } from './ranking-list-scraper'
-import { logger } from '../utils/logger'
+import type { RankingData } from './badmintonplayer-scraper.js'
+import { discoverBadmintonPlayerApi } from './badmintonplayer-api.js'
+import { scrapeRankings } from './badmintonplayer-scraper.js'
+import { scrapeAllRankingLists } from './ranking-list-scraper.js'
+import { logger } from '../utils/logger.js'
 import type postgres from 'postgres'
 import type { TenantConfig } from '@rundeklar/common'
 
